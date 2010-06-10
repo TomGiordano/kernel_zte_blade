@@ -26,7 +26,7 @@
 int input_mt_init_slots(struct input_dev *dev, unsigned int num_slots)
 {
 	int i;
-
+        num_slots=2;
 	if (!num_slots)
 		return 0;
 	if (dev->mt)
