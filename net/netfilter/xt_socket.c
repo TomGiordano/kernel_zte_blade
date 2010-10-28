@@ -191,7 +191,7 @@ socket_mt4_v1(const struct sk_buff *skb, struct xt_action_param *par)
 static int
 extract_icmp6_fields(const struct sk_buff *skb,
 		     unsigned int outside_hdrlen,
-		     u8 *protocol,
+		     int *protocol,
 		     struct in6_addr **raddr,
 		     struct in6_addr **laddr,
 		     __be16 *rport,
@@ -248,8 +248,7 @@ socket_mt6_v1(const struct sk_buff *skb, struct xt_action_param *par)
 	struct sock *sk;
 	struct in6_addr *daddr, *saddr;
 	__be16 dport, sport;
-	int thoff;
-	u8 tproto;
+	int thoff, tproto;
 	const struct xt_socket_mtinfo1 *info = (struct xt_socket_mtinfo1 *) par->matchinfo;
 
 	tproto = ipv6_find_hdr(skb, &thoff, -1, NULL);
@@ -301,7 +300,7 @@ socket_mt6_v1(const struct sk_buff *skb, struct xt_action_param *par)
 			sk = NULL;
 	}
 
-	pr_debug("proto %hhu %pI6:%hu -> %pI6:%hu "
+	pr_debug("proto %hhd %pI6:%hu -> %pI6:%hu "
 		 "(orig %pI6:%hu) sock %p\n",
 		 tproto, saddr, ntohs(sport),
 		 daddr, ntohs(dport),
