@@ -53,6 +53,34 @@ include/linux/version.h
 include/linux/utsrelease.h
 include/linux/bounds.h
 
+
+arch/arm/mach-msm/smd_rpc_sym.c
+drivers/char/consolemap_deftbl.c
+drivers/char/defkeymap.c
+include/asm-arm/
+kernel/config_data.h
+kernel/timeconst.h
+lib/crc32table.h
+lib/gen_crc32table
+scripts/basic/docproc
+scripts/basic/fixdep
+scripts/basic/hash
+scripts/bin2c
+scripts/conmakehash
+scripts/kallsyms
+scripts/kconfig/conf
+scripts/kconfig/lex.zconf.c
+scripts/kconfig/zconf.hash.c
+scripts/kconfig/zconf.tab.c
+scripts/mod/elfconfig.h
+scripts/mod/mk_elfconfig
+scripts/mod/modpost
+usr/gen_init_cpio
+usr/initramfs_data.cpio
+
+
+
+
 # stgit generated dirs
 patches-*
 
