@@ -1,0 +1,131 @@
+Introduction
+============
+
+Targets such as 7x30 use an eMMC card as its primary storage device
+eliminating the usage of NAND. The SD controller and the card are accessible
+only by Apps processor. Modem has to depend on apps processor for updating modem
+file system partition in the card. This software module provides the
+implementation of the RPC client to service requests from modem when
+modem file system partition needs to be updated.
+
+
+Hardware description
+====================
+
+No new hardware is required. An eMMC card will have 2 partitions reserved for
+modem storage.
+
+Software description
+====================
+
+To meet Linux requirements, the existing remote storage RPC server is
+modified as a RPC client to handle RPC requests from the modem processor.
+It uses the basic RPC framework provided by the kernel on apps processor.
+
+The control flow is as follows:
+
+1. The RPC client with the callbacks for each service that apps processor provides
+are registered with the other processor.
+
+2. The RPC server on modem side calls these registered callbacks through
+basic RPC mechanism whenever needed.
+
+3. All the modem requests will be handled by a user space program and the remote
+storage RPC client will provide an interface to the user application to receive
+the requests from modem and also to send the status of requests to modem.
+
+Design
+======
+
+The current design of RPC client is considered to be light weight since it
+doesn't block upon any request from modem. It immediately acknowledges each
+callback request as and when received from modem and then hands over those
+requests to user space program.
+
+For write requests, the user space program notifies the RPC client when
+the data is actually written to the storage device. The RPC client then
+informs modem with status of the write operation.
+
+Alternate designs considered were:
+1. Handle all the RPC requests in kernel space without any user space
+intervention by using VFS APIs.
+
+SMP/multi-core
+==============
+
+The queue of requests can be accessed concurrently by both user space program
+and the RPC client. Hence a spinlock is used to add or remove a request
+to the queue. There is no additional protection required to make this module work
+on SMP.
+
+Performance
+===========
+
+The Filesystem on modem processor syncs the whole data from shared memory
+periodically. Considering this small amount of data, there could be an
+insignificant amount of increase in access of SD card from apps processor
+when flush happens.
+
+Interface
+=========
+
+There are no exported kernel APIs.
+
+1. The kernel driver registers itself as a misc driver and hence a device node
+"/dev/rmt_storage" will be created for the user space program to open and
+interact with kernel using ioctls.
+
+The following ioctls are implemented:
+
+        a. RMT_STORAGE_SHRD_MEM_PARAM - The ioctl to get the remote storage
+	shared memory parameters. The user space application maps the
+	shared memory by doing mmap() on /dev/rmt_storage.
+
+        b. RMT_STORAGE_WAIT_FOR_REQ - This ioctl waits until a callback
+	for any registered event is received from modem. When a callback
+	is received, the driver parses the arguments and if they are valid,
+	unblocks the user space program and returns success to RPC server.
+	If the parameters are invalid, it returns the error code for invalid
+	parameters to RPC server (The RPC client and server defines a set of
+	error codes to define the status of a RPC request).
+
+        c. RMT_STORAGE_SEND_STATUS - The user space program after processing a
+	write request sends this ioctl to RPC client in kernel so as to
+	send the status to RPC server on modem processor.
+
+Config options
+==============
+
+Enable the config option MSM_RMT_STORAGE_CLIENT to compile the driver for
+remote storage RPC client.
+
+Dependencies
+============
+
+The driver depends on the RPC framework provided by the kernel.
+
+The driver interacts with AMSS Remote storage RPC server on modem.
+
+The driver interacts with AMSS Remote storage RPC server on modem processor
+using the standard ONCRPC mechanism.
+
+User space utilities
+====================
+
+A user space program is written to process the requests from modem.
+
+The control flow is as follows:
+
+1. Open the device "/dev/rmt_storage".
+
+2. Send the ioctl RMT_STORAGE_SHRD_MEM_PARAM to get the shared memory resource
+parameters and mmap() the shared memory.
+
+3. Send the ioctl RMT_STORAGE_WAIT_FOR_REQ to wait for an event from RPC
+server on modem. Handles all write requests on a partition in another pthread context.
+
+4. After the processing of current request, it sends RMT_STORAGE_WAIT_FOR_REQ ioctl
+and waits for another event.
+
+5. Send RMT_STORAGE_SEND_STATUS ioctl to RPC client to notify the status
+of write request to RPC server on modem processor.

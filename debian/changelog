@@ -1,0 +1,5 @@
+linux (2.6.32-1.1) unstable; urgency=low
+
+  * Initial Debian packaging (headers only)
+
+ -- Linux Build <linux.build@quicinc.com>  Tue, 15 Jun 2010 15:05:50 -0600

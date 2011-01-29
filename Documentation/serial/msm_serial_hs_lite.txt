@@ -1,0 +1,84 @@
+Introduction:
+=============
+
+This document describes the serial driver for high speed UARTDM cores. It
+provides full console support without dependencies upon DMOV.
+
+UARTDM core is a high speed UART core which can operate in two modes:
+1. Data Mover mode
+2. Legacy mode
+The former mode has been supported by the existing msm_serial_hs driver.
+msm_serial_hs depends upon DMOV hardware and software modules for data
+transfers. There is no support for kernel messages in this driver.
+
+8660 and 8672 platforms do not have UART cores which has been traditionally
+used as a debug console. This new driver adds support for legacy mode i.e.
+interrupt based console and data transfer functions to UARTDM cores.
+
+Hardware description:
+=====================
+
+UARTDM is a hardware block which implements RS232 protocol. The hardware
+supports maximum data rates of up to 4 Mbps.
+
+The device requires 4 GPIO lines configured; namely RFR_N, CTS, TX and
+RX. Platforms such as 8660 require initialisation of GSBI cores in addition
+to UARTDM core. The core requires SIM_CLK and UARTDM_CLK in addtion to
+any source clocks. There is one interrupt source per UARTDM core.
+
+Software description
+====================
+
+The driver registers to the serial-core layer and to the platform driver
+subsystem.
+
+A DMOV-less approach has been used for supporting console because this is
+used for debugging purpose only. In a debug environment, it makes sense to
+have as few HW + SW dependencies as possible. The bandwidth required for
+console over UARTDM is generally of the order of a 1/10 MBps and not using
+DMOV does not have any down side to usability.
+
+The driver performs I/O operations in interrupt mode. TX_READY interrupt is
+generated when the last chunk of data is written out and TX FIFO is empty.
+If new data is present, TX_READY interrupt is enabled. The TX_READY isr
+takes data from the uart circular buffer and writes to the TX FIFO. When no
+more data is to be sent, TX_READY interrupt is disabled until next
+transaction. In RX path, when RX_STALE or RX_LEVEL interrupt is fired, the
+interrupt handler copies all received data to tty_flip_buffer which is
+then visible to higher layers.
+
+Interface:
+==========
+
+The hardware device is visible to the user space as tty device.
+Additionally, it interfaces to the printk subsytem when console=ttyHSL0 is
+passed as a boot parameter and CONFIG_SERIAL_MSM_HS_LITE is defined in
+kernel config.
+
+Apart from usual serial port ioctls, TIOCM_LOOP is supported by the driver
+to configure hardware as a loopback device. This is intended mainly to be
+used for unit-testing.
+
+See termios.h under linux headers and Serial Programming HowTo on TLDP:
+<http://tldp.org/HOWTO/Serial-Programming-HOWTO/> for additional info.
+
+Power Management
+================
+
+The driver implements suspend and resume functions which are exported to the
+platform subsystem. These functions are called in response to user space
+events and perform necessary bookkeeping operations before turning off
+uart clocks.
+
+User space utilities:
+=====================
+
+Standard Unix serial port applications can be used to exercise the hardware
+(eg. stty, getty).
+
+Known issues:
+=============
+None.
+
+
+

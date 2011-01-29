@@ -1,0 +1,123 @@
+Introduction
+============
+
+Subsystem Power Manager (SPM)
+
+SPM manages the low power modes of the CPU and other, power related
+resources that are local to the CPU subsytem.  SPM manages the hardware
+sequence to effect the subsystem's entry into and restore from the low
+power modes.
+
+The SPM driver configures SPM for the intended low power mode.  The
+driver sets up SPM so that SPM can, for example, set the CPU voltage
+level, turn on/off clamps, and gate local clocks.
+
+Hardware description
+====================
+
+SPM interfaces with the CPU core, the interrupt controller, the clock
+controllers, the PMIC hardware, and Resource Power Manager (on MSM 8660).
+Upon the CPU executing the wfi instruction, SPM transitions the CPU
+subsystem from the normal running mode into one of the low power modes.
+When the interrupt controller signals a pending interrupt, SPM restores
+the CPU subsystem from the low power mode to the normal running mode.
+During the transition, SPM can adjust the CPU voltage level, reset the
+CPU, turn on/off clamps around the CPU core, and turn local clocks on/off.
+
+SPM is configured through its memory mapped registers.  SPM supports the
+following low power modes: clock gating, retention, and power collapse.
+
+Software description
+====================
+
+SPM is a relatively simple hardware.  The SPM driver only needs to
+present a very simple interface.  There are two main functions in the
+interface.  One function accepts platform-specific SPM data during
+initialization.  It allows the generic SPM driver to operate
+appropriately on different platforms.  The second function accepts a
+low power mode from the caller.  It then programs SPM with the
+corresponding set of register values.
+
+Design
+======
+
+Design goals:
+- Encapsulate SPM register settings.
+- Provide a simple software interface.
+- Share the SPM driver across multiple platforms.
+- Be able to run when interrupts are disabled.
+
+Power Management
+================
+
+SPM is part of the power management architecture for MSM 7630 and
+MSM 8660.  SPM manages power related resources of the CPU subsystem
+in low power modes.
+
+SMP/multi-core
+==============
+
+There is one SPM hardware per CPU.  Though the kernel has a single
+instance of the SPM driver, the SPM driver internally uses per-cpu
+data structure, enabling each CPU to control its own SPM independently.
+
+The SPM driver is called in the idle task and the suspend task.  By
+the time that the SPM driver is invoked, the kernel has already disabled
+local interrupts.  With interrupts disabled, the per-cpu data structure
+works safely.
+
+Security
+========
+
+None
+
+Performance
+===========
+
+None
+
+Interface
+=========
+
+msm_spm_init():
+The function accepts platform-specific SPM settings and programs SPM
+with initial register values.
+
+msm_spm_set_low_power_mode():
+The function programs the registers of the SPM according to the
+specified low power mode.
+
+Driver parameters
+=================
+
+None
+
+Config options
+==============
+
+MSM_SPM
+
+Dependencies
+============
+
+None
+
+User space utilities
+====================
+
+None
+
+Other
+=====
+
+None
+
+Known issues
+============
+
+None
+
+To do
+=====
+
+None

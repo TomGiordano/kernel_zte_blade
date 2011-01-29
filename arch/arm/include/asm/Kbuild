@@ -1,0 +1,4 @@
+include include/asm-generic/Kbuild.asm
+
+unifdef-y += hwcap.h
+header-y += sizes.h

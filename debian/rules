@@ -1,0 +1,117 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	# Add here commands to configure the package.
+
+	touch configure-stamp
+
+
+build: build-stamp
+build-stamp: configure-stamp
+	dh_testdir
+
+	# Add here commands to compile the package.
+
+	touch $@
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+
+	# Add here commands to clean up after the build process.
+	$(MAKE) clean
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+
+	# Add here commands to install the package into debian/tmp
+
+hdrs_pkg_name= linux-headers-2.6.32-1
+hdrs_pkg_dir = $(CURDIR)/debian/$(hdrs_pkg_name)/usr/src/$(hdrs_pkg_name)
+install-headers:
+	dh_testdir
+	dh_testroot
+	dh_clean -k -p$(hdrs_pkg_name)
+
+	$(MAKE) modules_prepare
+
+	install -d $(hdrs_pkg_dir)
+	find . -path './debian' -prune -o -path './$(DEBIAN)' -prune \
+	  -o -path './include/*' -prune \
+	  -o -path './scripts/*' -prune -o -type f \
+	  \( -name 'Makefile*' -o -name 'Kconfig*' -o -name 'Kbuild*' -o \
+	     -name '*.sh' -o -name '*.pl' -o -name '*.lds' \) \
+	  -print | cpio -pd --preserve-modification-time $(hdrs_pkg_dir)
+	cp -a drivers/media/dvb/dvb-core/*.h $(hdrs_pkg_dir)/drivers/media/dvb/dvb-core
+	cp -a drivers/media/video/*.h $(hdrs_pkg_dir)/drivers/media/video
+	cp -a drivers/media/dvb/frontends/*.h $(hdrs_pkg_dir)/drivers/media/dvb/frontends
+	cp -a scripts include $(hdrs_pkg_dir)
+	(find arch -name include -type d -print | \
+		xargs -n1 -i: find : -type f) | \
+		cpio -pd --preserve-modification-time $(hdrs_pkg_dir)
+
+
+# Build architecture-independent files here.
+binary-indep: install install-headers
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -i
+	dh_installdocs -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+# Build architecture-dependent files here.
+binary-arch: install install-headers
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -a
+	dh_installdocs -a
+	dh_installexamples -a
+#	dh_install
+#	dh_installmenu
+#	dh_installdebconf
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman -a
+	dh_link -a
+	dh_strip -a
+	dh_compress -a
+	dh_fixperms -a
+#	dh_perl
+#	dh_python
+#	dh_makeshlibs
+	dh_installdeb -a
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure install-headers
