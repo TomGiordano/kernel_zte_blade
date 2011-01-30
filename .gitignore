@@ -63,6 +63,7 @@ kernel/timeconst.h
 lib/crc32table.h
 lib/gen_crc32table
 scripts/basic/docproc
+scripts/kconfig/mconf
 scripts/basic/fixdep
 scripts/basic/hash
 scripts/bin2c

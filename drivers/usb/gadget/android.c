@@ -102,7 +102,9 @@ int support_assoc_desc(void)
 enum usb_opt_nv_item
 {
 	NV_BACK_LIGHT_I=77,
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	NV_FTM_MODE_I = 453
+#endif
 };
 enum usb_opt_nv_type
 {
@@ -112,7 +114,10 @@ enum usb_opt_nv_type
 
 int
 msm_hsusb_get_set_usb_conf_nv_value(uint32_t nv_item,uint32_t value,uint32_t is_write);
+
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 int get_ftm_from_tag(void);
+#endif
 
 static int zte_usb_pid[]={
 	PRODUCT_ID_ALL_INTERFACE,
@@ -131,7 +136,7 @@ static int zte_usb_pid[]={
 #define NV_WRITE_SUCCESS 10
 
 
-
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 static int ftm_mode = 0;
 static int is_ftm_mode(void)
 {
@@ -142,6 +147,7 @@ static void set_ftm_mode(int i)
 	ftm_mode = i;
 	return ;
 }
+#endif
 
 static int get_nv(void) 
 {
@@ -154,6 +160,7 @@ static int set_nv(int nv)
 }
 
 
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 static int config_ftm_from_nv(void)
 {
 	int i = 0;
@@ -190,6 +197,7 @@ static int config_ftm_from_tag(void)
 	}
 	return 0;
 }
+#endif
 
 static ssize_t msm_hsusb_set_pidnv(struct device *dev,
                                    struct device_attribute *attr,
@@ -211,7 +219,7 @@ static ssize_t msm_hsusb_show_pidnv(struct device *dev,
         return i;
 }
 
-
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 static ssize_t msm_hsusb_show_ftm(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
@@ -220,7 +228,7 @@ static ssize_t msm_hsusb_show_ftm(struct device *dev,
         i = scnprintf(buf, PAGE_SIZE, "%s\n", is_ftm_mode()?"enable":"disable");
         return i;
 }
-
+#endif
 
 
 
@@ -325,9 +333,10 @@ android_func_attr(rndis, ANDROID_RNDIS);
 
 static DEVICE_ATTR(pidnv, 0664,
                    msm_hsusb_show_pidnv, msm_hsusb_set_pidnv);
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 static DEVICE_ATTR(ftm_mode, 0664,
                    msm_hsusb_show_ftm, NULL);
-
+#endif
 
 static struct attribute *android_func_attrs[] = {
 	&dev_attr_adb.attr,
@@ -341,8 +350,9 @@ static struct attribute *android_func_attrs[] = {
 	&dev_attr_rmnet.attr,
 	&dev_attr_rndis.attr,
 	&dev_attr_pidnv.attr,
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	&dev_attr_ftm_mode.attr,
-
+#endif
 	NULL,
 };
 
@@ -516,6 +526,7 @@ static int  android_bind(struct usb_composite_dev *cdev)
 	device_desc.iProduct = id;
 
 
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	if (!is_ftm_mode()) {
 		id = usb_string_id(cdev);
 		if (id < 0)
@@ -526,7 +537,7 @@ static int  android_bind(struct usb_composite_dev *cdev)
 		strings_dev[STRING_SERIAL_IDX].id = 0;
 		device_desc.iSerialNumber = 0;
 	}
-
+#endif
 
 	device_desc.idProduct = __constant_cpu_to_le16(product_id);
 	/* Supporting remote wakeup for mass storage only function
@@ -845,9 +856,10 @@ static int __init init(void)
 		goto out;
 	}
 
-
+#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	config_ftm_from_tag();
 	config_ftm_from_nv();
+#endif
 	_android_dev = dev;
 	mutex_init(&dev->lock);
 
