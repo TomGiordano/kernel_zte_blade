@@ -23,6 +23,7 @@
 #include "taos_common.h"
 #include <linux/input.h>
 #include <linux/miscdevice.h>
+#include <linux/wakelock.h>
 
 
 #define TAOS_INT_GPIO 42
@@ -30,20 +31,20 @@
 
 
 #define TAOS_DEVICE_NAME		"taos"
-#define TAOS_DEVICE_ID       "taos"
+#define TAOS_DEVICE_ID			"taos"
 #define TAOS_ID_NAME_SIZE		10
-#define TAOS_TRITON_CHIPIDVAL   	0x00
-#define TAOS_TRITON_MAXREGS     	32
+#define TAOS_TRITON_CHIPIDVAL		0x00
+#define TAOS_TRITON_MAXREGS		32
 #define TAOS_DEVICE_ADDR1		0x29
-#define TAOS_DEVICE_ADDR2       	0x39
-#define TAOS_DEVICE_ADDR3       	0x49
+#define TAOS_DEVICE_ADDR2		0x39
+#define TAOS_DEVICE_ADDR3		0x49
 #define TAOS_MAX_NUM_DEVICES		3
 #define TAOS_MAX_DEVICE_REGS		32
 #define I2C_MAX_ADAPTERS		8
 
 // TRITON register offsets
-#define TAOS_TRITON_CNTRL 		0x00
-#define TAOS_TRITON_ALS_TIME 		0X01
+#define TAOS_TRITON_CNTRL		0x00
+#define TAOS_TRITON_ALS_TIME		0X01
 #define TAOS_TRITON_PRX_TIME		0x02
 #define TAOS_TRITON_WAIT_TIME		0x03
 #define TAOS_TRITON_ALS_MINTHRESHLO	0X04
@@ -116,8 +117,9 @@ static void taos_als_work(struct work_struct *w);
 static void taos_prox_work(struct work_struct *w);
 static void taos_report_value(int mask);
 static int calc_distance(int value);
+static struct wake_lock taos_wake_lock;
 	
-static int light_on=0;  
+static int light_on= 0;  
 static int prox_on = 0;
 
 struct alsprox_data {
@@ -864,7 +866,13 @@ static int taos_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 		        sat_als = (256 - taos_cfgp->prox_int_time) << 10;
 	        sat_prox = (256 - taos_cfgp->prox_adc_time) << 10;
                 	break;
-		case TAOS_IOCTL_PROX_ON:				
+		case TAOS_IOCTL_PROX_ON:
+			// Use wake lock to stop suspending during calls. This should not be necessary and means that if an app leaves the prox sensor on 
+			// the device will not suspend, but that should not happens. Apps should always turn off sensors when not needed.
+			pr_crit(TAOS_TAG "get wake lock");
+			wake_lock_init(&taos_wake_lock, WAKE_LOCK_SUSPEND, "taos");
+			wake_lock(&taos_wake_lock);
+						
 			if ((ret = (i2c_smbus_write_byte_data(taos_datap->client, (TAOS_TRITON_CMD_REG|0x00), 0x00))) < 0) {
 				printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_on\n");
                                 return (ret);
@@ -928,13 +936,16 @@ static int taos_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 			
 			prox_on = 1;
 			break;
-                case TAOS_IOCTL_PROX_OFF:
+		case TAOS_IOCTL_PROX_OFF:
 			if ((ret = (i2c_smbus_write_byte_data(taos_datap->client, (TAOS_TRITON_CMD_REG|0x00), 0x00))) < 0) {
                                 printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_off\n");
                                 return (ret);
                         	}
 			prox_on = 0;	
-			pr_crit(TAOS_TAG "TAOS_IOCTL_PROX_OFF\n");	
+			pr_crit(TAOS_TAG "TAOS_IOCTL_PROX_OFF\n");
+			// destroy wake lock
+			wake_lock_destroy(&taos_wake_lock);
+			pr_crit(TAOS_TAG "release wake lock");	
 			break;
 		case TAOS_IOCTL_PROX_DATA:
                         ret = copy_to_user((struct taos_prox_info *)arg, prox_cur_infop, sizeof(struct taos_prox_info));
