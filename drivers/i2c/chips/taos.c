@@ -1,3 +1,4 @@
+
 /******************************************************************
 *File Name: 	taos.c 	                                           *
 *Description:	Linux device driver for Taos ambient light and    *
@@ -37,6 +38,7 @@ Wenn               Wer          Was                                             
 #include "taos_common.h"
 #include <linux/input.h>
 #include <linux/miscdevice.h>
+#include <linux/wakelock.h>
 
 
 #define TAOS_INT_GPIO 42
@@ -133,6 +135,7 @@ static int taos_prox_poll(struct taos_prox_info *prxp);
 static void do_taos_work(struct work_struct *w);
 static void taos_report_value(int mask);
 static int calc_distance(int value);
+static struct wake_lock taos_wake_lock;
 	
 static int light_on=0;  
 static int prox_on = 0;
@@ -974,6 +977,12 @@ static int taos_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 	        sat_prox = (256 - taos_cfgp->prox_adc_time) << 10;
                 	break;
 		case TAOS_IOCTL_PROX_ON:				
+			// Use wake lock to stop suspending during calls. This should not be necessary and means that if an app leaves the prox sensor on
+			// the device will not suspend, but that should not happens. Apps should always turn off sensors when not needed.
+			pr_crit(TAOS_TAG "get wake lock");
+			wake_lock_init(&taos_wake_lock, WAKE_LOCK_SUSPEND, "taos");
+			wake_lock(&taos_wake_lock);
+
 			if ((ret = (i2c_smbus_write_byte_data(taos_datap->client, (TAOS_TRITON_CMD_REG|0x00), 0x00))) < 0) {
 				printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_on\n");
                                 return (ret);
@@ -1045,6 +1054,9 @@ static int taos_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
       
 			prox_on = 0;	
 			pr_crit(TAOS_TAG "TAOS_IOCTL_PROX_OFF\n");	
+			// destroy wake lock
+			wake_lock_destroy(&taos_wake_lock);
+			pr_crit(TAOS_TAG "release wake lock");
 			break;
 		case TAOS_IOCTL_PROX_DATA:
                         ret = copy_to_user((struct taos_prox_info *)arg, prox_cur_infop, sizeof(struct taos_prox_info));
