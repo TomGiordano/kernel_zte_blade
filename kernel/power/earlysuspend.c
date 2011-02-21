@@ -27,7 +27,7 @@ enum {
 	DEBUG_USER_STATE = 1U << 0,
 	DEBUG_SUSPEND = 1U << 2,
 };
-static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
+static int debug_mask = DEBUG_USER_STATE;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
@@ -95,11 +95,7 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
 		if (pos->suspend != NULL)
-		{
-			if (debug_mask & DEBUG_SUSPEND)
-                        	pr_info("early_suspend: handlers level=%d\n", pos->level);
 			pos->suspend(pos);
-		}
 	}
 	mutex_unlock(&early_suspend_lock);
 
@@ -107,10 +103,6 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: sync\n");
 
 	sys_sync();
-
-	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("early_suspend: sync end\n");
-
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -140,14 +132,8 @@ static void late_resume(struct work_struct *work)
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
 	list_for_each_entry_reverse(pos, &early_suspend_handlers, link)
-	{
 		if (pos->resume != NULL)
-		{
-			if (debug_mask & DEBUG_SUSPEND)
-                                pr_info("late_resume: handlers level=%d\n", pos->level);
 			pos->resume(pos);
-		}
-	}
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: done\n");
 abort:
@@ -158,7 +144,6 @@ void request_suspend_state(suspend_state_t new_state)
 {
 	unsigned long irqflags;
 	int old_sleep;
-	int wq_status = -1;
 
 	spin_lock_irqsave(&state_lock, irqflags);
 	old_sleep = state & SUSPEND_REQUESTED;
@@ -177,13 +162,12 @@ void request_suspend_state(suspend_state_t new_state)
 	}
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
 		state |= SUSPEND_REQUESTED;
-		wq_status = queue_work(suspend_work_queue, &early_suspend_work);
+		queue_work(suspend_work_queue, &early_suspend_work);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
 		state &= ~SUSPEND_REQUESTED;
 		wake_lock(&main_wake_lock);
-		wq_status = queue_work(suspend_work_queue, &late_resume_work);
+		queue_work(suspend_work_queue, &late_resume_work);
 	}
-	pr_info("[early_suspend] wq status=%d \n",wq_status);
 	requested_suspend_state = new_state;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 }

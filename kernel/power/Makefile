@@ -17,4 +17,3 @@ obj-$(CONFIG_CONSOLE_EARLYSUSPEND)	+= consoleearlysuspend.o
 obj-$(CONFIG_FB_EARLYSUSPEND)	+= fbearlysuspend.o
 
 obj-$(CONFIG_MAGIC_SYSRQ)	+= poweroff.o
-obj-$(CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR)	+= pm_monitor.o

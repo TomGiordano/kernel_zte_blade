@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  *
  */
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
@@ -22,7 +23,6 @@
 #include <linux/proc_fs.h>
 #endif
 #include "power.h"
-#include <linux/moduleparam.h>
 
 enum {
 	DEBUG_EXIT_SUSPEND = 1U << 0,
@@ -31,8 +31,7 @@ enum {
 	DEBUG_EXPIRE = 1U << 3,
 	DEBUG_WAKE_LOCK = 1U << 4,
 };
-//static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
-static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP | DEBUG_SUSPEND;
+static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 #define WAKE_LOCK_TYPE_MASK              (0x0f)
@@ -50,31 +49,6 @@ struct wake_lock main_wake_lock;
 suspend_state_t requested_suspend_state = PM_SUSPEND_MEM;
 static struct wake_lock unknown_wakeup;
 
-#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-#define WAKE_LOCK_RECORD_NR (10)
-#define RECORD_SIZE 400 
-char active_wake_lock_buf[WAKE_LOCK_RECORD_NR][RECORD_SIZE];
-
-static ssize_t active_wake_lock_show(struct device *devp, struct device_attribute *attr, char *buf)
-{
-	char * echo = buf;
-	int used_size = 0;
-	int ret =-1;
-	int i ;
-
-	for (i = 0; i < WAKE_LOCK_RECORD_NR; i++) {
-		ret = snprintf(echo + used_size, PAGE_SIZE - used_size, "%s\n",active_wake_lock_buf[i]);
-		if( ret < 0 ){
-			echo[used_size] = '\0';
-			return ret;
-		}
-		used_size += ret;
-	}
-	
-	return used_size;
-}
-static DEVICE_ATTR(active_wakelock, S_IRUGO, active_wake_lock_show, NULL);
-#endif
 #ifdef CONFIG_WAKELOCK_STAT
 static struct wake_lock deleted_wake_locks;
 static ktime_t last_sleep_time_update;
@@ -248,7 +222,7 @@ static void print_active_locks(int type)
 				pr_info("wake lock %s, expired\n", lock->name);
 		} else {
 			pr_info("active wake lock %s\n", lock->name);
-			if (!debug_mask & DEBUG_EXPIRE)
+			if ((!debug_mask) & DEBUG_EXPIRE)
 				print_expired = false;
 		}
 	}
@@ -285,63 +259,6 @@ long has_wake_lock(int type)
 	return ret;
 }
 
-#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-static void suspend_exception_handle(unsigned long data);
-static DEFINE_TIMER(suspend_exception_timer, suspend_exception_handle, 0, 0);
-static void dump_wake_locks(void);
-static void suspend_exception_handle(unsigned long data)
-{
-	unsigned long irqflags;
-	struct wake_lock *lock;
-	static int record_index = 0;
-	char *p_buf = active_wake_lock_buf[record_index];
-	int used_size = 0;
-	int ret =-1;
-	int record_max_size = RECORD_SIZE -1;//the last char is '\0'
-	struct timespec ts;
-	struct rtc_time tm;
-
-	dump_wake_locks();
-	getnstimeofday(&ts);
-	rtc_time_to_tm(ts.tv_sec, &tm);
-	
-	spin_lock_irqsave(&list_lock, irqflags);
-	
-	used_size = snprintf(p_buf, record_max_size, "(%d-%02d-%02d %02d:%02d:%02d.%09lu UTC)\n", 
-		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);	
-	if ( used_size <= 0 ){
-		p_buf[0] = '\0';
-		goto handle_out;
-	}
-		
-	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
-		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
-			long timeout = lock->expires - jiffies;
-			if (timeout <= 0)
-				ret = snprintf(p_buf + used_size , record_max_size  - used_size, "wake lock %s, expired\n", lock->name);
-			else
-				ret  = snprintf(p_buf +  used_size, record_max_size  - used_size, "active wake lock %s, time left %ld\n",
-					lock->name, timeout);
-		} else
-			ret = snprintf(p_buf + used_size, record_max_size  - used_size, "active wake lock %s\n", lock->name);
-
-		if ( ret <= 0 ){
-			p_buf[used_size] = '\0';
-			goto handle_out;
-		}
-		used_size += ret;
-	}
-	
-handle_out:	
-	record_index = (record_index + 1) % WAKE_LOCK_RECORD_NR;
-	mod_timer(&suspend_exception_timer, jiffies + 5*60*HZ);
-	
-	spin_unlock_irqrestore(&list_lock, irqflags);
-}
-#endif
-static int unknown_wakeup_timeout = 500;
-module_param_named(unknown_wakeup_timeout, unknown_wakeup_timeout, int, S_IRUGO | S_IWUSR | S_IWGRP)
 static void suspend(struct work_struct *work)
 {
 	int ret;
@@ -352,10 +269,7 @@ static void suspend(struct work_struct *work)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-	if(timer_pending(&suspend_exception_timer))
-		del_timer(&suspend_exception_timer);
-#endif
+
 	entry_event_num = current_event_num;
 	sys_sync();
 	if (debug_mask & DEBUG_SUSPEND)
@@ -374,11 +288,7 @@ static void suspend(struct work_struct *work)
 	if (current_event_num == entry_event_num) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: pm_suspend returned with no event\n");
-#if 0
-        wake_lock_timeout(&unknown_wakeup, HZ / 2);
-#else
-        wake_lock_timeout(&unknown_wakeup, msecs_to_jiffies(unknown_wakeup_timeout));
-#endif
+		wake_lock_timeout(&unknown_wakeup, HZ / 2);
 	}
 }
 static DECLARE_WORK(suspend_work, suspend);
@@ -401,16 +311,6 @@ static void expire_wake_locks(unsigned long data)
 }
 static DEFINE_TIMER(expire_timer, expire_wake_locks, 0, 0);
 
-static void dump_wake_locks(void)
-{
-	unsigned long irqflags;
-	
-	pr_info("[POWER]******expire_wake_locks: start********\n");
-	spin_lock_irqsave(&list_lock, irqflags);	
-	print_active_locks(WAKE_LOCK_SUSPEND);	
-	spin_unlock_irqrestore(&list_lock, irqflags);
-	pr_info("[POWER]********************\n");
-}
 static int power_suspend_late(struct device *dev)
 {
 	int ret = has_wake_lock(WAKE_LOCK_SUSPEND) ? -EAGAIN : 0;
@@ -418,11 +318,7 @@ static int power_suspend_late(struct device *dev)
 	wait_for_wakeup = 1;
 #endif
 	if (debug_mask & DEBUG_SUSPEND)
-	{		
 		pr_info("power_suspend_late return %d\n", ret);
-		if (ret!=0)
-			dump_wake_locks();
-	}
 	return ret;
 }
 
@@ -540,13 +436,7 @@ static void wake_lock_internal(
 		list_add(&lock->link, &active_wake_locks[type]);
 	}
 	if (type == WAKE_LOCK_SUSPEND) {
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR			
-		if (lock == &main_wake_lock) {
-			current_event_num++;
-			if(timer_pending(&suspend_exception_timer))
-				del_timer(&suspend_exception_timer);
-		}
-#endif		
+		current_event_num++;
 #ifdef CONFIG_WAKELOCK_STAT
 		if (lock == &main_wake_lock)
 			update_sleep_wait_stats_locked(1);
@@ -600,10 +490,6 @@ void wake_unlock(struct wake_lock *lock)
 	lock->flags &= ~(WAKE_LOCK_ACTIVE | WAKE_LOCK_AUTO_EXPIRE);
 	list_del(&lock->link);
 	list_add(&lock->link, &inactive_locks);
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR	
-	if (lock == &main_wake_lock) 
-		mod_timer(&suspend_exception_timer,jiffies + 5*60*HZ); 
-#endif
 	if (type == WAKE_LOCK_SUSPEND) {
 		long has_lock = has_wake_lock_locked(type);
 		if (has_lock > 0) {
@@ -682,13 +568,6 @@ static int __init wakelocks_init(void)
 		ret = -ENOMEM;
 		goto err_suspend_work_queue;
 	}
-#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-	ret = device_create_file(&power_device.dev,&dev_attr_active_wakelock);
-	if (ret) {
-		pr_err("wakelocks_init: device_create_file failed\n");
-		goto err_suspend_work_queue;
-	}
-#endif	
 
 #ifdef CONFIG_WAKELOCK_STAT
 	proc_create("wakelocks", S_IRUGO, NULL, &wakelock_stats_fops);
