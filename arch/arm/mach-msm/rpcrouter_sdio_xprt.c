@@ -448,7 +448,7 @@ static int rpcrouter_sdio_remote_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	sdio_remote_xprt.xprt.name = "rpcrotuer_sdio_xprt";
+	sdio_remote_xprt.xprt.name = "rpcrouter_sdio_xprt";
 	sdio_remote_xprt.xprt.read_avail = rpcrouter_sdio_remote_read_avail;
 	sdio_remote_xprt.xprt.read = rpcrouter_sdio_remote_read;
 	sdio_remote_xprt.xprt.write_avail = rpcrouter_sdio_remote_write_avail;
