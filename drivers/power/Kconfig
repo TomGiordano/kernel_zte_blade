@@ -130,4 +130,11 @@ config BATTERY_MSM_FAKE
 	help
 	  Say Y to bypass actual battery queries.
 
+config SCREEN_ON_WITHOUT_KEYOCDE
+	bool "(ZTE)screen on without keycode"
+	depends on PM && WAKELOCK
+	default n
+	---help---
+	  Use battery uevent interface to screen on LCD.We use keycode to light the lcd before.THis is not a good idea!
+
 endif # POWER_SUPPLY
