@@ -365,7 +365,7 @@ static void __oom_kill_task(struct task_struct *p, int verbose)
 	 * all the memory it needs. That way it should be able to
 	 * exit() and clear out its resources quickly...
 	 */
-	p->rt.time_slice = HZ;
+	set_oom_timeslice(p);
 	set_tsk_thread_flag(p, TIF_MEMDIE);
 
 	force_sig(SIGKILL, p);
