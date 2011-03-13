@@ -1,0 +1,269 @@
+Sections
+A) Code Organization
+B) Building the Code
+C) Loading the Driver
+
+A) Code organization
+
+The host side code for different platforms is organized as follows:
+1) os: Captures the os specific dependencies. The network adaptor driver is implemented in this directory.
+2) wmi: Implements the wireless module interface.
+3) htc: Implements the host transport communication interface.
+4) hif: Implements the host interconnect framework for different interfaces.
+5) tests: Implements test programs to unit test different modules in the driver.
+6) tools: Contains the implementation for several tools used to interact with the wlan driver.
+7) wlan: Implements some utility functions related to the core wireless lan.
+8) sdiostack: Contains the sources for the SDIO/SPI stack.
+9) bmi: Implements the bootloader messaging interface.
+10) support: Contains scripts to load the driver and control some aspects of the wlan device using the tools present in the tools directory. 
+
+host/
+|-- 3rdparty
+|   `-- supplicant
+|       `-- ds
+|           `-- linux
+|               `-- bin
+|                   |-- LOCAL_i686
+|                   |   `-- wpa supplicant binaries
+|                   `-- SANDGATEII_ARM
+|                       `-- wpa supplicant binaries
+|-- Makefile
+|-- apps
+|-- bmi
+|   |-- include
+|   |   `-- bmi header files
+|   `-- src
+|       `-- bmi source files
+|-- hif
+|   |-- cf
+|   |   |-- Makefile
+|   |   `-- linux
+|   |       |-- include
+|   |       |   `-- hif header files
+|   |       `-- src
+|   |           `-- hif source files
+|   `-- sdio
+|       |-- Makefile
+|       `-- ellenlinux
+|           |-- include
+|           |   `-- hif header files
+|           `-- src
+|               `-- hif source files
+|-- htc
+|   |-- AR6000
+|       |-- include
+|       |   `-- htc header files
+|       `-- src
+|           `-- htc source files
+|-- include
+|   `-- common host header files
+|-- localmake.linux.inc
+|-- os
+|   `-- linux
+|       |-- Makefile
+|       |-- os specific wlan driver source files
+|       `-- include
+|           `-- os specific include files
+|-- sdiostack
+|   |-- doc
+|   |-- integrity
+|   |-- scripts
+|   |-- src
+|   |   |-- Makefile
+|   |   |-- busdriver
+|   |   |-- function
+|   |   |   |-- Makefile
+|   |   |   |-- TestGPS
+|   |   |   |-- athraw
+|   |   |   |-- bench
+|   |   |   |-- bluetooth
+|   |   |   |-- generic
+|   |   |   |-- gps
+|   |   |   |-- memory
+|   |   |   |-- memoryupper
+|   |   |   |-- modem
+|   |   |   |-- sample
+|   |   |   `-- testapps
+|   |   |-- hcd
+|   |   |   |-- mpc5200spi
+|   |   |   |-- mx21
+|   |   |   |-- omap
+|   |   |   |-- omap2420_raw_spi
+|   |   |   |-- omap_2420
+|   |   |   |-- omap_mcbsp
+|   |   |   |-- omap_raw_spi
+|   |   |   |-- pci_ellen
+|   |   |   |-- pci_std
+|   |   |   |-- pxa255
+|   |   |   |-- pxa255_spi
+|   |   |   |-- pxa270
+|   |   |   `-- stdhost
+|   |   |-- include
+|   |   |-- lib
+|   |   |-- linux
+|   |   |-- loader
+|   |   |-- localmake.linux.inc
+|   |   |-- localmake.linux.private.inc
+|   |   `-- localmake.qnx.inc
+|   |-- tools
+|   `-- wince
+|-- support
+|   |-- README.txt
+|   |-- analogconfig
+|   |   |-- AR6K19_2M.bin
+|   |   |-- AR6K26M.bin
+|   |   `-- AR6K40M.bin
+|   |-- build.txt
+|   |-- createimage.txt
+|   |-- download.ram.sh
+|   |-- download.sram.sh
+|   |-- dsets.txt
+|   |-- flashup.sh
+|   |-- init.sh
+|   |-- isrom.sh
+|   |-- loadAR6000.sh
+|   |-- phyregs.bin
+|   |-- platform.sh
+|   |-- refclk.sh
+|   `-- tunefw.sh
+|-- tests
+|   |-- floodtest
+|   |-- gpiotest
+|   `-- mboxping
+|-- tools
+|   |-- bmiloader
+|   |-- checkTargetStatus
+|   |-- createimage
+|   |-- dsetsrv
+|   |-- flashloader
+|   |-- forcereset
+|   |-- phyregs
+|   |-- regDbGen
+|   `-- wmiconfig
+|-- wlan
+|   |-- include
+|   |   `-- wlan header files
+|   `-- src
+|       `-- wlan source files
+`-- wmi
+    `-- wmi source files
+
+The exectuables for different platforms are organized as follows:
+1) LOCAL_i686-CF: Contains binaries for the compact flash interface on the x86 platform.
+2) LOCAL_i686-SDIO: Contains binaries for the sdio interface on the x86 platform.
+3) SANDGATEII_ARM-CF: Contains binaries for the compact flash interface on the Sophia platform.
+4) SANDGATEII_ARM-SDIO: Contains binaries for the sdio interface on the Sophia platform.
+
+host/.output
+|-- LOCAL_i686-CF
+|   `-- image
+|       |-- ar6000.ko
+|       |-- ar6000_cs.ko
+|       |-- bmiloader
+|       |-- checkTargetStatus
+|       |-- createimage
+|       |-- dsetsrv
+|       |-- flashloader
+|       |-- floodtest
+|       |-- forcereset
+|       |-- mboxping
+|       |-- phyregs
+|       |-- wmiconfig
+|       |-- wpa_cli
+|       `-- wpa_supplicant
+|-- LOCAL_i686-SDIO
+|   `-- image
+|       |-- ar6000.ko
+|       |-- bmiloader
+|       |-- checkTargetStatus
+|       |-- createimage
+|       |-- dsetsrv
+|       |-- flashloader
+|       |-- floodtest
+|       |-- forcereset
+|       |-- mboxping
+|       |-- pci_ellen_readme.txt
+|       |-- phyregs
+|       |-- sdio_busdriver.ko
+|       |-- sdio_lib.ko
+|       |-- sdio_pciellen_hcd.ko
+|       |-- wmiconfig
+|       |-- wpa_cli
+|       `-- wpa_supplicant
+|-- SANDGATEII_ARM-CF
+|   `-- image
+|       |-- ar6000.ko
+|       |-- ar6000_cs.ko
+|       |-- bmiloader
+|       |-- checkTargetStatus
+|       |-- createimage
+|       |-- dsetsrv
+|       |-- flashloader
+|       |-- floodtest
+|       |-- forcereset
+|       |-- mboxping
+|       |-- phyregs
+|       |-- wmiconfig
+|       |-- wpa_cli
+|       `-- wpa_supplicant
+|-- SANDGATEII_ARM-SDIO
+|   `-- image
+|       |-- ar6000.ko
+|       |-- bmiloader
+|       |-- checkTargetStatus
+|       |-- createimage
+|       |-- dsetsrv
+|       |-- flashloader
+|       |-- floodtest
+|       |-- forcereset
+|       |-- mboxping
+|       |-- phyregs
+|       |-- pxa270_readme.txt
+|       |-- sdio_busdriver.ko
+|       |-- sdio_lib.ko
+|       |-- sdio_pxa270hcd.ko
+|       |-- wmiconfig
+|       |-- wpa_cli
+|       `-- wpa_supplicant
+`-- bin
+    |-- regulatoryData_AG.bin
+    `-- regulatoryData_G.bin
+
+
+B) Building the code
+   -----------------
+The top level Makefile in the host has to be called with the desired value of ATH_BUILD_TYPE and ATH_BUS_TYPE. Following platforms are supported:
+
+1) x86 SDIO (Ellen)
+ATH_BUILD_TYPE: LOCAL_i686
+ATH_BUS_TYPE: SDIO
+
+2) x86 CF
+ATH_BUILD_TYPE: LOCAL_i686
+ATH_BUS_TYPE: CF
+
+3) Sophia SDIO
+ATH_BUILD_TYPE: SANDGATEII_ARM
+ATH_BUS_TYPE: SDIO
+
+4) Sophia CF:
+ATH_BUILD_TYPE: SANDGATEII_ARM
+ATH_BUS_TYPE: CF
+
+For example, in order to generate the host driver for x86 SDIO interface equipped with the ellen host controller, the top level makefile can be called as:
+make ATH_BUILD_TYPE=LOCAL_i686 ATH_BUS_TYPE=SDIO
+
+Additionally, the following values also need to be specified as applicable (please refer to the sample localmake.linux.inc) file:
+ATH_LINUXPATH: Pointer to the kernel source (example: /<path>/fc3-i686-2.6.9)
+ATH_ARCH_CPU_TYPE: Type of architecture (exmaple: arm)
+ATH_CROSS_COMPILE_TYPE: Path to the compiler toolchain (example: /<path>/arm_v4t_le-)
+ATH_OS_TYPE: Kernel version (example: linux_2_4, linux_2_6)
+
+
+C) Loading the Driver
+   ------------------
+A sample load script, 'loadAR6000.sh', is provided in the etna/host/support directory with support for different platforms supported. A list of supported platforms is given below:
+
+1) LOCAL_i686-SDIO
+
+In order to load the driver for a particular platform, set the ATH_PLATFORM variable accordingly and execute the loadAR6000.sh script with root privilege.
