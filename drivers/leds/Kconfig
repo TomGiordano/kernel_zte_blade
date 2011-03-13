@@ -251,6 +251,33 @@ config LEDS_MSM_PMIC
           This option enables support for LEDs connected over PMIC
           (Power Management IC) chip on Qualcomm reference boards,
           for example SURF and FFAs.
+if LEDS_MSM_PMIC
+
+choice
+	prompt "Suspend behaviour"
+	default LED_SUSPEND_IMMEDIATE
+
+config LED_SUSPEND_IMMEDIATE
+	bool "Immediate"
+	help
+		LEDs will be turned off when going into suspend.
+
+config LED_SUSPEND_SHORT
+	bool "Short"
+	help
+		LEDs will remain on during suspend for a short time (the time 
+		varies but usually a few minutes). 
+		If the LED is set to blink it will be set solid on at suspend.
+
+config LED_SUSPEND_SOLID
+	bool "Solid"
+	help
+	  LEDs will remain on during suspend. 
+	  If the LED is set to blink it will be set solid on at suspend.
+	
+endchoice
+
+endif
 
 config LEDS_PMIC8058
 	tristate "LED Support for Qualcomm PMIC8058"

@@ -108,8 +108,8 @@ enum mic_volt {
 };
 
 enum ledtype {
-	LED_LCD,
-	LED_KEYPAD,
+	LED_GREEN,
+	LED_RED,
 };
 
 enum flash_led_mode {
