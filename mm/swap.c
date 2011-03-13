@@ -214,14 +214,21 @@ void mark_page_accessed(struct page *page)
 
 EXPORT_SYMBOL(mark_page_accessed);
 
-void __lru_cache_add(struct page *page, enum lru_list lru)
+void ______pagevec_lru_add(struct pagevec *pvec, enum lru_list lru, int tail);
+
+void ____lru_cache_add(struct page *page, enum lru_list lru, int tail)
 {
 	struct pagevec *pvec = &get_cpu_var(lru_add_pvecs)[lru];
 
 	page_cache_get(page);
 	if (!pagevec_add(pvec, page))
-		____pagevec_lru_add(pvec, lru);
+		______pagevec_lru_add(pvec, lru, tail);
 	put_cpu_var(lru_add_pvecs);
+}
+
+void __lru_cache_add(struct page *page, enum lru_list lru)
+{
+	____lru_cache_add(page, lru, 0);
 }
 
 /**
@@ -229,7 +236,7 @@ void __lru_cache_add(struct page *page, enum lru_list lru)
  * @page: the page to be added to the LRU.
  * @lru: the LRU list to which the page is added.
  */
-void lru_cache_add_lru(struct page *page, enum lru_list lru)
+void __lru_cache_add_lru(struct page *page, enum lru_list lru, int tail)
 {
 	if (PageActive(page)) {
 		VM_BUG_ON(PageUnevictable(page));
@@ -240,7 +247,12 @@ void lru_cache_add_lru(struct page *page, enum lru_list lru)
 	}
 
 	VM_BUG_ON(PageLRU(page) || PageActive(page) || PageUnevictable(page));
-	__lru_cache_add(page, lru);
+	____lru_cache_add(page, lru, tail);
+}
+
+void lru_cache_add_lru(struct page *page, enum lru_list lru)
+{
+	__lru_cache_add_lru(page, lru, 0);
 }
 
 /**
@@ -400,7 +412,7 @@ EXPORT_SYMBOL(__pagevec_release);
  * Add the passed pages to the LRU, then drop the caller's refcount
  * on them.  Reinitialises the caller's pagevec.
  */
-void ____pagevec_lru_add(struct pagevec *pvec, enum lru_list lru)
+void ______pagevec_lru_add(struct pagevec *pvec, enum lru_list lru, int tail)
 {
 	int i;
 	struct zone *zone = NULL;
@@ -428,12 +440,17 @@ void ____pagevec_lru_add(struct pagevec *pvec, enum lru_list lru)
 		if (active)
 			SetPageActive(page);
 		update_page_reclaim_stat(zone, page, file, active);
-		add_page_to_lru_list(zone, page, lru);
+		__add_page_to_lru_list(zone, page, lru, tail);
 	}
 	if (zone)
 		spin_unlock_irq(&zone->lru_lock);
 	release_pages(pvec->pages, pvec->nr, pvec->cold);
 	pagevec_reinit(pvec);
+}
+
+void ____pagevec_lru_add(struct pagevec *pvec, enum lru_list lru)
+{
+	______pagevec_lru_add(pvec, lru, 0);
 }
 
 EXPORT_SYMBOL(____pagevec_lru_add);

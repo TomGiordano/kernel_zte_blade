@@ -4,7 +4,7 @@
 
 choice
 	prompt "Timer frequency"
-	default HZ_250
+	default HZ_1000
 	help
 	 Allows the configuration of the timer frequency. It is customary
 	 to have the timer interrupt run at 1000 Hz but 100 Hz may be more
@@ -23,13 +23,14 @@ choice
 	  with lots of processors that may show reduced performance if
 	  too many timer interrupts are occurring.
 
-	config HZ_250
+	config HZ_250_NODEFAULT
 		bool "250 HZ"
 	help
-	 250 Hz is a good compromise choice allowing server performance
-	 while also showing good interactive responsiveness even
-	 on SMP and NUMA systems. If you are going to be using NTSC video
-	 or multimedia, selected 300Hz instead.
+	 250 HZ is a lousy compromise choice allowing server interactivity
+	 while also showing desktop throughput and no extra power saving on
+	 laptops. No good for anything.
+
+	 Recommend 100 or 1000 instead.
 
 	config HZ_300
 		bool "300 HZ"
@@ -43,16 +44,82 @@ choice
 		bool "1000 HZ"
 	help
 	 1000 Hz is the preferred choice for desktop systems and other
-	 systems requiring fast interactive responses to events.
+	 systems requiring fast interactive responses to events. Laptops
+	 can also benefit from this choice without sacrificing battery life
+	 if dynticks is also enabled.
+
+	config HZ_1500
+		bool "1500 HZ"
+	help
+	 1500 Hz is an insane value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_2000
+		bool "2000 HZ"
+	help
+	 2000 Hz is an insane value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_3000
+		bool "3000 HZ"
+	help
+	 3000 Hz is an insane value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_4000
+		bool "4000 HZ"
+	help
+	 4000 Hz is an insane value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_5000
+		bool "5000 HZ"
+	help
+	 5000 Hz is an obscene value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_7500
+		bool "7500 HZ"
+	help
+	 7500 Hz is an obscene value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
+	config HZ_10000
+		bool "10000 HZ"
+	help
+	 10000 Hz is an obscene value to use to run broken software that is Hz
+	 limited.
+
+	 Being over 1000, driver breakage is likely.
+
 
 endchoice
 
 config HZ
 	int
 	default 100 if HZ_100
-	default 250 if HZ_250
+	default 250 if HZ_250_NODEFAULT
 	default 300 if HZ_300
 	default 1000 if HZ_1000
+	default 1500 if HZ_1500
+	default 2000 if HZ_2000
+	default 3000 if HZ_3000
+	default 4000 if HZ_4000
+	default 5000 if HZ_5000
+	default 7500 if HZ_7500
+	default 10000 if HZ_10000
 
 config SCHED_HRTICK
 	def_bool HIGH_RES_TIMERS && (!SMP || USE_GENERIC_SMP_HELPERS)
