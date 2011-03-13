@@ -1,0 +1,5 @@
+This is a kernel for the ZTE Blade, built primarily for use in CyanogenMod. Feel free to build it and include it in your ROM (providing appropriate credits).
+
+Just some notes:
+*The experimental branch contains patches we are currently testing. Build this branch if you're feeling adventurous :)
+*The ar6000 driver in the source currently doesn't work. It's a work in progress. We aren't using it in CM, and it's not defined in the config. If you choose to build it to help debug it, that's cool, but don't complain that it doesn't work.
