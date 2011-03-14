@@ -128,9 +128,6 @@ CONFIG_LBDAF=y
 #
 # IO Schedulers
 #
-#
-# IO Schedulers
-#
 CONFIG_IOSCHED_NOOP=y
 # CONFIG_IOSCHED_AS is not set
 # CONFIG_IOSCHED_DEADLINE is not set
