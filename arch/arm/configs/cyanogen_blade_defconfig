@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.32.9
-# Sun Mar 13 18:38:48 2011
+# Mon Mar 14 21:35:04 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -725,6 +725,7 @@ CONFIG_BT_HCIUART_H4=y
 CONFIG_BT_HCIUART_BCSP=y
 # CONFIG_BT_HCIUART_LL is not set
 # CONFIG_BT_HCIUART_IBS is not set
+CONFIG_BT_MSM_SLEEP=y
 # CONFIG_BT_HCIVHCI is not set
 # CONFIG_BT_MRVL is not set
 CONFIG_MSM_BT_POWER=y
@@ -1089,9 +1090,13 @@ CONFIG_DEVKMEM=y
 #
 # Non-8250 serial port support
 #
-# CONFIG_SERIAL_MSM is not set
+CONFIG_SERIAL_CORE=y
+CONFIG_SERIAL_MSM=y
+# CONFIG_SERIAL_MSM_CONSOLE is not set
+CONFIG_SERIAL_MSM_CLOCK_CONTROL=y
+# CONFIG_SERIAL_MSM_RX_WAKEUP is not set
 # CONFIG_SERIAL_MSM_HSL is not set
-# CONFIG_SERIAL_MSM_HS is not set
+CONFIG_SERIAL_MSM_HS=y
 # CONFIG_SERIAL_BCM_BT_LPM is not set
 
 #
