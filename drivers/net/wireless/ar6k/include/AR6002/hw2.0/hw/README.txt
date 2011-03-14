@@ -1,0 +1,3 @@
+This directory holds Mercury header files.  Put something like the line below
+into your Perforce client specification.
+	//depot/chips/mercury/2.0/dv/fpga/10312007/reg_headers/... //YourClientName/YourDirectory/include/AR6002/hw.2/...

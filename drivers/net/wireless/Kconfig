@@ -476,6 +476,12 @@ config MWL8K
 	  To compile this driver as a module, choose M here: the module
 	  will be called mwl8k.  If unsure, say N.
 
+config AR6K
+      tristate 'Atheros AR6002 SDIO driver'
+      select WIRELESS_EXT
+      ---help---
+        Enable Atheros AR6002 driver.
+
 config LIBRA_SDIOIF
 	tristate "Qualcomm libra wlan SDIO driver"
 	depends on MMC_MSM
