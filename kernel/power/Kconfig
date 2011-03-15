@@ -275,6 +275,21 @@ config APM_EMULATION
 	  random kernel OOPSes or reboots that don't seem to be related to
 	  anything, try disabling/enabling this option (or disabling/enabling
 	  APM in your BIOS).
+	  
+config ZTE_SUSPEND_WAKEUP_MONITOR
+	bool "suspend wakeup monitor"
+	depends on PM && WAKELOCK
+	default y
+	---help---
+	  record suspend/wakeup time,the wakeup reason and wakeup source. it also record the active wakelock while suspend.
+
+config SCREEN_ON_WITHOUT_KEYOCDE
+        bool "(ZTE)screen on without keycode"
+        depends on PM && WAKELOCK
+        default n
+        ---help---
+          Use battery uevent interface to screen on LCD.We use keycode to light the lcd before.THis is not a good idea!
+
 
 config PM_RUNTIME
 	bool "Run-time PM core functionality"
@@ -291,7 +306,6 @@ config PM_RUNTIME
 	  wake-up events.
 
 config PM_OPS
-	bool
-	depends on PM_SLEEP || PM_RUNTIME
-	default y
-
+        bool
+        depends on PM_SLEEP || PM_RUNTIME
+        default y
