@@ -68,7 +68,7 @@ static unsigned long ramp_down_rate_ns;
 /*
  * When ramping up frequency jump to at least this frequency.
  */
-#define DEFAULT_UP_MIN_FREQ 600000
+#define DEFAULT_UP_MIN_FREQ 245760
 static unsigned int up_min_freq;
 
 /*
@@ -307,23 +307,6 @@ static ssize_t store_ramp_down_rate_ns(struct cpufreq_policy *policy, const char
 static struct freq_attr ramp_down_rate_ns_attr = __ATTR(ramp_down_rate_ns, 0644,
 		show_ramp_down_rate_ns, store_ramp_down_rate_ns);
 
-static ssize_t show_up_min_freq(struct cpufreq_policy *policy, char *buf)
-{
-	return sprintf(buf, "%u\n", up_min_freq);
-}
-
-static ssize_t store_up_min_freq(struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-        ssize_t res;
-	unsigned long input;
-	res = strict_strtoul(buf, 0, &input);
-	if (res >= 0 && input >= 0)
-	  up_min_freq = input;
-	return res;
-}
-
-static struct freq_attr up_min_freq_attr = __ATTR(up_min_freq, 0644,
-		show_up_min_freq, store_up_min_freq);
 
 static ssize_t show_sleep_max_freq(struct cpufreq_policy *policy, char *buf)
 {
