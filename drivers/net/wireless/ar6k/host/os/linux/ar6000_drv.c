@@ -38,6 +38,8 @@
  */
 static const char athId[] __attribute__ ((unused)) = "$Id: //depot/sw/releases/olca2.2/host/os/linux/ar6000_drv.c#36 $";
 
+#define SOFTMAC_USED
+
 /* ATHENV */
 #ifdef ANDROID_ENV
 #include <linux/fs.h>
@@ -107,7 +109,7 @@ int bmienable = 1;
 int work_mode = 0;
 int dev_removed = 0;
 int chan_num = 0;
-const char *def_ifname = "ath0";
+const char *def_ifname = "wlan0";
 struct wake_lock ar6k_init_wake_lock;
 static struct net_device *pending_devs[MAX_AR6000];
 
