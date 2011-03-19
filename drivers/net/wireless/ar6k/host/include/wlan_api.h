@@ -1,23 +1,23 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="wlan_api.h" company="Atheros"> */
-/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* This file contains the API for the host wlan module */
-/* */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="wlan_api.h" company="Atheros">
+//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// This file contains the API for the host wlan module
+//
+// Author(s): ="Atheros"
+//==============================================================================
 #ifndef _HOST_WLAN_API_H_
 #define _HOST_WLAN_API_H_
 
@@ -99,12 +99,6 @@ void wlan_set_nodeage(struct ieee80211_node_table *nt, A_UINT32 nodeAge);
 bss_t *
 wlan_find_Ssidnode (struct ieee80211_node_table *nt, A_UCHAR *pSsid,
                     A_UINT32 ssidLength, A_BOOL bIsWPA2, A_BOOL bMatchSSID);
-
-bss_t *
-wlan_find_matching_Ssidnode (struct ieee80211_node_table *nt, A_UCHAR *pSsid,
-                    A_UINT32 ssidLength, A_UINT32 dot11AuthMode, A_UINT32 authMode,
-                   A_UINT32 pairwiseCryptoType, A_UINT32 grpwiseCryptoTyp);
-
 
 void
 wlan_node_return (struct ieee80211_node_table *nt, bss_t *ni);

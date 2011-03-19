@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="ieee80211.h" company="Atheros"> */
-/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="ieee80211.h" company="Atheros">
+//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 #ifndef _NET80211_IEEE80211_H_
 #define _NET80211_IEEE80211_H_
 
@@ -25,7 +25,6 @@
  * 802.11 protocol definitions.
  */
 #define IEEE80211_WEP_KEYLEN        5   /* 40bit */
-#define IEEE80211_WEP104_KEYLEN     13   /* 40bit */
 #define IEEE80211_WEP_IVLEN         3   /* 24bit */
 #define IEEE80211_WEP_KIDLEN        1   /* 1 octet */
 #define IEEE80211_WEP_CRCLEN        4   /* CRC-32 */

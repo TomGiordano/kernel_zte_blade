@@ -1,23 +1,23 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="wlan_node.c" company="Atheros"> */
-/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* IEEE 802.11 node handling support. */
-/* */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="wlan_node.c" company="Atheros">
+//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// IEEE 802.11 node handling support.
+//
+// Author(s): ="Atheros"
+//==============================================================================
 #include <a_config.h>
 #include <athdefs.h>
 #include <a_types.h>
@@ -63,10 +63,10 @@ wlan_node_alloc(struct ieee80211_node_table *nt, int wh_size)
     ni->ni_hash_next = NULL;
     ni->ni_hash_prev = NULL;
 
-    /* */
-    /* ni_scangen never initialized before and during suspend/resume of winmobile, */
-    /* that some junk has been stored in this, due to this scan list didn't properly updated */
-    /* */
+    //
+    // ni_scangen never initialized before and during suspend/resume of winmobile,
+    // that some junk has been stored in this, due to this scan list didn't properly updated
+    //
     ni->ni_scangen   = 0;
 
 #ifdef OS_ROAM_MANAGEMENT
@@ -236,24 +236,19 @@ wlan_iterate_nodes(struct ieee80211_node_table *nt, wlan_node_iter_func *f,
 {
     bss_t *ni;
     A_UINT32 gen;
-    A_UINT32 numNodes = 0;
 
     gen = ++nt->nt_scangen;
 
-    IEEE80211_NODE_LOCK (nt);
+    IEEE80211_NODE_LOCK(nt);
     for (ni = nt->nt_node_first; ni; ni = ni->ni_list_next) {
-        /*if (ni->ni_scangen != gen) { */
-        {
-            numNodes++;
+        if (ni->ni_scangen != gen) {
             ni->ni_scangen = gen;
             (void) ieee80211_node_incref(ni);
             (*f)(arg, ni);
             wlan_node_dec_free(ni);
         }
     }
-    IEEE80211_NODE_UNLOCK (nt);
-
-    /*RETAILMSG (1, (L"numNodes available ==> %d\n",  numNodes)); */
+    IEEE80211_NODE_UNLOCK(nt);
 }
 
 /*
@@ -278,10 +273,10 @@ wlan_node_table_init(void *wmip, struct ieee80211_node_table *nt)
     nt->nt_wmip = wmip;
     nt->nt_nodeAge = WLAN_NODE_INACT_TIMEOUT_MSEC;
 
-    /* */
-    /* nt_scangen never initialized before and during suspend/resume of winmobile, */
-    /* that some junk has been stored in this, due to this scan list didn't properly updated */
-    /* */
+    //
+    // nt_scangen never initialized before and during suspend/resume of winmobile, 
+    // that some junk has been stored in this, due to this scan list didn't properly updated
+    //
     nt->nt_scangen   = 0;
 
 #ifdef OS_ROAM_MANAGEMENT
@@ -361,20 +356,20 @@ wlan_find_Ssidnode (struct ieee80211_node_table *nt, A_UCHAR *pSsid,
         pIESsid = ni->ni_cie.ie_ssid;
         if (pIESsid[1] <= 32) {
 
-            /* Step 1 : Check SSID */
+            // Step 1 : Check SSID
             if (0x00 == memcmp (pSsid, &pIESsid[2], ssidLength)) {
 
-                /* */
-                /* Step 2.1 : Check MatchSSID is TRUE, if so, return Matched SSID */
-                /* Profile, otherwise check whether WPA2 or WPA */
-                /* */
+                //
+                // Step 2.1 : Check MatchSSID is TRUE, if so, return Matched SSID
+                // Profile, otherwise check whether WPA2 or WPA
+                //
                 if (TRUE == bMatchSSID) {
                     ieee80211_node_incref (ni);  /* mark referenced */
                     IEEE80211_NODE_UNLOCK (nt);
                     return ni;
                 }
 
-                /* Step 2 : if SSID matches, check WPA or WPA2 */
+                // Step 2 : if SSID matches, check WPA or WPA2
                 if (TRUE == bIsWPA2 && NULL != ni->ni_cie.ie_rsn) {
                     ieee80211_node_incref (ni);  /* mark referenced */
                     IEEE80211_NODE_UNLOCK (nt);
@@ -393,89 +388,6 @@ wlan_find_Ssidnode (struct ieee80211_node_table *nt, A_UCHAR *pSsid,
 
     return NULL;
 }
-
-bss_t *
-wlan_find_matching_Ssidnode (struct ieee80211_node_table *nt, A_UCHAR *pSsid,
-                    A_UINT32 ssidLength, A_UINT32 dot11AuthMode, A_UINT32 authMode,
-                   A_UINT32 pairwiseCryptoType, A_UINT32 grpwiseCryptoTyp)
-{
-    bss_t   *ni = NULL;
-    bss_t   *best_ni = NULL;
-    A_UCHAR *pIESsid = NULL;
-
-    IEEE80211_NODE_LOCK (nt);
-
-    for (ni = nt->nt_node_first; ni; ni = ni->ni_list_next) {
-        pIESsid = ni->ni_cie.ie_ssid;
-        if (pIESsid[1] <= 32) {
-
-            /* Step 1 : Check SSID */
-            if (0x00 == memcmp (pSsid, &pIESsid[2], ssidLength)) {
-
-                if (ni->ni_cie.ie_capInfo & 0x10)
-                {
-
-                    if ((NULL != ni->ni_cie.ie_rsn) && (WPA2_PSK_AUTH == authMode))
-                    {
-                        /* WPA2 */
-                        if (NULL == best_ni)
-                        {
-                            best_ni = ni;
-                        }
-                        else if (ni->ni_rssi > best_ni->ni_rssi)
-                        {
-                            best_ni = ni;
-                        }
-                    }
-                    else if ((NULL != ni->ni_cie.ie_wpa) && (WPA_PSK_AUTH == authMode))
-                    {
-                        /* WPA */
-                        if (NULL == best_ni)
-                        {
-                            best_ni = ni;
-                        }
-                        else if (ni->ni_rssi > best_ni->ni_rssi)
-                        {
-                            best_ni = ni;
-                        }
-                    }
-                    else if (WEP_CRYPT == pairwiseCryptoType)
-                    {
-                        /* WEP */
-                        if (NULL == best_ni)
-                        {
-                            best_ni = ni;
-                        }
-                        else if (ni->ni_rssi > best_ni->ni_rssi)
-                        {
-                            best_ni = ni;
-                        }
-                    }
-                }
-                else
-                {
-                    /* open AP */
-                    if ((OPEN_AUTH == authMode) && (NONE_CRYPT == pairwiseCryptoType))
-                    {
-                        if (NULL == best_ni)
-                        {
-                            best_ni = ni;
-                        }
-                        else if (ni->ni_rssi > best_ni->ni_rssi)
-                        {
-                            best_ni = ni;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    IEEE80211_NODE_UNLOCK (nt);
-
-    return best_ni;
-}
-
 
 void
 wlan_node_return (struct ieee80211_node_table *nt, bss_t *ni)

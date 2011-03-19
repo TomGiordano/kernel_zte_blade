@@ -1,32 +1,31 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="debug_linux.h" company="Atheros"> */
-/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+/*
+ * Copyright (c) 2004-2006 Atheros Communications Inc.
+ * All rights reserved.
+ *
+ * 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+ *
+ */
 
 #ifndef _DEBUG_LINUX_H_
 #define _DEBUG_LINUX_H_
 
-#define DBG_DEFAULTS    (DBG_ERROR|DBG_WARNING)
+#define DBG_DEFAULTS	(DBG_ERROR|DBG_WARNING)
 
 extern A_UINT32 g_dbg_flags;
 
 #define DBGFMT  "%s() : "
 #define DBGARG  __func__
-#define DBGFN   A_PRINTF
+#define DBGFN	A_PRINTF
 
 #define ATHR_DISPLAY_MSG    printk
 #define _T(x)               x
@@ -41,25 +40,25 @@ enum {
     ATH_DEBUG_TRC  = 0x0020,
     ATH_DEBUG_WARN = 0x0040,
     ATH_DEBUG_ERR  = 0x0080,
-    ATH_LOG_INF    = 0x0100,
+    ATH_LOG_INF	   = 0x0100,
     ATH_DEBUG_BMI  = 0x0110,
     ATH_DEBUG_WMI  = 0x0120,
     ATH_DEBUG_HIF  = 0x0140,
     ATH_DEBUG_HTC  = 0x0180,
     ATH_DEBUG_WLAN = 0x1000,
-    ATH_LOG_ERR    = 0x1010,
+    ATH_LOG_ERR	   = 0x1010,
     ATH_DEBUG_ANY  = 0xFFFF,
 };
 
 #ifdef DEBUG
 #define A_DPRINTF(f, a) \
-    if(g_dbg_flags & (f)) \
-    {   \
-        DBGFN a ; \
-    }
+	if(g_dbg_flags & (f)) \
+	{	\
+		DBGFN a ; \
+	}
 
 
-/* TODO FIX usage of A_PRINTF! */
+// TODO FIX usage of A_PRINTF!
 #define AR_DEBUG_LVL_CHECK(lvl) (debughtc & (lvl))
 #define AR_DEBUG_PRINTBUF(buffer, length, desc) do {   \
     if (debughtc & ATH_DEBUG_DUMP) {             \

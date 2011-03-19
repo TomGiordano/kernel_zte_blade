@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="testcmd.h" company="Atheros"> */
-/*    Copyright (c) 2004-2005 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="testcmd.h" company="Atheros">
+//    Copyright (c) 2004-2005 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 
 #ifndef  TESTCMD_H_
 #define  TESTCMD_H_
@@ -117,7 +117,6 @@ typedef PREPACK struct {
             A_INT32    rssiInDBm;
 	    A_UINT32 crcErrPkt;
 	    A_UINT32 secErrPkt;
-	    A_UINT32 noiseFloor;
         } POSTPACK report;
         struct PREPACK TCMD_CONT_RX_MAC {
             A_UCHAR    addr[ATH_MAC_LEN];
@@ -146,21 +145,13 @@ typedef PREPACK struct {
 typedef enum {
     TCMD_CONT_TX_ID,
     TCMD_CONT_RX_ID,
-    TCMD_PM_ID,
-    TCMD_GET_MAC_ID
+    TCMD_PM_ID
 } TCMD_ID;
-
-
-typedef PREPACK struct {
-    A_UINT32         testCmdId;
-    A_UCHAR    addr[ATH_MAC_LEN];
-} POSTPACK TCMD_GET_MAC;
 
 typedef PREPACK union {
           TCMD_CONT_TX contTx;
           TCMD_CONT_RX contRx;
           TCMD_PM pm;
-	      TCMD_GET_MAC getMac;
 } POSTPACK TEST_CMD;
 
 #ifdef __cplusplus

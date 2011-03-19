@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="targaddrs.h" company="Atheros"> */
-/*    Copyright (c) 2010 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="targaddrs.h" company="Atheros">
+//    Copyright (c) 2004-2007 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 
 #ifndef __TARGADDRS_H__
 #define __TARGADDRS_H__
@@ -26,7 +26,7 @@
 #include "AR6002/addrs.h"
 #endif
 
-/*
+/* 
  * AR6K option bits, to enable/disable various features.
  * By default, all option bits are 0.
  * These bits can be set in LOCAL_SCRATCH register 0.
@@ -64,7 +64,7 @@
 struct register_dump_s;
 struct dbglog_hdr_s;
 
-/*
+/* 
  * These are items that the Host may need to access
  * via BMI or via the Diagnostic Window. The position
  * of items in this structure must remain constant
@@ -157,14 +157,14 @@ struct host_interest_s {
 };
 
 /* Bits defined in hi_option_flag */
-#define HI_OPTION_TIMER_WAR       0x01 /* Enable timer workaround */
-#define HI_OPTION_BMI_CRED_LIMIT  0x02 /* Limit BMI command credits */
+#define HI_OPTION_TIMER_WAR      0x01 /* Enable timer workaround */
+#define HI_OPTION_BMI_CRED_LIMIT 0x02 /* Limit BMI command credits */
 #define HI_OPTION_RELAY_DOT11_HDR 0x04 /*Relay Dot11 hdr to/from host */
 
 /* 2 bits of hi_option_flag are used to represent 3 modes */
 #define HI_OPTION_FW_MODE_IBSS    0x0 /* IBSS Mode */
-#define HI_OPTION_FW_MODE_BSS_STA 0x1 /* STA Mode */
-#define HI_OPTION_FW_MODE_AP      0x2 /* AP Mode */
+#define HI_OPTION_FW_MODE_BSS_STA    0x1 /* STA Mode */
+#define HI_OPTION_FW_MODE_AP    0x2 /* AP Mode */
 
 /* Fw Mode Mask */
 #define HI_OPTION_FW_MODE_MASK    0x3
