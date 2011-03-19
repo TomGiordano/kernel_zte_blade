@@ -1,25 +1,26 @@
-/*
- * 
- * Copyright (c) 2004-2007 Atheros Communications Inc.
- * All rights reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- * 
- */
+/*------------------------------------------------------------------------------ */
+/* <copyright file="engine.c" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
+
+#include "engine.h"
 /* ATHENV */
 #ifdef FW_AUTOLOAD
 /* ATHENV */
-#include "engine.h"
 
 #define ACC regs[0]
 
@@ -27,12 +28,11 @@
 static unsigned int   regs[16];
 static int            offset;
 static unsigned char *cp;
-
 int ar6k_reg_preload( int reg, unsigned int value )
 {
     if( (reg < 0) || (reg > 16) )
         return(-1);              /* Illegal register */
-      
+
     regs[ reg ] = value;
     return(0);
 }
@@ -40,22 +40,22 @@ int ar6k_reg_preload( int reg, unsigned int value )
 static int getoffset( void )
 {
     int i = 0;
-    
+
     cp++;
     offset++;
-    
+
     i |=  (*cp & 0xFF);       cp++; offset++;
     i |=  (*cp & 0xFF) <<  8; cp++; offset++;
     i |=  (*cp & 0xFF) << 16; cp++; offset++;
     i |=  (*cp & 0xFF) << 24; cp++; offset++;
-    
+
     return(i);
 }
 
 static int getarg( void )
 {
     int i;
-    
+
     if( *cp & 0x0F )
     {
         i = regs[ *cp & 0xF ];
@@ -68,16 +68,17 @@ static int getarg( void )
 static void dumpregs( void )
 {
     int i;
-    
+
     sysprint("Acc: 0x%X\n", ACC);
-    
+
     for(i=1; i<16; i++)
         sysprint("r%x : 0x%X\n", i, regs[ i ]);
-        
+
 }
 
-int fwengine( unsigned char *img, int size, void *ar)
+int fwengine(const unsigned char *_img, int size, void *ar)
 {
+    unsigned char *img = (unsigned char*)_img;
     unsigned int   crc;
     int            i;
 
@@ -87,45 +88,45 @@ int fwengine( unsigned char *img, int size, void *ar)
         syserr("Wrong image or no image\n");
         return -1;
     }
-    
+
     /* Check crc32 */
     cp = img + size - 4;
-    
+
     *cp = ~(*cp) & 0xFF ; cp++;
     *cp = ~(*cp) & 0xFF ; cp++;
     *cp = ~(*cp) & 0xFF ; cp++;
-    *cp = ~(*cp) & 0xFF ; 
-    
+    *cp = ~(*cp) & 0xFF ;
+
     crc = crc32( ~0, img, size );
-    
+
     if( crc )
     {
         syserr("Image CRC error\n");
         return -1;
     }
-    
+
     if( *(img+1) > VERSION )
     {
         syserr("Image version is newer than the driver\n");
         return -1;
     }
-    
+
     /* Basic checks complete, we can print greeting and FW_ID here if desired */
-    
+
     /* Get to the first opcode */
-    
+
     cp     = img + 2;                            /* Skip magic and version */
     offset = 2;
-    
+
     while( (offset < size) && (*cp) )
     {
         cp++;                                    /* Skip build host name */
         offset++;
     }
-    
+
     cp     += 6;                                 /* Skip build date */
     offset += 6;
-    
+
     while( (cp > img) && (cp < (img+size-4)) )   /* just an additional bounds check */
     {
         /* First, find out opcode class */
@@ -189,7 +190,7 @@ int fwengine( unsigned char *img, int size, void *ar)
               else
               {
                   int ret;
-                  
+
                   ret = load_binary(ACC, cp, ar);
                   if( ret < 0 )
                       return( -1 ); /* Error */
@@ -201,15 +202,15 @@ int fwengine( unsigned char *img, int size, void *ar)
               if( !(*cp & 0xF) ||
                   ((*cp == 0xE1) && (ACC)) ||
                   ((*cp == 0xE2) && !(ACC)) )
-                  
+
                   offset = getoffset();
                   cp     = img + offset;
-                  
+
                   break;
           default:
               syserr("Image format error\n");
               break;
-        
+
         }
     }
     return(0);
@@ -227,13 +228,13 @@ int load_binary( unsigned int addr, unsigned char *cp, void *ar )
 {
     int size = 0;
     int adv  = 5;
-    
-    cp++; 
-    size |= ( *cp & 0xFF );       cp++; 
-    size |= ( *cp & 0xFF ) <<  8; cp++; 
-    size |= ( *cp & 0xFF ) << 16; cp++; 
-    size |= ( *cp & 0xFF ) << 24; cp++; 
-    
+
+    cp++;
+    size |= ( *cp & 0xFF );       cp++;
+    size |= ( *cp & 0xFF ) <<  8; cp++;
+    size |= ( *cp & 0xFF ) << 16; cp++;
+    size |= ( *cp & 0xFF ) << 24; cp++;
+
     printf("Loading binary to address 0x%X, size %d\n", addr, size);
     adv += size;
     return(adv);
@@ -254,7 +255,7 @@ int write_target_reg( unsigned address, unsigned value, void *ar )
 unsigned int get_target_reg( unsigned address, void *ar )
 {
     unsigned int ret = 1;
-    
+
     printf("Reading target register 0x%X, returning 0x%X\n", address, ret );
     return (ret);
 }
@@ -262,13 +263,13 @@ int main()
 {
     int ch, ret;
     unsigned char *bufptr = fwbuf;
-    
+
     init_crc32();
-    
+
     printf("Reading firmware image\n");
     while( (ch = getchar()) != EOF)
         *bufptr++ = ch;
-        
+
     printf("Calling firmware engine for image size: %d\n", bufptr - fwbuf + 1);
     ret = engine( fwbuf, bufptr - fwbuf, NULL );
     printf("Engine returned with code %d\n", ret);

@@ -1,21 +1,21 @@
-//------------------------------------------------------------------------------
-// <copyright file="dbglog_id.h" company="Atheros">
-//    Copyright (c) 2004-2007 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="dbglog_id.h" company="Atheros"> */
+/*    Copyright (c) 2004-2007 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 
 #ifndef _DBGLOG_ID_H_
 #define _DBGLOG_ID_H_
@@ -492,6 +492,22 @@ extern "C" {
 #define BTCOEX_A2DP_HOST_BOUNDS                     61
 #define BTCOEX_CLOSE_RANGE_BOUNDS                   62
 #define BTCOEX_TOGGLE_VALUES                        63
+#define BTCOEX_COEX_STATUS                          64
+#define BTCOEX_RTC_VALUE                            65
+#define BTCOEX_ST_1                                 66
+#define BTCOEX_LF1_TIMER_VAL                        67
+#define BTCOEX_NUM_PSPOLL_INQ                       68
+#define BTCOEX_SCO_STATE_FLAG                       69
+#define BTCOEX_SCO_PARAM_VAL                        70
+#define BTCOEX_SCO_TIMING                           71
+#define BTCOEX_RS_TO_HANDLER                        72
+#define BTCOEX_RS_HANDLER                           73 
+#define BTCOEX_SCO_WAKEUP                           74
+#define BTCOEX_SEND_UPPOLL                          75
+#define BTCOEX_MEASURE_LATENCY                      76
+#define BTCOEX_SEND_PSPOLL_ERROR                    78
+#define BTCOEX_RX_UNICAST_RATE                      79
+#define BTCOEX_SCO_STOMP_CNT_IN100MS                80
 #define BTCOEX_DBGID_DEFINITION_END
 
 #ifdef __cplusplus

@@ -1,23 +1,23 @@
-//------------------------------------------------------------------------------
-// <copyright file="wmi_host.h" company="Atheros">
-//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// This file contains local definitios for the wmi host module.
-//
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="wmi_host.h" company="Atheros"> */
+/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* This file contains local definitios for the wmi host module. */
+/* */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 #ifndef _WMI_HOST_H_
 #define _WMI_HOST_H_
 
@@ -44,8 +44,8 @@ typedef struct sq_threshold_params_s {
     A_UINT32 lower_threshold_valid_count;
     A_UINT32 polling_interval;
     A_UINT8 weight;
-    A_UINT8  last_rssi; //normally you would expect this to be bss specific but we keep only one instance because its only valid when the device is in a connected state. Not sure if it belongs to host or target.
-    A_UINT8  last_rssi_poll_event; //Not sure if it belongs to host or target
+    A_UINT8  last_rssi; /*normally you would expect this to be bss specific but we keep only one instance because its only valid when the device is in a connected state. Not sure if it belongs to host or target. */
+    A_UINT8  last_rssi_poll_event; /*Not sure if it belongs to host or target */
 } SQ_THRESHOLD_PARAMS;
 struct wmi_t {
     A_BOOL                          wmi_ready;
@@ -65,6 +65,7 @@ struct wmi_t {
     CRYPTO_TYPE                     wmi_pair_crypto_type;
     CRYPTO_TYPE                     wmi_grp_crypto_type;
     A_BOOL                          wmi_is_wmm_enabled;
+    A_UINT8                         wmi_traffic_class;
 };
 
 

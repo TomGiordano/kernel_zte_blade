@@ -1,23 +1,28 @@
+/*------------------------------------------------------------------------------ */
+/* <copyright file="osapi_linux.h" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
+
 /*
- * $Id: //depot/sw/releases/olca2.2/host/os/linux/include/osapi_linux.h#1 $
+ * $Id: //depot/sw/releases/olca2.2/host/os/linux/include/osapi_linux.h#2 $
  *
  * This file contains the definitions of the basic atheros data types.
  * It is used to map the data types in atheros files to a platform specific
  * type.
- *
- * Copyright 2003-2005 Atheros Communications, Inc.,  All Rights Reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
  *
  */
 
@@ -83,8 +88,8 @@
 #define A_MALLOC(size)                  kmalloc((size), GFP_KERNEL)
 #define A_MALLOC_NOWAIT(size)           kmalloc((size), GFP_ATOMIC)
 #define A_FREE(addr)                    kfree(addr)
-#define A_PRINTF(args...)               printk(args) 
-#define A_SPRINTF(buf, args...)			sprintf (buf, args)
+#define A_PRINTF(args...)               printk(args)
+#define A_SPRINTF(buf, args...)         sprintf (buf, args)
 
 /* Mutual Exclusion */
 typedef spinlock_t                      A_MUTEX_T;
@@ -96,7 +101,7 @@ typedef spinlock_t                      A_MUTEX_T;
 
 /* Get current time in ms adding a constant offset (in ms) */
 #define A_GET_MS(offset)    \
-	(jiffies + ((offset) / 1000) * HZ)
+    (jiffies + ((offset) / 1000) * HZ)
 
 /*
  * Timer Functions
@@ -124,7 +129,7 @@ typedef struct timer_list               A_TIMER;
 } while (0)
 
 /*
- * Cancel the Timer. 
+ * Cancel the Timer.
  */
 #define A_UNTIMEOUT(pTimer) do {                                \
     del_timer((pTimer));                                        \
@@ -240,19 +245,19 @@ typedef struct sk_buff_head A_NETBUF_QUEUE_T;
 
 /* Add data to end of a buffer  */
 #define A_NETBUF_PUT_DATA(bufPtr, srcPtr,  len) \
-    a_netbuf_put_data(bufPtr, srcPtr, len) 
+    a_netbuf_put_data(bufPtr, srcPtr, len)
 
 /* Add data to start of the  buffer */
 #define A_NETBUF_PUSH_DATA(bufPtr, srcPtr,  len) \
-    a_netbuf_push_data(bufPtr, srcPtr, len) 
+    a_netbuf_push_data(bufPtr, srcPtr, len)
 
 /* Remove data at start of the buffer */
 #define A_NETBUF_PULL_DATA(bufPtr, dstPtr, len) \
-    a_netbuf_pull_data(bufPtr, dstPtr, len) 
+    a_netbuf_pull_data(bufPtr, dstPtr, len)
 
 /* Remove data from the end of the buffer */
 #define A_NETBUF_TRIM_DATA(bufPtr, dstPtr, len) \
-    a_netbuf_trim_data(bufPtr, dstPtr, len) 
+    a_netbuf_trim_data(bufPtr, dstPtr, len)
 
 /* View data as "size" contiguous bytes of type "t" */
 #define A_NETBUF_VIEW_DATA(bufPtr, t, size) \
@@ -261,7 +266,7 @@ typedef struct sk_buff_head A_NETBUF_QUEUE_T;
 /* return the beginning of the headroom for the buffer */
 #define A_NETBUF_HEAD(bufPtr) \
         ((((struct sk_buff *)(bufPtr))->head))
-    
+
 /*
  * OS specific network buffer access routines
  */
@@ -296,7 +301,7 @@ A_UINT32 a_copy_from_user(void *to, const void *from, A_UINT32 n);
 
 /* In linux, WLAN Rx and Tx run in different contexts, so no need to check
  * for any commands/data queued for WLAN */
-#define A_CHECK_DRV_TX()                
+#define A_CHECK_DRV_TX()
 
 #else /* __KERNEL__ */
 

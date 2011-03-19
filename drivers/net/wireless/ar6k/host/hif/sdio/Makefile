@@ -21,9 +21,6 @@
 #SDIO HIF makefile for atheros SDIO stack
 #  
 
-ATH_SRC_BASE := drivers/net/wireless/ar6k/
-ATH_BUS_SUBTYPE := linux_sdio
-
 # Check for SDIO stack
 ifdef ATH_SDIO_STACK_BASE
 # Someone already set it on entry, the stack resides outside this tree, we will try to build it

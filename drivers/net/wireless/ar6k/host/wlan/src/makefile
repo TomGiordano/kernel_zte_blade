@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # <copyright file="makefile" company="Atheros">
-#    Copyright (c) 2005-2007 Atheros Corporation.  All rights reserved.
+#    Copyright (c) 2005-2009 Atheros Corporation.  All rights reserved.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as

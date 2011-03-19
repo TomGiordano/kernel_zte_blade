@@ -1,21 +1,21 @@
-//------------------------------------------------------------------------------
-// <copyright file="common_drv.c" company="Atheros">
-//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="common_drv.c" company="Atheros"> */
+/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 #include "a_config.h"
 #include "athdefs.h"
 #include "a_types.h"
@@ -332,7 +332,7 @@ A_STATUS ar6000_reset_device(HIF_DEVICE *hifDevice, A_UINT32 TargetType, A_BOOL 
 
     do {
 
-        // address = RESET_CONTROL_ADDRESS;
+        /* address = RESET_CONTROL_ADDRESS; */
         data = RESET_CONTROL_COLD_RST_MASK;
 
           /* Hardcode the address of RESET_CONTROL_ADDRESS based on the target type */
@@ -366,7 +366,7 @@ A_STATUS ar6000_reset_device(HIF_DEVICE *hifDevice, A_UINT32 TargetType, A_BOOL 
          * went through.
          */
 
-        // address = RESET_CAUSE_ADDRESS;
+        /* address = RESET_CAUSE_ADDRESS; */
         /* Hardcode the address of RESET_CAUSE_ADDRESS based on the target type */
         if (TargetType == TARGET_TYPE_AR6001) {
             address = 0x0C0000CC;
@@ -473,6 +473,7 @@ void ar6000_dump_target_assert_info(HIF_DEVICE *hifDevice, A_UINT32 TargetType)
         AR_DEBUG_PRINTF(ATH_DEBUG_ERR,("AR6K: Register Dump: \n"));
 
         for (i = 0; i < regDumpCount; i++) {
+            ATHR_DISPLAY_MSG (_T(" %d :  0x%8.8X \n"), i, regDumpValues[i]);
             AR_DEBUG_PRINTF(ATH_DEBUG_ERR,(" %d :  0x%8.8X \n",i, regDumpValues[i]));
 #ifdef UNDER_CE
             logPrintf(ATH_DEBUG_ERR," %d:  0x%8.8X \n",i, regDumpValues[i]);

@@ -1,23 +1,23 @@
-//------------------------------------------------------------------------------
-// <copyright file="hif.h" company="Atheros">
-//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// HIF specific declarations and prototypes
-//
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="hif.h" company="Atheros"> */
+/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* HIF specific declarations and prototypes */
+/* */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 #ifndef _HIF_H_
 #define _HIF_H_
 
@@ -30,6 +30,7 @@ extern "C" {
 #include "athdefs.h"
 #include "a_types.h"
 #include "a_osapi.h"
+#include "dl_list.h"
 
 
 typedef struct htc_callbacks HTC_CALLBACKS;
@@ -103,6 +104,10 @@ typedef struct hif_device HIF_DEVICE;
     (HIF_WRITE | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BYTE_BASIS | HIF_INCREMENTAL_ADDRESS)
 #define HIF_WR_SYNC_BLOCK_INC  \
     (HIF_WRITE | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_INCREMENTAL_ADDRESS)
+#define HIF_WR_ASYNC_BLOCK_FIX \
+    (HIF_WRITE | HIF_ASYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_FIXED_ADDRESS)
+#define HIF_WR_SYNC_BLOCK_FIX  \
+    (HIF_WRITE | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_FIXED_ADDRESS)
 #define HIF_RD_SYNC_BYTE_INC    \
     (HIF_READ | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BYTE_BASIS | HIF_INCREMENTAL_ADDRESS)
 #define HIF_RD_SYNC_BYTE_FIX    \
@@ -117,7 +122,8 @@ typedef struct hif_device HIF_DEVICE;
     (HIF_READ | HIF_ASYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_INCREMENTAL_ADDRESS)
 #define HIF_RD_SYNC_BLOCK_INC  \
     (HIF_READ | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_INCREMENTAL_ADDRESS)
-
+#define HIF_RD_SYNC_BLOCK_FIX  \
+    (HIF_READ | HIF_SYNCHRONOUS | HIF_EXTENDED_IO | HIF_BLOCK_BASIS | HIF_FIXED_ADDRESS)
 
 typedef enum {
     HIF_DEVICE_POWER_STATE = 0,
@@ -127,6 +133,9 @@ typedef enum {
     HIF_DEVICE_GET_IRQ_PROC_MODE,
     HIF_DEVICE_GET_RECV_EVENT_MASK_UNMASK_FUNC,
     HIF_DEVICE_POWER_STATE_CHANGE,
+    HIF_DEVICE_GET_IRQ_YIELD_PARAMS,
+    HIF_CONFIGURE_QUERY_SCATTER_REQUEST_SUPPORT,
+    HIF_DEVICE_GET_OS_DEVICE,
 } HIF_DEVICE_CONFIG_OPCODE;
 
 /*
@@ -173,9 +182,52 @@ typedef enum {
  *         The caller must guarantee that no HIF read/write requests will be made after the device
  *         is powered down.
  *
+ *   HIF_DEVICE_GET_IRQ_YIELD_PARAMS
+ * 
+ *   input : none
+ *   output : HIF_DEVICE_IRQ_YIELD_PARAMS
+ *   note: This query checks if the HIF layer wishes to impose a processing yield count for the DSR handler.
+ *   The DSR callback handler will exit after a fixed number of RX packets or events are processed.  
+ *   This query is only made if the device reports an IRQ processing mode of HIF_DEVICE_IRQ_SYNC_ONLY. 
+ *   The HIF implementation can ignore this command if it does not desire the DSR callback to yield.
+ *   The HIF layer can indicate the maximum number of IRQ processing units (RX packets) before the
+ *   DSR handler callback must yield and return control back to the HIF layer.  When a yield limit is 
+ *   used the DSR callback will not call HIFAckInterrupts() as it would normally do before returning.  
+ *   The HIF implementation that requires a yield count must call HIFAckInterrupt() when it is prepared
+ *   to process interrupts again.
+ *   
+ *   HIF_CONFIGURE_QUERY_SCATTER_REQUEST_SUPPORT
+ *   input : none
+ *   output : HIF_DEVICE_SCATTER_SUPPORT_INFO
+ *   note:  This query checks if the HIF layer implements the SCATTER request interface.  Scatter requests
+ *   allows upper layers to submit mailbox I/O operations using a list of buffers.  This is useful for
+ *   multi-message transfers that can better utilize the bus interconnect.
  *
  *
+ *   HIF_DEVICE_GET_OS_DEVICE
+ *   intput : none
+ *   output : HIF_DEVICE_OS_DEVICE_INFO;
+ *   note: On some operating systems, the HIF layer has a parent device object for the bus.  This object
+ *         may be required to register certain types of logical devices.
+ * 
  */
+
+typedef struct {
+    A_UINT32    ExtendedAddress;  /* extended address for larger writes */  
+    A_UINT32    ExtendedSize;
+} HIF_MBOX_PROPERTIES;
+
+typedef struct {
+    A_UINT32 MboxAddresses[4];  /* must be first element for legacy HIFs that return the address in  
+                                   and ARRAY of 32-bit words */
+    
+        /* the following describe extended mailbox properties */
+    HIF_MBOX_PROPERTIES MboxProp[4];
+        /* if the HIF supports the GMbox extended address region it can report it
+         * here, some interfaces cannot support the GMBOX address range and not set this */
+    A_UINT32 GMboxAddress;  
+    A_UINT32 GMboxSize;
+} HIF_DEVICE_MBOX_INFO;
 
 typedef enum {
     HIF_DEVICE_IRQ_SYNC_ONLY,   /* for HIF implementations that require the DSR to process all
@@ -192,6 +244,60 @@ typedef enum {
                                to completely power-off the module and associated hardware (i.e. cut power supplies)
                             */
 } HIF_DEVICE_POWER_CHANGE_TYPE;
+
+typedef struct {
+    int     RecvPacketYieldCount; /* max number of packets to force DSR to return */
+} HIF_DEVICE_IRQ_YIELD_PARAMS;
+
+
+typedef struct _HIF_SCATTER_ITEM {
+    A_UINT8     *pBuffer;             /* CPU accessible address of buffer */
+    int          Length;              /* length of transfer to/from this buffer */
+    void        *pCallerContexts[2];  /* space for caller to insert a context associated with this item */
+} HIF_SCATTER_ITEM;
+
+struct _HIF_SCATTER_REQ;
+
+typedef void ( *HIF_SCATTER_COMP_CB)(struct _HIF_SCATTER_REQ *);
+
+typedef enum _HIF_SCATTER_METHOD {
+    HIF_SCATTER_NONE = 0,
+    HIF_SCATTER_DMA_REAL,              /* Real SG support no restrictions */
+    HIF_SCATTER_DMA_BOUNCE,            /* Uses SG DMA but HIF layer uses an internal bounce buffer */    
+} HIF_SCATTER_METHOD;
+
+typedef struct _HIF_SCATTER_REQ {
+    DL_LIST             ListLink;           /* link management */
+    A_UINT32            Address;            /* address for the read/write operation */
+    A_UINT32            Request;            /* request flags */
+    A_UINT32            TotalLength;        /* total length of entire transfer */
+    A_UINT32            CallerFlags;        /* caller specific flags can be stored here */
+    HIF_SCATTER_COMP_CB CompletionRoutine;  /* completion routine set by caller */
+    A_STATUS            CompletionStatus;   /* status of completion */
+    void                *Context;           /* caller context for this request */
+    int                 ValidScatterEntries;  /* number of valid entries set by caller */
+    HIF_SCATTER_METHOD  ScatterMethod;        /* scatter method handled by HIF */  
+    void                *HIFPrivate[4];     /* HIF private area */
+    A_UINT8             *pScatterBounceBuffer;  /* bounce buffer for upper layers to copy to/from */
+    HIF_SCATTER_ITEM    ScatterList[1];     /* start of scatter list */
+} HIF_SCATTER_REQ;
+
+typedef HIF_SCATTER_REQ * ( *HIF_ALLOCATE_SCATTER_REQUEST)(HIF_DEVICE *device);
+typedef void ( *HIF_FREE_SCATTER_REQUEST)(HIF_DEVICE *device, HIF_SCATTER_REQ *request);
+typedef A_STATUS ( *HIF_READWRITE_SCATTER)(HIF_DEVICE *device, HIF_SCATTER_REQ *request);
+
+typedef struct _HIF_DEVICE_SCATTER_SUPPORT_INFO {
+        /* information returned from HIF layer */
+    HIF_ALLOCATE_SCATTER_REQUEST    pAllocateReqFunc;
+    HIF_FREE_SCATTER_REQUEST        pFreeReqFunc;
+    HIF_READWRITE_SCATTER           pReadWriteScatterFunc;    
+    int                             MaxScatterEntries;
+    int                             MaxTransferSizePerScatterReq;
+} HIF_DEVICE_SCATTER_SUPPORT_INFO;
+
+typedef struct {
+    void    *pOSDevice;
+} HIF_DEVICE_OS_DEVICE_INFO;
 
 #define HIF_MAX_DEVICES                 1
 

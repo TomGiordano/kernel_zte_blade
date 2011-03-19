@@ -1,36 +1,25 @@
-/*
- *
- * Copyright (c) 2004-2009 Atheros Communications Inc.
- * All rights reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- *
- */
-/* history
- *     when         who         what                                 tag 
- *  2010-01-18     hp          update arConnected flags when sending ZTE_WIFI_HP_012
- *   				 wmi_disconnect_cmd 
-*/
+/*------------------------------------------------------------------------------ */
+/* <copyright file="ioctl.c" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
+
 #include "ar6000_drv.h"
 #include "ieee80211_ioctl.h"
 #include "ar6kap_common.h"
-
-
-/*#include "/home/huangpei/proj/svn/7x27-4735/boot/kernel/arch/arm/mach-msm/include/mach/gpio.h"*/
-/*#include "/home/huangpei/proj/svn/7x27-4735/boot/kernel/arch/arm/mach-msm/include/mach/vreg.h"*/
-
-#include <mach/gpio.h>
-#include <mach/vreg.h>
 
 static A_UINT8 bcast_mac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 static A_UINT8 null_mac[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
@@ -237,7 +226,7 @@ static int
 ar6000_ioctl_set_country(struct net_device *dev, struct ifreq *rq)
 {
     AR_SOFTC_T *ar = (AR_SOFTC_T *)netdev_priv(dev);
-    WMI_AP_SET_COUNTRY_CMD cmd;
+    WMI_SET_COUNTRY_CMD cmd;
     A_STATUS ret;
 
     if ((dev->flags & IFF_UP) != IFF_UP) {
@@ -253,10 +242,12 @@ ar6000_ioctl_set_country(struct net_device *dev, struct ifreq *rq)
         return -EFAULT;
     }
 
-    ar->ap_profile_flag = 1; /* There is a change in profile */
+    if (AP_NETWORK == ar->arNetworkType) {
+        ar->ap_profile_flag = 1; /* There is a change in profile */
+    }
 
     ret = wmi_set_country(ar->arWmi, cmd.countryCode);
-    A_MEMCPY(ar->ap_country_code, cmd.countryCode, 3);
+    A_MEMCPY(ar->country_code, cmd.countryCode, 3);
 
     switch (ret) {
         case A_OK:
@@ -348,12 +339,7 @@ ar6000_ioctl_set_channelParams(struct net_device *dev, struct ifreq *rq)
     if (!ret && (ar->arConnected == TRUE || ar->arConnectPending == TRUE)) {
         AR6000_SPIN_UNLOCK(&ar->arLock, 0);
         if (ar->arNextMode != AP_NETWORK)
-            wmi_disconnect_cmd(ar->arWmi);
-	    //ZTE_WIFI_HP_012 
-	    //work around for disconnect cmd, we need to update the 
-	    //arConnected flag 
-	    ar->arConnected = FALSE;
-	    //ZTE_WIFI_HP_012 end 
+        wmi_disconnect_cmd(ar->arWmi);
     } else {
         AR6000_SPIN_UNLOCK(&ar->arLock, 0);
     }
@@ -667,7 +653,7 @@ ar6000_ioctl_tcmd_get_rx_report(struct net_device *dev,
                                  struct ifreq *rq, A_UINT8 *data, A_UINT32 len)
 {
     AR_SOFTC_T *ar = (AR_SOFTC_T *)netdev_priv(dev);
-    A_UINT32    buf[4];
+    A_UINT32    buf[5];
     int ret = 0;
 
     if (ar->bIsDestroyProgress) {
@@ -703,9 +689,58 @@ ar6000_ioctl_tcmd_get_rx_report(struct net_device *dev,
     buf[1] = ar->tcmdRxRssi;
     buf[2] = ar->tcmdRxcrcErrPkt;
     buf[3] = ar->tcmdRxsecErrPkt;
+    buf[4] = ar->tcmdRxNoiseFloor;
     if (!ret && copy_to_user(rq->ifr_data, buf, sizeof(buf))) {
         ret = -EFAULT;
     }
+
+    up(&ar->arSem);
+
+    return ret;
+}
+
+static A_STATUS
+ar6000_ioctl_tcmd_get_mac(struct net_device *dev,
+                                 struct ifreq *rq, A_UINT8 *data, A_UINT32 len)
+{
+    AR_SOFTC_T *ar = (AR_SOFTC_T *)netdev_priv(dev);
+    A_UINT8    buf[6];
+    int ret = 0;
+
+    if (ar->bIsDestroyProgress) {
+        return -EBUSY;
+    }
+
+    if (ar->arWmiReady == FALSE) {
+        return -EIO;
+    }
+
+    if (down_interruptible(&ar->arSem)) {
+        return -ERESTARTSYS;
+    }
+
+    if (ar->bIsDestroyProgress) {
+        up(&ar->arSem);
+        return -EBUSY;
+    }
+
+    buf[0] = ar->arNetDev->dev_addr[0];
+    buf[1] = ar->arNetDev->dev_addr[1];
+    buf[2] = ar->arNetDev->dev_addr[2];
+    buf[3] = ar->arNetDev->dev_addr[3];
+    buf[4] = ar->arNetDev->dev_addr[4];
+    buf[5] = ar->arNetDev->dev_addr[5];
+    if (!ret && copy_to_user(rq->ifr_data, buf, sizeof(buf))) {
+        ret = -EFAULT;
+    }
+    printk("ar6000_ioctl_tcmd_get_mac : %x:%x:%x:%x:%x:%x \n",
+    buf[0],
+    buf[1],
+    buf[2],
+    buf[3],
+    buf[4],
+    buf[5]);
+
 
     up(&ar->arSem);
 
@@ -722,6 +757,7 @@ ar6000_tcmd_rx_report_event(void *devt, A_UINT8 * results, int len)
     ar->tcmdRxRssi = rx_rep->u.report.rssiInDBm;
     ar->tcmdRxcrcErrPkt = rx_rep->u.report.crcErrPkt;
     ar->tcmdRxsecErrPkt = rx_rep->u.report.secErrPkt;
+    ar->tcmdRxNoiseFloor = rx_rep->u.report.noiseFloor;
     ar->tcmdRxReport = 1;
 
     wake_up(&arEvent);
@@ -979,45 +1015,9 @@ static A_BOOL gpio_ack_received;   /* GPIO ack was received */
 /* Host-side initialization for General Purpose I/O support */
 void ar6000_gpio_init(void)
 {
-    int ret = 0,rc = 255;
-    struct vreg *vreg;
-
     gpio_intr_available = FALSE;
     gpio_data_available = FALSE;
     gpio_ack_received   = FALSE;
-
-    vreg = vreg_get(0, "wlan");
-    ret = vreg_enable(vreg);
-    printk(KERN_ERR"powerup wlan,ret:%d\n", ret);
-    if(ret)
-       printk(KERN_ERR"voltage enable failed\n");
-    ret = vreg_set_level(vreg, 1800);
-    if(ret)
-      printk(KERN_ERR"voltage set level failed\n");    
-     
-    rc = gpio_request(18, "wlan_chip_pwd");
-    if(!rc)
-    {
-         gpio_direction_output(18, 0);
-         mdelay(50);
-         gpio_direction_output(18, 1);
-    }
-    else
-    {
-         printk(KERN_ERR"gpio_request:%d failed\n", 18);
-    }
-    gpio_free(18);
-
-    rc = gpio_request(17, "wlan_reset");
-    if(!rc)
-    {
-         gpio_direction_output(17, 1);
-    }
-    else
-    {
-         printk(KERN_ERR"gpio_request:%d failed \n", 17);
-    }
-    gpio_free(17);
 }
 
 /*
@@ -1310,6 +1310,12 @@ ar6000_ioctl_setkey(AR_SOFTC_T *ar, struct ieee80211req_key *ik)
         default:
             break;
     }
+
+    if ((ik->ik_type == IEEE80211_CIPHER_WEP) && (ik->ik_flags & IEEE80211_KEY_XMIT))
+    {
+        keyUsage |= TX_USAGE;
+    }
+
 #ifdef USER_KEYS
     ar->user_saved_keys.keyType = keyType;
 #endif
@@ -1354,11 +1360,6 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
     char *userdata;
     A_UINT32 connectCtrlFlags;
 
-
-    static WMI_SCAN_PARAMS_CMD scParams = {0, 0, 0, 0, 0,
-                                           WMI_SHORTSCANRATIO_DEFAULT,
-                                           DEFAULT_SCAN_CTRL_FLAGS,
-                                           0};
     WMI_SET_AKMP_PARAMS_CMD  akmpParams;
     WMI_SET_PMKID_LIST_CMD   pmkidInfo;
 
@@ -1428,7 +1429,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         case IEEE80211_IOCTL_DELKEY:
         case IEEE80211_IOCTL_SETOPTIE:
         {
-            //ret = -EIO;
+            /*ret = -EIO; */
             break;
         }
         case IEEE80211_IOCTL_SETMLME:
@@ -1452,12 +1453,12 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                     case IEEE80211_MLME_DEAUTH:
                         A_PRINTF("setmlme DEAUTH %02X:%02X\n",
                             mlme.im_macaddr[4], mlme.im_macaddr[5]);
-                        //remove_sta(ar, mlme.im_macaddr);
+                        /*remove_sta(ar, mlme.im_macaddr); */
                         break;
                     case IEEE80211_MLME_DISASSOC:
                         A_PRINTF("setmlme DISASSOC %02X:%02X\n",
                             mlme.im_macaddr[4], mlme.im_macaddr[5]);
-                        //remove_sta(ar, mlme.im_macaddr);
+                        /*remove_sta(ar, mlme.im_macaddr); */
                         break;
                     default:
                         return 0;
@@ -1546,6 +1547,14 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                 wmi_test_cmd(ar->arWmi, (A_UINT8*)&pmCmd, sizeof(TCMD_PM));
             }
             break;
+        case AR6000_XIOCTL_TCMD_GET_MAC:
+            {
+                TCMD_GET_MAC getMacCmd;
+
+                ar6000_ioctl_tcmd_get_mac(dev, rq,
+                    (A_UINT8 *)&getMacCmd, sizeof(TCMD_GET_MAC));
+            }
+            break;
 #endif /* CONFIG_HOST_TCMD_SUPPORT */
 
         case AR6000_XIOCTL_BMI_DONE:
@@ -1606,7 +1615,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                                           wmitimeout * HZ),
                       (unsigned int *)rq->ifr_data );
             if (ar->arWmiReady == TRUE)
-     	        put_user(1, (unsigned int *)rq->ifr_data);
+                put_user(1, (unsigned int *)rq->ifr_data);
             break;
 #else
            AR_DEBUG_PRINTF("No longer supported\n");
@@ -1681,6 +1690,12 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                 buffer = rq->ifr_data + sizeof(length);
                 ret = ar6000_htc_raw_read(ar, (HTC_RAW_STREAM_ID)streamID,
                                           buffer, length);
+                /* ATHENV V7.2 +++ */
+                /* Without this, ART application can not run well on 8K Android */
+                /*printk("AR6K: length=%d, ret=%d\n", length, ret); */
+                if (ret != length)
+                    printk("[HTC_RAW_READ] Read %d bytes, return %d bytes\n", length, ret);
+                /* ATHENV V7.2 --- */
                 put_user(ret, (unsigned int *)rq->ifr_data);
             } else {
                 ret = A_ERROR;
@@ -1695,6 +1710,12 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                 buffer = userdata + sizeof(streamID) + sizeof(length);
                 ret = ar6000_htc_raw_write(ar, (HTC_RAW_STREAM_ID)streamID,
                                            buffer, length);
+                /* ATHENV V7.2 +++ */
+                /* Without this, ART application can not run well on 8K Android */
+                /*printk("AR6K: length=%d, ret=%d\n", length, ret); */
+                if (ret != length)
+                    printk("[HTC_RAW_WRITE] Write %d bytes, return %d bytes\n", length, ret);
+                /* ATHENV V7.2 --- */
                 put_user(ret, (unsigned int *)rq->ifr_data);
             } else {
                 ret = A_ERROR;
@@ -1881,27 +1902,27 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if (copy_from_user(&scParams, userdata,
-                                      sizeof(scParams)))
+            } else if (copy_from_user(&ar->scParams, userdata,
+                                      sizeof(ar->scParams)))
             {
                 ret = -EFAULT;
             } else {
-                if (CAN_SCAN_IN_CONNECT(scParams.scanCtrlFlags)) {
+                if (CAN_SCAN_IN_CONNECT(ar->scParams.scanCtrlFlags)) {
                     ar->arSkipScan = FALSE;
                 } else {
                     ar->arSkipScan = TRUE;
                 }
 
-                if (wmi_scanparams_cmd(ar->arWmi, scParams.fg_start_period,
-                                       scParams.fg_end_period,
-                                       scParams.bg_period,
-                                       scParams.minact_chdwell_time,
-                                       scParams.maxact_chdwell_time,
-                                       scParams.pas_chdwell_time,
-                                       scParams.shortScanRatio,
-                                       scParams.scanCtrlFlags,
-                                       scParams.max_dfsch_act_time,
-                                       scParams.maxact_scan_per_ssid) != A_OK)
+                if (wmi_scanparams_cmd(ar->arWmi, ar->scParams.fg_start_period,
+                                       ar->scParams.fg_end_period,
+                                       ar->scParams.bg_period,
+                                       ar->scParams.minact_chdwell_time,
+                                       ar->scParams.maxact_chdwell_time,
+                                       ar->scParams.pas_chdwell_time,
+                                       ar->scParams.shortScanRatio,
+                                       ar->scParams.scanCtrlFlags,
+                                       ar->scParams.max_dfsch_act_time,
+                                       ar->scParams.maxact_scan_per_ssid) != A_OK)
                 {
                     ret = -EIO;
                 }
@@ -2131,7 +2152,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             if (ar->arHtcTarget)
             {
-//                HTCForceReset(htcTarget);
+/*                HTCForceReset(htcTarget); */
             }
             else
             {
@@ -2620,77 +2641,14 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
             ret = ar6000_ioctl_get_power_mode(dev, rq);
             break;
         case AR6000_XIOCTRL_WMI_SET_WLAN_STATE:
-            get_user(ar->arWlanState, (unsigned int *)userdata);
-            if (ar->arWmiReady == FALSE) {
-/* ATHENV */
-#ifndef ANDROID_ENV
+        {
+            AR6000_WLAN_STATE state;
+            get_user(state, (unsigned int *)userdata);
+            if (ar6000_set_wlan_state(ar, state)!=A_OK) {
                 ret = -EIO;
-#endif /* ! ANDROID_ENV */
-/* ATHENV */
-                break;
-            }
-
-            if (ar->arWlanState == WLAN_ENABLED) {
-/* ATHENV */
-#ifdef ANDROID_ENV
-                printk("Enable WLAN\n");
-#endif
-/* ATHENV */
-                /* Enable foreground scanning */
-                if (wmi_scanparams_cmd(ar->arWmi, scParams.fg_start_period,
-                                       scParams.fg_end_period,
-                                       scParams.bg_period,
-                                       scParams.minact_chdwell_time,
-                                       scParams.maxact_chdwell_time,
-                                       scParams.pas_chdwell_time,
-                                       scParams.shortScanRatio,
-                                       scParams.scanCtrlFlags,
-                                       scParams.max_dfsch_act_time,
-                                       scParams.maxact_scan_per_ssid) != A_OK)
-                {
-                    ret = -EIO;
-                }
-                if (ar->arSsidLen) {
-                    ar->arConnectPending = TRUE;
-                    if (wmi_connect_cmd(ar->arWmi, ar->arNetworkType,
-                                        ar->arDot11AuthMode, ar->arAuthMode,
-                                        ar->arPairwiseCrypto,
-                                        ar->arPairwiseCryptoLen,
-                                        ar->arGroupCrypto, ar->arGroupCryptoLen,
-                                        ar->arSsidLen, ar->arSsid,
-                                        ar->arReqBssid, ar->arChannelHint,
-                                        ar->arConnectCtrlFlags) != A_OK)
-                    {
-                        ret = -EIO;
-                        ar->arConnectPending = FALSE;
-                    }
-                }
-            } else {
-/* ATHENV */
-#ifdef ANDROID_ENV
-                printk("Disable WLAN\n");
-#endif
-/* ATHENV */
-                /* Disconnect from the AP and disable foreground scanning */
-                AR6000_SPIN_LOCK(&ar->arLock, 0);
-                if (ar->arConnected == TRUE || ar->arConnectPending == TRUE) {
-                    AR6000_SPIN_UNLOCK(&ar->arLock, 0);
-                    wmi_disconnect_cmd(ar->arWmi);
-		    //ZTE_WIFI_HP_012 
-		    //work around for disconnect cmd, we need to update the 
-		    //arConnected flag 
-		    ar->arConnected = FALSE;
-		    //ZTE_WIFI_HP_012 enD 
-                } else {
-                    AR6000_SPIN_UNLOCK(&ar->arLock, 0);
-                }
-
-                if (wmi_scanparams_cmd(ar->arWmi, 0xFFFF, 0, 0, 0, 0, 0, 0, 0xFF, 0, 0) != A_OK)
-                {
-                    ret = -EIO;
-                }
-            }
+            }       
             break;
+        }
         case AR6000_XIOCTL_WMI_GET_ROAM_DATA:
             ret = ar6000_ioctl_get_roam_data(dev, rq);
             break;
@@ -3464,7 +3422,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
             }
             break;
         }
-        case AR6000_XIOCTL_AP_SET_COUNTRY:
+        case AR6000_XIOCTL_SET_COUNTRY:
         {
             ret = ar6000_ioctl_set_country(dev, rq);
             break;
@@ -3519,10 +3477,10 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             WMI_AP_HIDDEN_SSID_CMD ssid;
             ssid.hidden_ssid = ar->ap_hidden_ssid;
-            
+
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((WMI_AP_HIDDEN_SSID_CMD *)rq->ifr_data, 
+            } else if(copy_to_user((WMI_AP_HIDDEN_SSID_CMD *)rq->ifr_data,
                                     &ssid, sizeof(WMI_AP_HIDDEN_SSID_CMD))) {
                     ret = -EFAULT;
             }
@@ -3530,13 +3488,13 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         }
         case AR6000_XIOCTL_AP_GET_COUNTRY:
         {
-            WMI_AP_SET_COUNTRY_CMD cty;
-            A_MEMCPY(cty.countryCode, ar->ap_country_code, 3);
+            WMI_SET_COUNTRY_CMD cty;
+            A_MEMCPY(cty.countryCode, ar->country_code, 3);
 
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((WMI_AP_SET_COUNTRY_CMD *)rq->ifr_data, 
-                                    &cty, sizeof(WMI_AP_SET_COUNTRY_CMD))) {
+            } else if(copy_to_user((WMI_SET_COUNTRY_CMD *)rq->ifr_data,
+                                    &cty, sizeof(WMI_SET_COUNTRY_CMD))) {
                     ret = -EFAULT;
             }
             break;
@@ -3545,7 +3503,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((A_UINT8 *)rq->ifr_data, 
+            } else if(copy_to_user((A_UINT8 *)rq->ifr_data,
                                     &ar->ap_wmode, sizeof(A_UINT8))) {
                     ret = -EFAULT;
             }
@@ -3555,10 +3513,10 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             WMI_AP_SET_DTIM_CMD dtim;
             dtim.dtim = ar->ap_dtim_period;
-            
+
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((WMI_AP_SET_DTIM_CMD *)rq->ifr_data, 
+            } else if(copy_to_user((WMI_AP_SET_DTIM_CMD *)rq->ifr_data,
                                     &dtim, sizeof(WMI_AP_SET_DTIM_CMD))) {
                     ret = -EFAULT;
             }
@@ -3568,10 +3526,10 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             WMI_BEACON_INT_CMD bi;
             bi.beaconInterval = ar->ap_beacon_interval;
-            
+
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((WMI_BEACON_INT_CMD *)rq->ifr_data, 
+            } else if(copy_to_user((WMI_BEACON_INT_CMD *)rq->ifr_data,
                                     &bi, sizeof(WMI_BEACON_INT_CMD))) {
                     ret = -EFAULT;
             }
@@ -3581,10 +3539,10 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         {
             WMI_SET_RTS_CMD rts;
             rts.threshold = ar->arRTS;
-            
+
             if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
-            } else if(copy_to_user((WMI_SET_RTS_CMD *)rq->ifr_data, 
+            } else if(copy_to_user((WMI_SET_RTS_CMD *)rq->ifr_data,
                                     &rts, sizeof(WMI_SET_RTS_CMD))) {
                     ret = -EFAULT;
             }

@@ -1,21 +1,25 @@
+/*------------------------------------------------------------------------------ */
+/* <copyright file="ieee80211_ioctl.h" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
+
 /*
- * Copyright (c) 2004-2005 Atheros Communications Inc.
- * All rights reserved.
  *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- *
- *
- * $Id: //depot/sw/releases/olca2.2/host/os/linux/include/ieee80211_ioctl.h#1 $
+ * $Id: //depot/sw/releases/olca2.2/host/os/linux/include/ieee80211_ioctl.h#2 $
  */
 
 #ifndef _IEEE80211_IOCTL_H_
@@ -40,26 +44,26 @@ extern "C" {
  more than IEEE80211_KEYBUF_SIZE.
  */
 struct ieee80211req_key {
-	u_int8_t	ik_type;	/* key/cipher type */
-	u_int8_t	ik_pad;
-	u_int16_t	ik_keyix;	/* key index */
-	u_int8_t	ik_keylen;	/* key length in bytes */
-	u_int8_t	ik_flags;
+    u_int8_t    ik_type;    /* key/cipher type */
+    u_int8_t    ik_pad;
+    u_int16_t   ik_keyix;   /* key index */
+    u_int8_t    ik_keylen;  /* key length in bytes */
+    u_int8_t    ik_flags;
 #define IEEE80211_KEY_XMIT  0x01
 #define IEEE80211_KEY_RECV  0x02
-#define	IEEE80211_KEY_DEFAULT	0x80	/* default xmit key */
-	u_int8_t	ik_macaddr[IEEE80211_ADDR_LEN];
-	u_int64_t	ik_keyrsc;	/* key receive sequence counter */
-	u_int64_t	ik_keytsc;	/* key transmit sequence counter */
-	u_int8_t	ik_keydata[IEEE80211_KEYBUF_SIZE+IEEE80211_MICBUF_SIZE];
+#define IEEE80211_KEY_DEFAULT   0x80    /* default xmit key */
+    u_int8_t    ik_macaddr[IEEE80211_ADDR_LEN];
+    u_int64_t   ik_keyrsc;  /* key receive sequence counter */
+    u_int64_t   ik_keytsc;  /* key transmit sequence counter */
+    u_int8_t    ik_keydata[IEEE80211_KEYBUF_SIZE+IEEE80211_MICBUF_SIZE];
 };
 /*
  * Delete a key either by index or address.  Set the index
  * to IEEE80211_KEYIX_NONE when deleting a unicast key.
  */
 struct ieee80211req_del_key {
-	u_int8_t	idk_keyix;	/* key index */
-	u_int8_t	idk_macaddr[IEEE80211_ADDR_LEN];
+    u_int8_t    idk_keyix;  /* key index */
+    u_int8_t    idk_macaddr[IEEE80211_ADDR_LEN];
 };
 /*
  * MLME state manipulation request.  IEEE80211_MLME_ASSOC
@@ -68,14 +72,14 @@ struct ieee80211req_del_key {
  * ap (to effect a station).
  */
 struct ieee80211req_mlme {
-	u_int8_t	im_op;		/* operation to perform */
-#define	IEEE80211_MLME_ASSOC		1	/* associate station */
-#define	IEEE80211_MLME_DISASSOC		2	/* disassociate station */
-#define	IEEE80211_MLME_DEAUTH		3	/* deauthenticate station */
-#define	IEEE80211_MLME_AUTHORIZE	4	/* authorize station */
-#define	IEEE80211_MLME_UNAUTHORIZE	5	/* unauthorize station */
-	u_int16_t	im_reason;	/* 802.11 reason code */
-	u_int8_t	im_macaddr[IEEE80211_ADDR_LEN];
+    u_int8_t    im_op;      /* operation to perform */
+#define IEEE80211_MLME_ASSOC        1   /* associate station */
+#define IEEE80211_MLME_DISASSOC     2   /* disassociate station */
+#define IEEE80211_MLME_DEAUTH       3   /* deauthenticate station */
+#define IEEE80211_MLME_AUTHORIZE    4   /* authorize station */
+#define IEEE80211_MLME_UNAUTHORIZE  5   /* unauthorize station */
+    u_int16_t   im_reason;  /* 802.11 reason code */
+    u_int8_t    im_macaddr[IEEE80211_ADDR_LEN];
 };
 
 struct ieee80211req_addpmkid {
@@ -84,15 +88,15 @@ struct ieee80211req_addpmkid {
     u_int8_t    pi_pmkid[16];
 };
 
-#define AUTH_ALG_OPEN_SYSTEM	0x01
-#define AUTH_ALG_SHARED_KEY	0x02
-#define AUTH_ALG_LEAP		0x04
+#define AUTH_ALG_OPEN_SYSTEM    0x01
+#define AUTH_ALG_SHARED_KEY 0x02
+#define AUTH_ALG_LEAP       0x04
 
 struct ieee80211req_authalg {
    u_int8_t auth_alg;
-};  
+};
 
-/* 
+/*
  * Request to add an IE to a Management Frame
  */
 enum{
@@ -115,9 +119,9 @@ struct ieee80211req_getset_appiebuf {
     u_int8_t  app_buf[];
 };
 
-/* 
+/*
  * The following definitions are used by an application to set filter
- * for receiving management frames 
+ * for receiving management frames
  */
 enum {
      IEEE80211_FILTER_TYPE_BEACON      =   0x1,
@@ -141,11 +145,11 @@ enum {
     IEEE80211_PARAM_MCASTKEYLEN = 6,    /* multicast key length */
     IEEE80211_PARAM_UCASTCIPHER = 8,
     IEEE80211_PARAM_UCASTKEYLEN = 9,    /* unicast key length */
-	IEEE80211_PARAM_WPA		= 10,	/* WPA mode (0,1,2) */
-	IEEE80211_PARAM_ROAMING		= 12,	/* roaming mode */
-	IEEE80211_PARAM_PRIVACY		= 13,	/* privacy invoked */
-	IEEE80211_PARAM_COUNTERMEASURES	= 14,	/* WPA/TKIP countermeasures */
-	IEEE80211_PARAM_DROPUNENCRYPTED	= 15,	/* discard unencrypted frames */
+    IEEE80211_PARAM_WPA     = 10,   /* WPA mode (0,1,2) */
+    IEEE80211_PARAM_ROAMING     = 12,   /* roaming mode */
+    IEEE80211_PARAM_PRIVACY     = 13,   /* privacy invoked */
+    IEEE80211_PARAM_COUNTERMEASURES = 14,   /* WPA/TKIP countermeasures */
+    IEEE80211_PARAM_DROPUNENCRYPTED = 15,   /* discard unencrypted frames */
 };
 
 /*
@@ -157,9 +161,9 @@ enum {
 #define WPA_MODE_NONE   4
 
 struct ieee80211req_wpaie {
-	u_int8_t	wpa_macaddr[IEEE80211_ADDR_LEN];
-	u_int8_t	wpa_ie[IEEE80211_MAX_IE];
-	u_int8_t	rsn_ie[IEEE80211_MAX_IE];
+    u_int8_t    wpa_macaddr[IEEE80211_ADDR_LEN];
+    u_int8_t    wpa_ie[IEEE80211_MAX_IE];
+    u_int8_t    rsn_ie[IEEE80211_MAX_IE];
 };
 
 #ifdef __cplusplus

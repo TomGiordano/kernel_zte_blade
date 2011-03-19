@@ -9,11 +9,11 @@
 
 #define __VER_MAJOR_ 2
 #define __VER_MINOR_ 2
-#define __VER_PATCH_ 1
+#define __VER_PATCH_ 0
 
   
 /* The makear6ksdk script (used for release builds) modifies the following line. */
-#define __BUILD_NUMBER_ 25
+#define __BUILD_NUMBER_ 53
 
 
 /* Format of the version number. */

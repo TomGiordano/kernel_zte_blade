@@ -1,21 +1,21 @@
-//------------------------------------------------------------------------------
-// <copyright file="htc_debug.h" company="Atheros">
-//    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="htc_debug.h" company="Atheros"> */
+/*    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 #ifndef HTC_DEBUG_H_
 #define HTC_DEBUG_H_
 
@@ -34,7 +34,7 @@ enum {
 
 #ifdef DEBUG
 
-// TODO FIX usage of A_PRINTF!
+/* TODO FIX usage of A_PRINTF! */
 #define AR_DEBUG_LVL_CHECK(lvl) (debughtc & (lvl))
 #define AR_DEBUG_PRINTBUF(buffer, length, desc) do {   \
     if (debughtc & ATH_DEBUG_DUMP) {             \
@@ -47,11 +47,11 @@ enum {
         A_PRINTF(KERN_ALERT PRINTX_ARG args);    \
     }                                            \
 } while (0)
-//#define AR_DEBUG_ASSERT(test) do {               \
-    //if (!(test)) {                               \
-        //AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Debug Assert Caught, File %s, Line: %d, Test:%s \n",__FILE__, __LINE__,#test));         \
-    //}                                            \
-//} while(0)
+/*#define AR_DEBUG_ASSERT(test) do {               \ */
+    /*if (!(test)) {                               \ */
+        /*AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Debug Assert Caught, File %s, Line: %d, Test:%s \n",__FILE__, __LINE__,#test));         \ */
+    /*}                                            \ */
+/*} while(0) */
 extern int debughtc;
 #else
 #define AR_DEBUG_PRINTF(flags, args)

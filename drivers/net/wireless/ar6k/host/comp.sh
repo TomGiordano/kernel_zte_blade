@@ -5,15 +5,13 @@ export ATH_BUILD_TYPE=QUALCOMM_ARM_NATIVEMMC
 #export ATH_BUILD_TYPE=LOCAL_i686_NATIVEMMC
 
 # which BSP? (we have to select only one.)
-export ATH_BSP_TYPE=MSM7227_BSP4715
-#export ATH_BSP_TYPE=MSM7227_BSP4515
-#export ATH_BSP_TYPE=MSM7201A_BSP6370
-#export ATH_BSP_TYPE=QSD8K_BSP3170
-#export ATH_BSP_TYPE=QSD8K_BSP3180
+export ATH_BSP_TYPE=MSM7201A_BSP6370
+#export ATH_BSP_TYPE=MSM7201A_BSP6360
+#export ATH_BSP_TYPE=QSD8K_BSP3135
+#export ATH_BSP_TYPE=QSD8K_BSP3120
 
 # common environment variable for building driver
-#export PATH=/na_test2/arm-2006q3/bin:${PATH}
-export PATH=/home/tom/Android/bin/arm-eabi-4.4.0/bin/arm-eabi-gcc/bin:${PATH}
+export PATH=/na_test2/arm-2006q3/bin:${PATH}
 export TARGET_TYPE=AR6002
 export NFS_DEV_ENV_USED=no
 
@@ -42,7 +40,7 @@ done
 
 case $1 in
 	1)
-		make 
+		make V=1
 		if [ "$ATH_BUILD_TYPE" == "QUALCOMM_ARM" ]; then
 			cp sdiostack/src/hcd/qualcomm/sdio_qualcomm_hcd.ko .output/${ATH_BUILD_TYPE}-SDIO/image/
 		fi

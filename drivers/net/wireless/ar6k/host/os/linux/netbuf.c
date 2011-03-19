@@ -1,22 +1,22 @@
+/*------------------------------------------------------------------------------ */
+/* <copyright file="netbuf.c" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 
-/*
- * 
- * Copyright (c) 2004-2007 Atheros Communications Inc.
- * All rights reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- * 
- */
 #include <linux/kernel.h>
 #include <linux/skbuff.h>
 #include <a_config.h>
@@ -62,7 +62,7 @@ a_netbuf_alloc(int size)
 {
     struct sk_buff *skb;
     skb = dev_alloc_skb(AR6000_DATA_OFFSET + sizeof(HTC_PACKET) + size);
-    skb_reserve(skb, AR6000_DATA_OFFSET + sizeof(HTC_PACKET));    
+    skb_reserve(skb, AR6000_DATA_OFFSET + sizeof(HTC_PACKET));
     return ((void *)skb);
 }
 
@@ -153,7 +153,7 @@ a_netbuf_put_data(void *bufPtr, char *srcPtr, A_INT32 len)
 
 
 /*
- * Trim the network buffer pointed to by bufPtr to len # of bytes 
+ * Trim the network buffer pointed to by bufPtr to len # of bytes
  */
 A_STATUS
 a_netbuf_setlen(void *bufPtr, A_INT32 len)
@@ -182,7 +182,7 @@ a_netbuf_trim_data(void *bufPtr, char *dstPtr, A_INT32 len)
 {
     char *start = ((struct sk_buff *)bufPtr)->data +
         (((struct sk_buff *)bufPtr)->len - len);
-    
+
     A_MEMCPY(dstPtr, start, len);
     skb_trim((struct sk_buff *)bufPtr, ((struct sk_buff *)bufPtr)->len - len);
 

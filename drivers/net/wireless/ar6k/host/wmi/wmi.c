@@ -1,30 +1,24 @@
-//------------------------------------------------------------------------------
-// <copyright file="wmi.c" company="Atheros">
-//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// This module implements the hardware independent layer of the
-// Wireless Module Interface (WMI) protocol.
-//
-// Author(s): ="Atheros"
-//==============================================================================
-/* history 
- *  when             who          what                             tag 
- * 2010-1-07         hp         decrease netlink event report   ZTE_WIFI_HP_008
- *
- *
- */
+/*------------------------------------------------------------------------------ */
+/* <copyright file="wmi.c" company="Atheros"> */
+/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* This module implements the hardware independent layer of the */
+/* Wireless Module Interface (WMI) protocol. */
+/* */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 #include <a_config.h>
 #include <athdefs.h>
 #include <a_types.h>
@@ -104,6 +98,9 @@ wmi_get_pmkid_list_event_rx(struct wmi_t *wmip, A_UINT8 *datap, A_UINT32 len);
 static A_STATUS
 wmi_set_params_event_rx(struct wmi_t *wmip, A_UINT8 *datap, A_UINT32 len);
 
+static A_STATUS
+wmi_acm_reject_event_rx(struct wmi_t *wmip, A_UINT8 *datap, A_UINT32 len);
+
 #ifdef CONFIG_HOST_GPIO_SUPPORT
 static A_STATUS wmi_gpio_intr_rx(struct wmi_t *wmip, A_UINT8 *datap, int len);
 static A_STATUS wmi_gpio_data_rx(struct wmi_t *wmip, A_UINT8 *datap, int len);
@@ -170,11 +167,11 @@ unsigned int processDot11Hdr = 1;
 extern unsigned int processDot11Hdr;
 #endif
 
-/* ATHENV */
-#ifdef ANDROID_ENV
+#ifndef REXOS
+/* ATHENV V9 +++ */
 int wps_enable;
+/* ATHENV V9 --- */
 #endif
-/* ATHENV */
 
 static const A_INT32 wmi_rateTable[] = {
     1000,
@@ -419,9 +416,9 @@ A_UINT8 wmi_implicit_create_pstream(struct wmi_t *wmip, void *osbuf, A_UINT32 la
 
     A_ASSERT(osbuf != NULL);
 
-    //
-    // Initialize header size
-    //
+    /* */
+    /* Initialize header size */
+    /* */
     hdrsize = 0;
 
     datap = A_NETBUF_DATA(osbuf);
@@ -455,6 +452,13 @@ A_UINT8 wmi_implicit_create_pstream(struct wmi_t *wmip, void *osbuf, A_UINT32 la
         {
             userPriority = layer2Priority & 0x7;
         }
+    }
+
+
+    /* workaround for WMM S5 */
+    if ((WMM_AC_VI == wmip->wmi_traffic_class) && ((5 == userPriority) || (4 == userPriority)))
+    {
+        userPriority = 1;
     }
 
     trafficClass = convert_userPriority_to_trafficClass(userPriority);
@@ -520,7 +524,7 @@ wmi_dot11_hdr_add (struct wmi_t *wmip, void *osbuf, NETWORK_TYPE mode)
     macHdr.typeOrLen = A_CPU2BE16(A_NETBUF_LEN(osbuf) - sizeof(ATH_MAC_HDR) +
                                   sizeof(ATH_LLC_SNAP_HDR));
 
-    // Remove the Ethernet hdr
+    /* Remove the Ethernet hdr */
     A_NETBUF_PULL(osbuf, sizeof(ATH_MAC_HDR));
 
     /*
@@ -625,10 +629,10 @@ wmi_dot11_hdr_remove(struct wmi_t *wmip, void *osbuf)
         break;
     }
 
-    // Remove the LLC Hdr.
+    /* Remove the LLC Hdr. */
     A_NETBUF_PULL(osbuf, sizeof(ATH_LLC_SNAP_HDR));
 
-    // Insert the ATH MAC hdr.
+    /* Insert the ATH MAC hdr. */
 
     A_NETBUF_PUSH(osbuf, sizeof(ATH_MAC_HDR));
     datap = A_NETBUF_DATA(osbuf);
@@ -855,10 +859,7 @@ wmi_control_rx(struct wmi_t *wmip, void *osbuf)
     case (WMI_BSSINFO_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_BSSINFO_EVENTID\n", DBGARG));
         status = wmi_bssInfo_event_rx(wmip, datap, len);
-	//ZTE_WIFI_HP_008 
-	//decrease event report 
-        /*A_WMI_SEND_GENERIC_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);*/
-	//ZTE_WIFI_HP_008 end 
+        A_WMI_SEND_GENERIC_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);
         break;
     case (WMI_REGDOMAIN_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_REGDOMAIN_EVENTID\n", DBGARG));
@@ -873,10 +874,7 @@ wmi_control_rx(struct wmi_t *wmip, void *osbuf)
              * pstream creation. Do we need to send this event to App..?
              * no harm in sending it.
              */
-	//ZTE_WIFI_HP_008 
-	//decrease event report 
-        /*A_WMI_SEND_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);*/
-	//ZTE_WIFI_HP_008 end
+        A_WMI_SEND_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);
         break;
     case (WMI_NEIGHBOR_REPORT_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_NEIGHBOR_REPORT_EVENTID\n", DBGARG));
@@ -885,10 +883,7 @@ wmi_control_rx(struct wmi_t *wmip, void *osbuf)
     case (WMI_SCAN_COMPLETE_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_SCAN_COMPLETE_EVENTID\n", DBGARG));
         status = wmi_scanComplete_rx(wmip, datap, len);
-	//ZTE_WIFI_HP_008 
-	//decrease event report 
-        /*A_WMI_SEND_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);*/
-	//ZTE_WIFI_HP_008 end
+        A_WMI_SEND_EVENT_TO_APP(wmip->wmi_devt, id, datap, len);
         break;
     case (WMI_CMDERROR_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_CMDERROR_EVENTID\n", DBGARG));
@@ -981,6 +976,10 @@ wmi_control_rx(struct wmi_t *wmip, void *osbuf)
     case (WMI_SET_PARAMS_REPLY_EVENTID):
         A_DPRINTF(DBG_WMI, (DBGFMT "WMI_SET_PARAMS_REPLY Event\n", DBGARG));
         status = wmi_set_params_event_rx(wmip, datap, len);
+        break;
+    case (WMI_ACM_REJECT_EVENTID):
+        A_DPRINTF(DBG_WMI, (DBGFMT "WMI_SET_PARAMS_REPLY Event\n", DBGARG));
+        status = wmi_acm_reject_event_rx(wmip, datap, len);
         break;
     default:
         A_DPRINTF(DBG_WMI|DBG_ERROR,
@@ -1163,6 +1162,7 @@ static A_STATUS
 wmi_disconnect_event_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
 {
     WMI_DISCONNECT_EVENT *ev;
+    wmip->wmi_traffic_class = 100;
 
     if (len < sizeof(WMI_DISCONNECT_EVENT)) {
         return A_EINVAL;
@@ -1239,9 +1239,9 @@ wmi_bssInfo_event_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
 
     if (bih->rssi > 0) {
         if (NULL == bss)
-            return A_OK;  //no node found in the table, just drop the node with incorrect RSSI
+            return A_OK;  /*no node found in the table, just drop the node with incorrect RSSI */
         else
-            bih->rssi = bss->ni_rssi; //Adjust RSSI in datap in case it is used in A_WMI_BSSINFO_EVENT_RX
+            bih->rssi = bss->ni_rssi; /*Adjust RSSI in datap in case it is used in A_WMI_BSSINFO_EVENT_RX */
     }
 
     A_WMI_BSSINFO_EVENT_RX(wmip->wmi_devt, datap, len);
@@ -1265,13 +1265,13 @@ wmi_bssInfo_event_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
               bih->bssid[1], bih->bssid[2], bih->bssid[3], bih->bssid[4],
               bih->bssid[5]));
 
-/* ATHENV */
-#ifdef ANDROID_ENV
+#ifndef REXOS
+/* ATHENV V9 +++ */
     if(wps_enable && (bih->frameType == PROBERESP_FTYPE) )
         return A_OK;
+/* ATHENV V9 --- */
 #endif
-/* ATHENV */
-
+    
     if (bss != NULL) {
         /*
          * Free up the node.  Not the most efficient process given
@@ -1478,12 +1478,12 @@ wmi_bitrate_reply_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
 static A_STATUS
 wmi_ratemask_reply_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
 {
-    WMI_FIX_RATES_CMD *reply;
+    WMI_FIX_RATES_REPLY *reply;
 
-    if (len < sizeof(WMI_BIT_RATE_CMD)) {
+    if (len < sizeof(WMI_FIX_RATES_REPLY)) {
         return A_EINVAL;
     }
-    reply = (WMI_FIX_RATES_CMD *)datap;
+    reply = (WMI_FIX_RATES_REPLY *)datap;
     A_DPRINTF(DBG_WMI,
         (DBGFMT "Enter - fixed rate mask %x\n", DBGARG, reply->fixRateMask));
 
@@ -2064,10 +2064,7 @@ wmi_dbglog_event_rx(struct wmi_t *wmip, A_UINT8 *datap, int len)
     dropped = *((A_UINT32 *)datap);
     datap += sizeof(dropped);
     len -= sizeof(dropped);
-    //ZTE_WIFI_HP_008 
-    //decrease event report 
-    /*A_WMI_DBGLOG_EVENT(wmip->wmi_devt, dropped, datap, len);*/
-    //ZTE_WIFI_HP_008 end
+    A_WMI_DBGLOG_EVENT(wmip->wmi_devt, dropped, datap, len);
     return A_OK;
 }
 
@@ -2190,6 +2187,7 @@ wmi_connect_cmd(struct wmi_t *wmip, NETWORK_TYPE netType,
 {
     void *osbuf;
     WMI_CONNECT_CMD *cc;
+    wmip->wmi_traffic_class = 100;
 
     if ((pairwiseCrypto == NONE_CRYPT) && (groupCrypto != NONE_CRYPT)) {
         return A_EINVAL;
@@ -2234,7 +2232,7 @@ wmi_connect_cmd(struct wmi_t *wmip, NETWORK_TYPE netType,
     wmip->wmi_pair_crypto_type  = pairwiseCrypto;
     wmip->wmi_grp_crypto_type   = groupCrypto;
 
-    return (wmi_cmd_send(wmip, osbuf, WMI_CONNECT_CMDID, NO_SYNC_WMIFLAG));
+    return (wmi_cmd_send(wmip, osbuf, WMI_CONNECT_CMDID, SYNC_BOTH_WMIFLAG));
 }
 
 A_STATUS
@@ -2242,6 +2240,7 @@ wmi_reconnect_cmd(struct wmi_t *wmip, A_UINT8 *bssid, A_UINT16 channel)
 {
     void *osbuf;
     WMI_RECONNECT_CMD *cc;
+    wmip->wmi_traffic_class = 100;
 
     osbuf = A_NETBUF_ALLOC(sizeof(WMI_RECONNECT_CMD));
     if (osbuf == NULL) {
@@ -2266,6 +2265,7 @@ A_STATUS
 wmi_disconnect_cmd(struct wmi_t *wmip)
 {
     A_STATUS status;
+    wmip->wmi_traffic_class = 100;
 
     /* Bug fix for 24817(elevator bug) - the disconnect command does not
        need to do a SYNC before.*/
@@ -2871,7 +2871,7 @@ wmi_sync_point(struct wmi_t *wmip)
                 status = A_NO_MEMORY;
                 break;
             }
-        } //end for
+        } /*end for */
 
         /* if Buffer allocation for any of the dataSync fails, then do not
          * send the Synchronize cmd on the control ep
@@ -2908,7 +2908,7 @@ wmi_sync_point(struct wmi_t *wmip)
             /* we don't own this buffer anymore, NULL it out of the array so it
              * won't get cleaned up */
             dataSyncBufs[i].osbuf = NULL;
-        } //end for
+        } /*end for */
 
     } while(FALSE);
 
@@ -2953,19 +2953,19 @@ wmi_create_pstream_cmd(struct wmi_t *wmip, WMI_CREATE_PSTREAM_CMD *params)
         return  A_EINVAL;
     }
 
-    //
-    // check nominal PHY rate is >= minimalPHY, so that DUT
-    // can allow TSRS IE
-    //
+    /* */
+    /* check nominal PHY rate is >= minimalPHY, so that DUT */
+    /* can allow TSRS IE */
+    /* */
 
-    // get the physical rate
-    minimalPHY = ((params->minPhyRate / 1000)/1000); // unit of bps
+    /* get the physical rate */
+    minimalPHY = ((params->minPhyRate / 1000)/1000); /* unit of bps */
 
-    // check minimal phy < nominal phy rate
-    //
+    /* check minimal phy < nominal phy rate */
+    /* */
     if (params->nominalPHY >= minimalPHY)
     {
-        nominalPHY = (params->nominalPHY * 1000)/500; // unit of 500 kbps
+        nominalPHY = (params->nominalPHY * 1000)/500; /* unit of 500 kbps */
         A_DPRINTF(DBG_WMI,
                   (DBGFMT "TSRS IE Enabled::MinPhy %x->NominalPhy ===> %x\n", DBGARG,
                   minimalPHY, nominalPHY));
@@ -4241,7 +4241,7 @@ wmi_opt_tx_frame_cmd(struct wmi_t *wmip,
 
     cmd->frmType    = frmType;
     cmd->optIEDataLen   = optIEDataLen;
-    //cmd->optIEData     = (A_UINT8 *)((int)cmd + sizeof(*cmd));
+    /*cmd->optIEData     = (A_UINT8 *)((int)cmd + sizeof(*cmd)); */
     A_MEMCPY(cmd->bssid, bssid, sizeof(cmd->bssid));
     A_MEMCPY(cmd->dstAddr, dstMacAddr, sizeof(cmd->dstAddr));
     A_MEMCPY(&cmd->optIEData[0], optIEData, optIEDataLen);
@@ -4383,7 +4383,7 @@ wmi_verify_tspec_params(WMI_CREATE_PSTREAM_CMD *pCmd, A_BOOL tspecCompliance)
             (pCmd->mediumTime != TSPEC_MEDIUM_TIME_ATHEROS_DEF)) {
 
             A_DPRINTF(DBG_WMI, (DBGFMT "Invalid TSPEC params\n", DBGARG));
-            //A_PRINTF("%s: Invalid TSPEC params\n", __func__);
+            /*A_PRINTF("%s: Invalid TSPEC params\n", __func__); */
             ret = A_EINVAL;
         }
     }
@@ -4540,7 +4540,7 @@ A_STATUS
 wmi_set_country(struct wmi_t *wmip, A_UCHAR *countryCode)
 {
     void *osbuf;
-    WMI_AP_SET_COUNTRY_CMD *cmd;
+    WMI_SET_COUNTRY_CMD *cmd;
 
     osbuf = A_NETBUF_ALLOC(sizeof(*cmd));
     if (osbuf == NULL) {
@@ -4549,11 +4549,11 @@ wmi_set_country(struct wmi_t *wmip, A_UCHAR *countryCode)
 
     A_NETBUF_PUT(osbuf, sizeof(*cmd));
 
-    cmd = (WMI_AP_SET_COUNTRY_CMD *)(A_NETBUF_DATA(osbuf));
+    cmd = (WMI_SET_COUNTRY_CMD *)(A_NETBUF_DATA(osbuf));
     A_MEMZERO(cmd, sizeof(*cmd));
     A_MEMCPY(cmd->countryCode,countryCode,3);
 
-    return (wmi_cmd_send(wmip, osbuf, WMI_AP_SET_COUNTRY_CMDID,
+    return (wmi_cmd_send(wmip, osbuf, WMI_SET_COUNTRY_CMDID,
             NO_SYNC_WMIFLAG));
 }
 
@@ -4591,7 +4591,7 @@ wmi_set_bt_status_cmd(struct wmi_t *wmip, A_UINT8 streamType, A_UINT8 status)
     void *osbuf;
     WMI_SET_BT_STATUS_CMD *cmd;
 
-    ATHR_DISPLAY_MSG (_T("Enter - streamType=%d, status=%d\n"), streamType, status);
+    /*printk("s=%d, s%d\n", streamType, status);*/
 
     osbuf = A_NETBUF_ALLOC(sizeof(*cmd));
     if (osbuf == NULL) {
@@ -4633,7 +4633,7 @@ wmi_set_bt_params_cmd(struct wmi_t *wmip, WMI_SET_BT_PARAMS_CMD* cmd)
         cmd->info.scoParams.reserved8);
     }
     else if (cmd->paramType == BT_PARAM_A2DP) {
-      ATHR_DISPLAY_MSG (_T("A2DP params %d %d %d %d %d %d %d %d %d\n"),
+      printk("A2DP params %d %d %d %d %d %d %d %d %d\n",
         cmd->info.a2dpParams.a2dpWlanUsageLimit,
         cmd->info.a2dpParams.a2dpBurstCntMin,
         cmd->info.a2dpParams.a2dpDataRespTimeout,
@@ -4875,6 +4875,19 @@ wmi_find_Ssidnode (struct wmi_t *wmip, A_UCHAR *pSsid,
     return node;
 }
 
+bss_t *
+wmi_find_matching_Ssidnode (struct wmi_t *wmip, A_UCHAR *pSsid,
+                   A_UINT32 ssidLength,
+                   A_UINT32 dot11AuthMode, A_UINT32 authMode,
+                   A_UINT32 pairwiseCryptoType, A_UINT32 grpwiseCryptoTyp)
+{
+    bss_t *node = NULL;
+    node = wlan_find_matching_Ssidnode (&wmip->wmi_scan_table, pSsid,
+                               ssidLength, dot11AuthMode, authMode, pairwiseCryptoType, grpwiseCryptoTyp);
+
+    return node;
+}
+
 
 void
 wmi_free_allnodes(struct wmi_t *wmip)
@@ -4985,6 +4998,18 @@ wmi_set_params_event_rx(struct wmi_t *wmip, A_UINT8 *datap, A_UINT32 len)
 
 
 
+static A_STATUS
+wmi_acm_reject_event_rx(struct wmi_t *wmip, A_UINT8 *datap, A_UINT32 len)
+{
+    WMI_ACM_REJECT_EVENT *ev;
+
+    ev = (WMI_ACM_REJECT_EVENT *)datap;
+    wmip->wmi_traffic_class = ev->trafficClass;
+    A_DPRINTF(DBG_WMI, (DBGFMT "ACM REJECT %d\n", DBGARG, wmip->wmi_traffic_class));
+    return A_OK;
+}
+
+
 #ifdef CONFIG_HOST_DSET_SUPPORT
 A_STATUS
 wmi_dset_data_reply(struct wmi_t *wmip,
@@ -5038,12 +5063,12 @@ wmi_set_wsc_status_cmd(struct wmi_t *wmip, A_UINT32 status)
     void *osbuf;
     char *cmd;
 
-/* ATHENV */
-#ifdef ANDROID_ENV
+#ifndef REXOS
+/* ATHENV V9 +++ */
     wps_enable = status;
+/* ATHENV V9 --- */
 #endif
-/* ATHENV */
-
+    
     osbuf = a_netbuf_alloc(sizeof(1));
     if (osbuf == NULL) {
         return A_NO_MEMORY;
@@ -5176,7 +5201,7 @@ wmi_scan_indication (struct wmi_t *wmip)
 
     IEEE80211_NODE_LOCK(nt);
 
-    //calc size
+    /*calc size */
     for (bss = nt->nt_node_first; bss; bss = bss->ni_list_next) {
         if (bss->ni_si_gen != gen) {
             bsssize = offsetof(NDIS_802_11_BSSID_SCAN_INFO, Bssid) + offsetof(NDIS_WLAN_BSSID_EX, IEs);
@@ -5191,7 +5216,7 @@ wmi_scan_indication (struct wmi_t *wmip)
                 bsssize = bsssize + bss->ni_cie.ie_wpa[1] + 2;
             }
 
-            // bsssize must be a multiple of 4 to maintain alignment.
+            /* bsssize must be a multiple of 4 to maintain alignment. */
             bsssize = (bsssize + 3) & ~3;
 
             size += bsssize;
@@ -5202,7 +5227,7 @@ wmi_scan_indication (struct wmi_t *wmip)
 
     if (0 == numbss)
     {
-//        RETAILMSG(1, (L"AR6K: scan indication: 0 bss\n"));
+/*        RETAILMSG(1, (L"AR6K: scan indication: 0 bss\n")); */
         ar6000_scan_indication (wmip->wmi_devt, NULL, 0);
         IEEE80211_NODE_UNLOCK (nt);
         return;
@@ -5218,7 +5243,7 @@ wmi_scan_indication (struct wmi_t *wmip)
 
     A_MEMZERO(pAr6kScanIndEvent, size);
 
-    //copy data
+    /*copy data */
     pAr6kScanIndEvent->ind.StatusType = Ndis802_11StatusType_BssidScanInfoList;
     pAr6kScanIndEvent->slist.Version = 1;
     pAr6kScanIndEvent->slist.NumItems = numbss;
@@ -5230,10 +5255,10 @@ wmi_scan_indication (struct wmi_t *wmip)
 
             bss->ni_si_gen = gen;
 
-            //Set scan time
+            /*Set scan time */
             psi->ScanTime = bss->ni_tstamp - WLAN_NODE_INACT_TIMEOUT_MSEC;
 
-            // Copy data to bssid_ex
+            /* Copy data to bssid_ex */
             bsssize = offsetof(NDIS_WLAN_BSSID_EX, IEs);
             bsssize = bsssize + sizeof(NDIS_802_11_FIXED_IEs);
 
@@ -5246,7 +5271,7 @@ wmi_scan_indication (struct wmi_t *wmip)
                 bsssize = bsssize + bss->ni_cie.ie_wpa[1] + 2;
             }
 
-            // bsssize must be a multiple of 4 to maintain alignment.
+            /* bsssize must be a multiple of 4 to maintain alignment. */
             bsssize = (bsssize + 3) & ~3;
 
             psi->Bssid.Length = bsssize;
@@ -5254,21 +5279,21 @@ wmi_scan_indication (struct wmi_t *wmip)
             memcpy (psi->Bssid.MacAddress, bss->ni_macaddr, ETHERNET_MAC_ADDRESS_LENGTH);
 
 
-//if (((bss->ni_macaddr[3] == 0xCE) && (bss->ni_macaddr[4] == 0xF0) && (bss->ni_macaddr[5] == 0xE7)) ||
-//  ((bss->ni_macaddr[3] == 0x03) && (bss->ni_macaddr[4] == 0xE2) && (bss->ni_macaddr[5] == 0x70)))
-//            RETAILMSG (1, (L"%x\n",bss->ni_macaddr[5]));
+/*if (((bss->ni_macaddr[3] == 0xCE) && (bss->ni_macaddr[4] == 0xF0) && (bss->ni_macaddr[5] == 0xE7)) || */
+/*  ((bss->ni_macaddr[3] == 0x03) && (bss->ni_macaddr[4] == 0xE2) && (bss->ni_macaddr[5] == 0x70))) */
+/*            RETAILMSG (1, (L"%x\n",bss->ni_macaddr[5])); */
 
             psi->Bssid.Ssid.SsidLength = 0;
             pie = bss->ni_cie.ie_ssid;
 
             if (pie) {
-                // Format of SSID IE is:
-                //  Type   (1 octet)
-                //  Length (1 octet)
-                //  SSID (Length octets)
-                //
-                //  Validation of the IE should have occurred within WMI.
-                //
+                /* Format of SSID IE is: */
+                /*  Type   (1 octet) */
+                /*  Length (1 octet) */
+                /*  SSID (Length octets) */
+                /* */
+                /*  Validation of the IE should have occurred within WMI. */
+                /* */
                 if (pie[1] <= 32) {
                     psi->Bssid.Ssid.SsidLength = pie[1];
                     memcpy(psi->Bssid.Ssid.Ssid, &pie[2], psi->Bssid.Ssid.SsidLength);
@@ -5276,7 +5301,7 @@ wmi_scan_indication (struct wmi_t *wmip)
             }
             psi->Bssid.Privacy = (bss->ni_cie.ie_capInfo & 0x10) ? 1 : 0;
 
-            //Post the RSSI value relative to the Standard Noise floor value.
+            /*Post the RSSI value relative to the Standard Noise floor value. */
             psi->Bssid.Rssi = bss->ni_rssi;
 
             if (bss->ni_cie.ie_chan >= 2412 && bss->ni_cie.ie_chan <= 2484) {
@@ -5293,7 +5318,7 @@ wmi_scan_indication (struct wmi_t *wmip)
             }
 
             psi->Bssid.Configuration.Length = sizeof(psi->Bssid.Configuration);
-            psi->Bssid.Configuration.BeaconPeriod = bss->ni_cie.ie_beaconInt; // Units are Kmicroseconds (1024 us)
+            psi->Bssid.Configuration.BeaconPeriod = bss->ni_cie.ie_beaconInt; /* Units are Kmicroseconds (1024 us) */
             psi->Bssid.Configuration.ATIMWindow =  0;
             psi->Bssid.Configuration.DSConfig =  bss->ni_cie.ie_chan * 1000;
             psi->Bssid.InfrastructureMode = ((bss->ni_cie.ie_capInfo & 0x03) == 0x01 ) ? Ndis802_11Infrastructure : Ndis802_11IBSS;
@@ -5310,7 +5335,7 @@ wmi_scan_indication (struct wmi_t *wmip)
                        (pie[1] < (NDIS_802_11_LENGTH_RATES_EX - RateSize)) ? pie[1] : (NDIS_802_11_LENGTH_RATES_EX - RateSize));
             }
 
-            // Copy the fixed IEs
+            /* Copy the fixed IEs */
             psi->Bssid.IELength = sizeof(NDIS_802_11_FIXED_IEs);
 
             pFixed = (NDIS_802_11_FIXED_IEs *)psi->Bssid.IEs;
@@ -5318,12 +5343,12 @@ wmi_scan_indication (struct wmi_t *wmip)
             pFixed->BeaconInterval = bss->ni_cie.ie_beaconInt;
             pFixed->Capabilities = bss->ni_cie.ie_capInfo;
 
-            // Copy selected variable IEs
+            /* Copy selected variable IEs */
 
             pVar = (NDIS_802_11_VARIABLE_IEs *)((PBYTE)pFixed + sizeof(NDIS_802_11_FIXED_IEs));
 
 #ifdef SUPPORT_WPA2
-            // Copy the WPAv2 IE
+            /* Copy the WPAv2 IE */
             if (bss->ni_cie.ie_rsn) {
                 pie = bss->ni_cie.ie_rsn;
                 psi->Bssid.IELength += pie[1] + 2;
@@ -5331,7 +5356,7 @@ wmi_scan_indication (struct wmi_t *wmip)
                 pVar = (NDIS_802_11_VARIABLE_IEs *)((PBYTE)pVar + pie[1] + 2);
             }
 #endif
-            // Copy the WPAv1 IE
+            /* Copy the WPAv1 IE */
             if (bss->ni_cie.ie_wpa) {
                 pie = bss->ni_cie.ie_wpa;
                 psi->Bssid.IELength += pie[1] + 2;
@@ -5339,16 +5364,16 @@ wmi_scan_indication (struct wmi_t *wmip)
                 pVar = (NDIS_802_11_VARIABLE_IEs *)((PBYTE)pVar + pie[1] + 2);
             }
 
-            // Advance buffer pointer
+            /* Advance buffer pointer */
             psi = (PNDIS_802_11_BSSID_SCAN_INFO)((BYTE*)psi + bsssize + FIELD_OFFSET(NDIS_802_11_BSSID_SCAN_INFO, Bssid));
         }
     }
 
     IEEE80211_NODE_UNLOCK(nt);
 
-//    wmi_free_allnodes(wmip);
+/*    wmi_free_allnodes(wmip); */
 
-//    RETAILMSG(1, (L"AR6K: scan indication: %u bss\n", numbss));
+/*    RETAILMSG(1, (L"AR6K: scan indication: %u bss\n", numbss)); */
 
     ar6000_scan_indication (wmip->wmi_devt, pAr6kScanIndEvent, size);
 
@@ -5517,7 +5542,7 @@ wmi_set_pyxis_dscvr_config (struct wmi_t *wmip, A_UINT32 dscvrWindow, A_UINT32 d
     cmd->hdr.pyxisConfigLen  = sizeof (WMI_PYXIS_DSCVR_CONFIG) - sizeof (WMI_PYXIS_CONFIG_HDR);
     cmd->dscvrWindow         = dscvrWindow;
     cmd->dscvrInterval       = dscvrInterval;
-    cmd->dscvrLife           = 0; // to be defined
+    cmd->dscvrLife           = 0; /* to be defined */
     cmd->probeInterval       = probeInterval;
     cmd->probePeriod         = probePeriod;
     cmd->dscvrChannel        = dscvrChannel;
@@ -5630,11 +5655,11 @@ A_STATUS wmi_add_current_bss (struct wmi_t *wmip, A_UINT8 *id, bss_t *bss)
     return A_OK;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////                                                                        ////
-////                AP mode functions                                       ////
-////                                                                        ////
-////////////////////////////////////////////////////////////////////////////////
+/*////////////////////////////////////////////////////////////////////////////// */
+/*//                                                                        //// */
+/*//                AP mode functions                                       //// */
+/*//                                                                        //// */
+/*////////////////////////////////////////////////////////////////////////////// */
 /*
  * IOCTL: AR6000_XIOCTL_AP_COMMIT_CONFIG
  *

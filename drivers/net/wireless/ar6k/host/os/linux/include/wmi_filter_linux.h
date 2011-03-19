@@ -1,19 +1,21 @@
-/*
- * Copyright (c) 2008-2009 Atheros Communications Inc.
- * All rights reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- */
+/*------------------------------------------------------------------------------ */
+/* <copyright file="wmi_filter_linux.h" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 
 #ifndef _WMI_FILTER_LINUX_H_
 #define  _WMI_FILTER_LINUX_H_
@@ -235,7 +237,7 @@ A_UINT8 xioctl_filter[] = {
 (AP_NETWORK),                                   /* IEEE80211_IOCTL_GETWPAIE                        105  */
 (AP_NETWORK),                                   /* AR6000_XIOCTL_AP_CONN_INACT_TIME                106  */
 (AP_NETWORK),                                   /* AR6000_XIOCTL_AP_PROT_SCAN_TIME                 107  */
-(AP_NETWORK),                                   /* AR6000_XIOCTL_WMI_SET_COUNTRY                   108  */
+(AP_NETWORK | ADHOC_NETWORK),                   /* AR6000_XIOCTL_WMI_SET_COUNTRY                   108  */
 (AP_NETWORK),                                   /* AR6000_XIOCTL_AP_SET_DTIM                       109  */
 (0xFF),                                         /* AR6000_XIOCTL_WMI_TARGET_EVENT_REPORT           110  */
 (INFRA_NETWORK | ADHOC_NETWORK),                /* AR6000_XIOCTL_SET_IP                            111  */

@@ -1,23 +1,23 @@
-//------------------------------------------------------------------------------
-// <copyright file="wlan_recv_beacon.c" company="Atheros">
-//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
-// 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
-//------------------------------------------------------------------------------
-//==============================================================================
-// IEEE 802.11 input handling.
-//
-// Author(s): ="Atheros"
-//==============================================================================
+/*------------------------------------------------------------------------------ */
+/* <copyright file="wlan_recv_beacon.c" company="Atheros"> */
+/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* IEEE 802.11 input handling. */
+/* */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 
 #include "a_config.h"
 #include "athdefs.h"
@@ -162,7 +162,7 @@ wlan_parse_beacon(A_UINT8 *buf, int framelen, struct ieee80211_common_ie *cie)
             break;
         case IEEE80211_ELEMID_ERP:
             if (frm[1] != 1) {
-                //A_PRINTF("Discarding ERP Element - Bad Len\n");
+                /*A_PRINTF("Discarding ERP Element - Bad Len\n"); */
                 return A_EINVAL;
             }
             cie->ie_erp = frm[2];

@@ -1,21 +1,21 @@
-/*
- *
- * Copyright (c) 2004-2009 Atheros Communications Inc.
- * All rights reserved.
- *
- * 
-// This program is free software; you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation;
-//
-// Software distributed under the License is distributed on an "AS
-// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-// implied. See the License for the specific language governing
-// rights and limitations under the License.
-//
-//
- *
- */
+/*------------------------------------------------------------------------------ */
+/* <copyright file="ar6000_drv.h" company="Atheros"> */
+/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
+/*  */
+/* This program is free software; you can redistribute it and/or modify */
+/* it under the terms of the GNU General Public License version 2 as */
+/* published by the Free Software Foundation; */
+/* */
+/* Software distributed under the License is distributed on an "AS */
+/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
+/* implied. See the License for the specific language governing */
+/* rights and limitations under the License. */
+/* */
+/* */
+/*------------------------------------------------------------------------------ */
+/*============================================================================== */
+/* Author(s): ="Atheros" */
+/*============================================================================== */
 
 #ifndef _AR6000_H_
 #define _AR6000_H_
@@ -69,12 +69,13 @@
 #include <linux/init.h>
 #include <linux/moduleparam.h>
 #endif
+#include "AR6002/hw/mbox_host_reg.h"
+#include "AR6002/hw/mbox_reg.h"
+#include "AR6002/hw/rtc_reg.h"
 #include "ar6000_api.h"
 #ifdef CONFIG_HOST_TCMD_SUPPORT
 #include <testcmd.h>
 #endif
-
-#include <mach/gpio.h>
 
 #include "targaddrs.h"
 #include "dbglog_api.h"
@@ -92,7 +93,7 @@
 #define USER_SAVEDKEYS_STAT_INIT     0
 #define USER_SAVEDKEYS_STAT_RUN      1
 
-// TODO this needs to move into the AR_SOFTC struct
+/* TODO this needs to move into the AR_SOFTC struct */
 struct USER_SAVEDKEYS {
     struct ieee80211req_key   ucast_ik;
     struct ieee80211req_key   bcast_ik;
@@ -160,10 +161,12 @@ typedef enum _HTC_RAW_STREAM_ID {
 #define RAW_HTC_READ_BUFFERS_NUM    4
 #define RAW_HTC_WRITE_BUFFERS_NUM   4
 
+#define HTC_RAW_BUFFER_SIZE  1664
+
 typedef struct {
     int currPtr;
     int length;
-    unsigned char data[AR6000_BUFFER_SIZE];
+    unsigned char data[HTC_RAW_BUFFER_SIZE];
     HTC_PACKET    HTCPacket;
 } raw_htc_buffer;
 
@@ -235,6 +238,19 @@ typedef struct {
     A_MUTEX_T               psqLock;
 } sta_t;
 
+typedef struct ar6_raw_htc {
+    HTC_ENDPOINT_ID         arRaw2EpMapping[HTC_RAW_STREAM_NUM_MAX];
+    HTC_RAW_STREAM_ID       arEp2RawMapping[ENDPOINT_MAX];
+    struct semaphore        raw_htc_read_sem[HTC_RAW_STREAM_NUM_MAX];
+    struct semaphore        raw_htc_write_sem[HTC_RAW_STREAM_NUM_MAX];
+    wait_queue_head_t       raw_htc_read_queue[HTC_RAW_STREAM_NUM_MAX];
+    wait_queue_head_t       raw_htc_write_queue[HTC_RAW_STREAM_NUM_MAX];
+    raw_htc_buffer          raw_htc_read_buffer[HTC_RAW_STREAM_NUM_MAX][RAW_HTC_READ_BUFFERS_NUM];
+    raw_htc_buffer          raw_htc_write_buffer[HTC_RAW_STREAM_NUM_MAX][RAW_HTC_WRITE_BUFFERS_NUM];
+    A_BOOL                  write_buffer_available[HTC_RAW_STREAM_NUM_MAX];
+    A_BOOL                  read_buffer_available[HTC_RAW_STREAM_NUM_MAX];
+} AR_RAW_HTC_T;
+
 typedef struct ar6_softc {
     struct net_device       *arNetDev;    /* net_device pointer */
     void                    *arWmi;
@@ -255,6 +271,7 @@ typedef struct ar6_softc {
     A_UINT8                 arNetworkType;
     A_UINT8                 arDot11AuthMode;
     A_UINT8                 arAuthMode;
+    A_UINT8                 arPrevCrypto;
     A_UINT8                 arPairwiseCrypto;
     A_UINT8                 arPairwiseCryptoLen;
     A_UINT8                 arGroupCrypto;
@@ -268,7 +285,7 @@ typedef struct ar6_softc {
     A_UINT16                arListenInterval;
     struct ar6000_version   arVersion;
     A_UINT32                arTargetType;
-    A_INT8                  arRssi;
+    A_INT16                 arRssi;
     A_UINT8                 arTxPwr;
     A_BOOL                  arTxPwrSet;
     A_INT32                 arBitRate;
@@ -289,6 +306,7 @@ typedef struct ar6_softc {
    A_UINT32                 arTargetMode;
     A_UINT32                tcmdRxcrcErrPkt;
     A_UINT32                tcmdRxsecErrPkt;
+    A_UINT32                tcmdRxNoiseFloor;
 #endif
     AR6000_WLAN_STATE       arWlanState;
     struct ar_node_mapping  arNodeMap[MAX_NODE_NUM];
@@ -311,16 +329,7 @@ typedef struct ar6_softc {
     A_UINT8                 arEp2AcMapping[ENDPOINT_MAX];
     HTC_ENDPOINT_ID         arControlEp;
 #ifdef HTC_RAW_INTERFACE
-    HTC_ENDPOINT_ID         arRaw2EpMapping[HTC_RAW_STREAM_NUM_MAX];
-    HTC_RAW_STREAM_ID       arEp2RawMapping[ENDPOINT_MAX];
-    struct semaphore        raw_htc_read_sem[HTC_RAW_STREAM_NUM_MAX];
-    struct semaphore        raw_htc_write_sem[HTC_RAW_STREAM_NUM_MAX];
-    wait_queue_head_t       raw_htc_read_queue[HTC_RAW_STREAM_NUM_MAX];
-    wait_queue_head_t       raw_htc_write_queue[HTC_RAW_STREAM_NUM_MAX];
-    raw_htc_buffer          raw_htc_read_buffer[HTC_RAW_STREAM_NUM_MAX][RAW_HTC_READ_BUFFERS_NUM];
-    raw_htc_buffer          raw_htc_write_buffer[HTC_RAW_STREAM_NUM_MAX][RAW_HTC_WRITE_BUFFERS_NUM];
-    A_BOOL                  write_buffer_available[HTC_RAW_STREAM_NUM_MAX];
-    A_BOOL                  read_buffer_available[HTC_RAW_STREAM_NUM_MAX];
+    AR_RAW_HTC_T            *arRawHtc;
 #endif
     A_BOOL                  arNetQueueStopped;
     A_BOOL                  arRawIfInit;
@@ -337,7 +346,7 @@ typedef struct ar6_softc {
     A_UINT32                user_key_ctrl;
     struct USER_SAVEDKEYS   user_saved_keys;
 #endif
-    A_UINT32                scan_complete;
+    A_UINT32                scan_triggered;
     USER_RSSI_THOLD rssi_map[12];
     A_UINT16                ap_profile_flag;    /* AP mode */
     WMI_AP_ACL              g_acl;              /* AP mode */
@@ -351,12 +360,81 @@ typedef struct ar6_softc {
     A_BOOL                  bIsDestroyProgress; /* flag to indicate ar6k destroy is in progress */
     A_TIMER                 disconnect_timer;
     A_UINT8                 ap_hidden_ssid;
-    A_UINT8                 ap_country_code[3];
+    A_UINT8                 country_code[3];
     A_UINT8                 ap_wmode;
     A_UINT8                 ap_dtim_period;
     A_UINT16                ap_beacon_interval;
     A_UINT16                arRTS;
+#if CONFIG_PM
+    A_UINT16                arOsPowerCtrl;
+    A_UINT16                arWowState;
+    struct notifier_block   notify_pm;
+#endif
+    WMI_SCAN_PARAMS_CMD scParams;
 } AR_SOFTC_T;
+
+#define ATH_DHCP_PKT_SIZE             342
+#define ATH_DHCP_OPCODE_MSG_TYPE      53
+#define ATH_DHCP_MSG_TYPE_LEN         1
+
+#define ATH_DHCP_DISCOVER             1
+#define ATH_DHCP_REQUEST              3
+#define ATH_DHCP_ACK                  5
+
+#define ATH_DHCP_INVALID_MSG          99
+#define A_DHCP_TIMER_INTERVAL       10 * 1000
+
+typedef PREPACK struct ether2_hdr {
+    A_UINT8     destMAC[ATH_MAC_LEN];
+    A_UINT8     srcMAC[ATH_MAC_LEN];
+    A_UINT16    etherType;
+} POSTPACK ETHERII_HDR;
+
+typedef PREPACK struct ip_hdr {
+    A_UINT8     version_HdrLength;     /* [Version (4 bits)][Header Length (4 bits)] */
+    A_UINT8     TOS;
+    A_UINT16    totalLength;
+    A_UINT16    identification;
+    A_UINT16    flags_FragmentOffset;  /* [Flags (3bits)][Fragment Offset 13 bits] */
+    A_UINT8     TTL;
+    A_UINT8     protocol;
+    A_UINT16    headerCheckSum;
+    A_UINT32    sourceIP;
+    A_UINT32    destIP;
+} POSTPACK IP_HDR;
+
+typedef PREPACK struct udp_hdr{
+    A_UINT16 sourcePort;
+    A_UINT16 destPort;
+    A_UINT16 length;
+    A_UINT16 checkSum;
+} POSTPACK UDP_HDR;
+
+typedef PREPACK struct dhcp_msg{
+
+    A_UINT8     opCode;
+    A_UINT8     hwAddressType;
+    A_UINT8     hwAddressLength;
+    A_UINT8     hops;
+    A_UINT32    transactionID;
+    A_UINT16    seconds;
+    A_UINT16    flags;
+    A_UINT32    clientIPAddress;       
+    A_UINT32    yourIPAddress;        
+    A_UINT32    serverIPAddress;       
+    A_UINT32    relayIPAddress;        
+    A_UINT16    clientHwAddress[8];     
+    A_UINT8     bootP_Data[192];
+    A_UINT8     magicCookie[4];
+} POSTPACK DHCP_MSG;
+
+typedef PREPACK struct dhcp_packet{
+    ETHERII_HDR  ether2Hdr;
+    IP_HDR       ipHdr;
+    UDP_HDR      udpHdr;
+    DHCP_MSG     dhcpMsg;
+    A_UINT8      dhcpOptions[256];
+} POSTPACK DHCP_PACKET;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
 /* Looks like we need this for 2.4 kernels */
@@ -373,11 +451,11 @@ static inline void *netdev_priv(struct net_device *dev)
 #define arEndpoint2Ac(ar,ep)           (ar)->arEp2AcMapping[(ep)]
 
 #define arRawIfEnabled(ar) (ar)->arRawIfInit
-#define arRawStream2EndpointID(ar,raw)          (ar)->arRaw2EpMapping[(raw)]
+#define arRawStream2EndpointID(ar,raw)          (ar)->arRawHtc->arRaw2EpMapping[(raw)]
 #define arSetRawStream2EndpointIDMap(ar,raw,ep)  \
-{  (ar)->arRaw2EpMapping[(raw)] = (ep); \
-   (ar)->arEp2RawMapping[(ep)] = (raw); }
-#define arEndpoint2RawStreamID(ar,ep)           (ar)->arEp2RawMapping[(ep)]
+{  (ar)->arRawHtc->arRaw2EpMapping[(raw)] = (ep); \
+   (ar)->arRawHtc->arEp2RawMapping[(ep)] = (raw); }
+#define arEndpoint2RawStreamID(ar,ep)           (ar)->arRawHtc->arEp2RawMapping[(ep)]
 
 struct ar_giwscan_param {
     char    *current_ev;
