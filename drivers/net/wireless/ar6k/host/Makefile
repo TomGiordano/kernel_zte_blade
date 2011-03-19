@@ -1,22 +1,5 @@
-#------------------------------------------------------------------------------
-# <copyright file="Makefile" company="Atheros">
-#    Copyright (c) 2005-2010 Atheros Corporation.  All rights reserved.
-# 
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation;
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-#
-#------------------------------------------------------------------------------
-#==============================================================================
-# Author(s): ="Atheros"
-#==============================================================================
 # AR6K Host driver makefile
+# Copyright 2006 Atheros Communications, Inc.
 # 
 # Minimal build invocation:
 #   
@@ -59,8 +42,18 @@
 #                                database image
 #
 
+#
+#history   
+# when        who              what                         tag 
+# 2010-01-06  hp             for CQ430643 and CQ431832   ZTE_WIFI_HP_007 
+#
+#
 # Include local variables
+ifdef ATH_MAKE_INCLUDE_OVERRIDE
+_LOCALMAKE_INCLUDE = $(ATH_MAKE_INCLUDE_OVERRIDE)
+else
 _LOCALMAKE_INCLUDE = localmake.linux.inc
+endif
 
 -include $(_LOCALMAKE_INCLUDE)
 
@@ -72,27 +65,33 @@ export  ATH_CROSS_COMPILE_TYPE
 export  ATH_ARCH_CPU_TYPE
 export  ATH_SDIO_STACK_BASE
 export  ATH_BUS_TYPE
+export  ATH_BUS_SUBTYPE
 export  ATH_HC_DRIVERS
+export  ATH_HTC_RAW_INT_ENV
 # ATHENV
 export  ATH_ANDROID_ENV
-export  ATH_FAKE_EEPROM_USED
+export  ATH_EEPROM_FILE_USED
 export  ATH_FORCE_TCMD_MODE
 export  ATH_FORCE_ART_MODE
 # ATHENV
 
+#ZTE_WIFI_HP_007 
+export ATH_SAVE_EEPROM_TO_FILE 
+#ZTE_WIFI_HP_007 end 
 ATH_SRC_BASE :=$(shell pwd)
-#MAKE :=make
-#CC :=$(ATH_CROSS_COMPILE_TYPE)gcc
-#LD :=$(ATH_CROSS_COMPILE_TYPE)ld
-#STRIP :=$(ATH_CROSS_COMPILE_TYPE)strip
-ATH_HIF_TYPE :=`echo $(ATH_BUS_TYPE) | tr [:upper:] [:lower:]`
+MAKE :=make
+CC :=$(ATH_CROSS_COMPILE_TYPE)gcc
+LD :=$(ATH_CROSS_COMPILE_TYPE)ld
+STRIP :=$(ATH_CROSS_COMPILE_TYPE)strip
+#ATH_HIF_TYPE :=`echo $(ATH_BUS_TYPE) | tr [:upper:] [:lower:]`
+#ATH_HIF_TYPE := sdio
+@ATH_LINUXPATH := ../../kernel/zte-kernel/
 
 export  STRIP
-
 #export compiler variables for 3rd party applications (like the WPA supplicant)
-#export  CC
-#export  LD
-#export  STRIP
+export  CC
+export  LD
+export  STRIP
 
 # Set cross compile type (if any)
 ifdef ATH_CROSS_COMPILE_TYPE
@@ -130,7 +129,34 @@ endif
 export COMPILED_IMAGE_OBJECTS_PATH
 export COMPILED_BIN_OBJECTS_PATH
 
-#+++FIH+++
-obj-y += os/linux/
-#---FIH---
+# control variables for conditionally compiling some tools
+ATH_BUILD_SYSTEM_TOOLS ?=no
+ATH_BUILD_BTFILTER ?=no
+
+all: modules
+
+modules:
+ifndef ATH_BUILD_TYPE 
+	@echo "Please edit the $(_LOCALMAKE_INCLUDE) file"
+	exit 1
+endif
+	$(_MAKE_IMAGE_OUTPUT_DIR)
+	$(_MAKE_BIN_OUTPUT_DIR)
+	$(MAKE)  $(_CROSS_COMPILE_LINE) -C $(ATH_LINUXPATH) ATH_HIF_TYPE=sdio SUBDIRS=$(ATH_SRC_BASE)/os/linux modules
+	$(MAKE) -C hif/sdio
+	$(STRIP) --strip-unneeded  $(ATH_SRC_BASE)/os/linux/ar6000.$(KMOD_EXTENSION)
+	cp -f $(ATH_SRC_BASE)/os/linux/ar6000.$(KMOD_EXTENSION) $(COMPILED_IMAGE_OBJECTS_PATH)
+	
+clean:
+	rm -f os/linux/ar6000.mod.c os/linux/*.o os/linux/*.ko wmi/*.o htc/AR6000/src/*.o htc/*.o \
+	bmi/src/*.o wlan/src/*.o driver/* apps/wpa_supplicant/*.o 
+
+# The kernel module build process leaves some intermediate files, this will clean up all these files
+	find $(ATH_SRC_BASE) \( -not -path "*.output*" -a -name '*.[oas]' -o -name core -o -name '.*.flags' -o -name '.ko' -o -name '.*.cmd' \) -type f -print \
+		| grep -v lxdialog/ | xargs rm -f
+	$(MAKE) -C hif/sdio clean
+
+clobber:clean
+	rm -rf .output
+
 

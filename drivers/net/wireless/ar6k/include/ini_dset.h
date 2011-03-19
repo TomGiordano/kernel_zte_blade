@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="ini_dset.h" company="Atheros"> */
-/*    Copyright (c) 2004-2007 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="ini_dset.h" company="Atheros">
+//    Copyright (c) 2004-2007 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 
 #ifndef _INI_DSET_H_
 #define _INI_DSET_H_
@@ -78,7 +78,7 @@ typedef enum {
 } WHAL_INI_DATA_ID;
 
 typedef PREPACK struct {
-    A_UINT16 freqIndex; /* 1 - A mode 2 - B or G mode 0 - common */
+    A_UINT16 freqIndex; // 1 - A mode 2 - B or G mode 0 - common
     A_UINT16 offset;
     A_UINT32 newValue;
 } POSTPACK INI_DSET_REG_OVERRIDE;

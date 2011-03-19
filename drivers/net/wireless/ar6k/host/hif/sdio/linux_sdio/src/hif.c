@@ -1,27 +1,32 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="hif.c" company="Atheros"> */
-/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* HIF layer reference implementation for Linux Native MMC stack */
-/* */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="hif.c" company="Atheros">
+//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// HIF layer reference implementation for Linux Native MMC stack
+//
+// Author(s): ="Atheros"
+//==============================================================================
+/*
+ * history         
+ * when         who         what why                                    TAG
+ *2009-12-29    hp         move startup_task from kernel thread         ZTE_WIFI_HP_002
+                            protect from kernel oops  
+ *
+ *
+ */
 #include <linux/mmc/card.h>
-#include <linux/mmc/mmc.h>
-#include <linux/mmc/host.h>
-#include <linux/mmc/sdio.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 #include <linux/kthread.h>
@@ -29,25 +34,20 @@
    does not use DMA you may be able to skip this step and save the memory allocation and transfer time */
 #define HIF_USE_DMA_BOUNCE_BUFFER 1
 #include "hif_internal.h"
-#include "AR6002/hw2.0/hw/mbox_host_reg.h"
+
 /* ATHENV */
 #ifdef ANDROID_ENV
 #include <linux/wakelock.h>
 extern struct wake_lock ar6k_init_wake_lock;
 #endif
 /* ATHENV */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-#define dev_to_sdio_func(d)	container_of(d, struct sdio_func, dev)
-#define to_sdio_driver(d)      container_of(d, struct sdio_driver, drv)
-static int hifDeviceSuspend(struct device *dev);
-static int hifDeviceResume(struct device *dev);
-static int Func0_CMD52WriteByte(struct mmc_card *card, unsigned int address, unsigned char byte);
-#endif /* CONFIG_PM */
+
 static int hifDeviceInserted(struct sdio_func *func, const struct sdio_device_id *id);
 static void hifDeviceRemoved(struct sdio_func *func);
 static HIF_DEVICE *addHifDevice(struct sdio_func *func);
 static HIF_DEVICE *getHifDevice(struct sdio_func *func);
 static void delHifDevice(HIF_DEVICE * device);
+
 
 
 /* ------ Static Variables ------ */
@@ -64,23 +64,7 @@ static struct sdio_driver ar6k_driver = {
 	.id_table = ar6k_id_table,
 	.probe = hifDeviceInserted,
 	.remove = hifDeviceRemoved,
-        };
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-/* New suspend/resume based on linux-2.6.32
- * Need to patch linux-2.6.32 with mmc2.6.32_suspend.patch
- * Need to patch with msmsdcc2.6.29_suspend.patch for msm_sdcc host
-     */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
-static struct dev_pm_ops ar6k_device_pm_ops = {
-#else
-static struct pm_ops ar6k_device_pm_ops = {
-#endif 
-    .suspend = hifDeviceSuspend,
-    .resume = hifDeviceResume,
 };
-#endif /* CONFIG_PM */
-
 /* make sure we only unregister when registered. */
 static int registered = 0;
 
@@ -124,11 +108,6 @@ A_STATUS HIFInit(OSDRV_CALLBACKS *callbacks)
     /* Register with bus driver core */
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: HIFInit registering\n"));
     registered = 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-    if (callbacks->deviceSuspendHandler && callbacks->deviceResumeHandler) {
-        ar6k_driver.drv.pm = &ar6k_device_pm_ops;
-    }
-#endif /* CONFIG_PM */
     status = sdio_register_driver(&ar6k_driver);
     AR_DEBUG_ASSERT(status==0);
 
@@ -160,7 +139,7 @@ __HIFReadWrite(HIF_DEVICE *device,
 
     do {
         if (request & HIF_EXTENDED_IO) {
-            /*AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: Command type: CMD53\n")); */
+            //AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: Command type: CMD53\n"));
         } else {
             AR_DEBUG_PRINTF(ATH_DEBUG_ERROR,
                             ("AR6000: Invalid command type: 0x%08x\n", request));
@@ -434,10 +413,6 @@ HIFConfigureDevice(HIF_DEVICE *device, HIF_DEVICE_CONFIG_OPCODE opcode,
         case HIF_DEVICE_GET_IRQ_PROC_MODE:
             *((HIF_DEVICE_IRQ_PROCESSING_MODE *)config) = HIF_DEVICE_IRQ_SYNC_ONLY;
             break;
-        case HIF_DEVICE_GET_OS_DEVICE:
-                /* pass back a pointer to the SDIO function's "dev" struct */
-            ((HIF_DEVICE_OS_DEVICE_INFO *)config)->pOSDevice = &device->func->dev;
-            break; 
         default:
             AR_DEBUG_PRINTF(ATH_DEBUG_WARN,
                             ("AR6000: Unsupported configuration opcode: %d\n", opcode));
@@ -482,13 +457,11 @@ hifIRQHandler(struct sdio_func *func)
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: +hifIRQHandler\n"));
 
     device = getHifDevice(func);
-    atomic_set(&device->irqHandling, 1);
     /* release the host during ints so we can pick it back up when we process cmds */
     sdio_release_host(device->func);
     status = device->htcCallbacks.dsrHandler(device->htcCallbacks.context);
     sdio_claim_host(device->func);
-    atomic_set(&device->irqHandling, 0);
-    AR_DEBUG_ASSERT(status == A_OK || status == A_ECANCELED);
+    AR_DEBUG_ASSERT(status == A_OK);
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: -hifIRQHandler\n"));
 }
 
@@ -516,39 +489,12 @@ static int startup_task(void *param)
     return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-/* handle HTC startup via thread*/
-static int resume_task(void *param)
-{
-    HIF_DEVICE *device;
-    device = (HIF_DEVICE *)param;
-    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: call HTC from resume_task\n"));
-/* ATHENV */
-#ifdef ANDROID_ENV
-    wake_lock(&ar6k_init_wake_lock);
-#endif
-/* ATHENV */
-        /* start  up inform DRV layer */
-    if (device && device->claimedContext && osdrvCallbacks.deviceResumeHandler &&
-        osdrvCallbacks.deviceResumeHandler(device->claimedContext) != A_OK) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: Device rejected\n"));
-    }
-
-/* ATHENV */
-#ifdef ANDROID_ENV
-    wake_unlock(&ar6k_init_wake_lock);
-#endif
-/* ATHENV */
-    return 0;
-}
-#endif /* CONFIG_PM */
-
 static int hifDeviceInserted(struct sdio_func *func, const struct sdio_device_id *id)
 {
     int ret;
     HIF_DEVICE * device;
     int count;
-    struct task_struct* startup_task_struct;
+    /*struct task_struct* startup_task_struct;*/
 
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE,
 		    ("AR6000: hifDeviceInserted, Function: 0x%X, Vendor ID: 0x%X, Device ID: 0x%X, block size: 0x%X/0x%X\n",
@@ -591,6 +537,7 @@ static int hifDeviceInserted(struct sdio_func *func, const struct sdio_device_id
     if (ret) {
         AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), Unable to set block size 0x%x  AR6K: 0x%X\n",
 					  __FUNCTION__, HIF_MBOX_BLOCK_SIZE, ret));
+        sdio_release_host(func);
         return ret;
     }
     /* Initialize the bus requests to be used later */
@@ -605,25 +552,31 @@ static int hifDeviceInserted(struct sdio_func *func, const struct sdio_device_id
     device->async_task = kthread_create(async_task,
                                        (void *)device,
                                        "AR6K Async");
-    if (IS_ERR(device->async_task)) {
+    if (device->async_task == NULL) {
         AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), to create async task\n", __FUNCTION__));
+        sdio_release_host(func);
         return A_ERROR;
     }
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: start async task\n"));
     sema_init(&device->sem_async, 0);
     wake_up_process(device->async_task );
-
+ 
+    //ZTE_WIFI_HP_002 
     /* create startup thread */
-    startup_task_struct = kthread_create(startup_task,
-                                  (void *)device,
-                                  "AR6K startup");
-    if (IS_ERR(startup_task_struct)) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), to create startup task\n", __FUNCTION__));
-        return A_ERROR;
-    }
-    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: start startup task\n"));
-    wake_up_process(startup_task_struct);
+    /*startup_task_struct = kthread_create(startup_task,*/
+                                  /*(void *)device,*/
+                                  /*"AR6K startup");*/
+    /*if (startup_task_struct == NULL) {*/
+        /*AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), to create startup task\n", __FUNCTION__));*/
+        /*sdio_release_host(func);*/
+        /*return A_ERROR;*/
+    /*}*/
+    /*AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: start startup task\n"));*/
+    /*wake_up_process(startup_task_struct);*/
 
+    ret = startup_task((void *)device);
+
+    //ZTE_WIFI_HP_002 end 
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: return %d\n", ret));
     return ret;
 }
@@ -656,7 +609,8 @@ HIFUnMaskInterrupt(HIF_DEVICE *device)
 
 void HIFMaskInterrupt(HIF_DEVICE *device)
 {
-    int ret;
+    int ret;;
+
     AR_DEBUG_ASSERT(device != NULL);
     AR_DEBUG_ASSERT(device->func != NULL);
 
@@ -664,11 +618,6 @@ void HIFMaskInterrupt(HIF_DEVICE *device)
 
     /* Mask our function IRQ */
     sdio_claim_host(device->func);
-    while (atomic_read(&device->irqHandling)) {        
-        sdio_release_host(device->func);
-        schedule_timeout(HZ/10);
-        sdio_claim_host(device->func);
-    }
     ret = sdio_release_irq(device->func);
     sdio_release_host(device->func);
     AR_DEBUG_ASSERT(ret == 0);
@@ -726,131 +675,23 @@ static void hifDeviceRemoved(struct sdio_func *func)
     if (device->claimedContext != NULL) {
         status = osdrvCallbacks.deviceRemovedHandler(device->claimedContext, device);
     }
-    do {
-        if (device->is_suspend) {
-            device->is_suspend = FALSE;
-            break;
-        }
-        if (device->async_task != NULL && !IS_ERR(device->async_task)) {
-            init_completion(&device->async_completion);
-            device->async_shutdown = 1;
-            up(&device->sem_async);
-            wait_for_completion(&device->async_completion);
-            device->async_task = NULL;
-        }
-        /* Disable the card */
-        sdio_claim_host(device->func);
-        ret = sdio_disable_func(device->func);
-        sdio_release_host(device->func);
-    } while (0);
+
+    if (device->async_task != NULL) {
+        init_completion(&device->async_completion);
+        device->async_shutdown = 1;
+        up(&device->sem_async);
+        wait_for_completion(&device->async_completion);
+        device->async_task = NULL;
+    }
+    /* Disable the card */
+    sdio_claim_host(device->func);
+    ret = sdio_disable_func(device->func);
+    sdio_release_host(device->func);
     delHifDevice(device);
     AR_DEBUG_ASSERT(status == A_OK);
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: -hifDeviceRemoved\n"));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-static int hifDeviceSuspend(struct device *dev)
-{
-    int ret;
-    struct sdio_func *func = dev_to_sdio_func(dev);
-    A_STATUS status = A_OK;
-    HIF_DEVICE *device;   
-
-    device = getHifDevice(func);
-    if (device && device->claimedContext && osdrvCallbacks.deviceSuspendHandler) {
-        status = osdrvCallbacks.deviceSuspendHandler(device->claimedContext);
-    }
-    if (status == A_OK) {
-        /* Waiting for all pending request */
-        if (device->async_task != NULL && !IS_ERR(device->async_task)) {
-            init_completion(&device->async_completion);
-            device->async_shutdown = 1;
-            up(&device->sem_async);
-            wait_for_completion(&device->async_completion);
-            device->async_task = NULL;
-        }
-        /* Disable the card */
-        sdio_claim_host(device->func);
-        status = sdio_disable_func(device->func);
-        /* reset the SDIO interface.  This is useful in automated testing where the card
-         * does not need to be removed at the end of the test.  It is expected that the user will 
-         * also unload/reload the host controller driver to force the bus driver to re-enumerate the slot */
-        AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: reseting SDIO card back to uninitialized state \n"));
-        
-        /* NOTE : sdio_f0_writeb() cannot be used here, that API only allows access
-         *        to undefined registers in the range of: 0xF0-0xFF */
-        ret = Func0_CMD52WriteByte(device->func->card, SDIO_CCCR_ABORT, (1 << 3)); 
-        if (ret!=0) {
-             AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: reset failed : %d \n",ret));    
-        }
-        sdio_release_host(device->func);
-        device->is_suspend = TRUE;
-    } else if (status == A_EBUSY) {
-        return -EBUSY; /* Return -1 if customer use all android patch of mmc stack provided by us */ 
-    }
-
-    return A_SUCCESS(status) ? 0 : status;
-}
-
-static int hifDeviceResume(struct device *dev)
-{
-    struct task_struct* pTask;
-    const char *taskName;
-    int (*taskFunc)(void *);
-    struct sdio_func *func = dev_to_sdio_func(dev);
-    A_STATUS ret = A_OK;
-    HIF_DEVICE *device;  
-    device = getHifDevice(func);
-
-    if (device->is_suspend) {
-       /* enable the SDIO function */
-        sdio_claim_host(func);
-        /* give us some time to enable, in ms */
-        func->enable_timeout = 100;
-        ret = sdio_enable_func(func);
-        if (ret) {
-            AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), Unable to enable AR6K: 0x%X\n",
-                                         __FUNCTION__, ret));
-            sdio_release_host(func);
-            return ret;
-    }
-        ret = sdio_set_block_size(func, HIF_MBOX_BLOCK_SIZE);
-        sdio_release_host(func);
-        device->is_suspend = FALSE;
-        /* create async I/O thread */
-        if (!device->async_task) {
-            device->async_shutdown = 0;
-            device->async_task = kthread_create(async_task,
-                                           (void *)device,
-                                           "AR6K Async");
-           if (IS_ERR(device->async_task)) {
-               AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), to create async task\n", __FUNCTION__));
-                return A_ERROR;
-           }
-           AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: start async task\n"));
-           wake_up_process(device->async_task );    
-        }
-    }
-
-    if (!device->claimedContext) {
-        printk("WARNING!!! No claimedContext during resume wlan\n"); 
-        taskFunc = startup_task;
-        taskName = "AR6K startup";
-    } else {
-        taskFunc = resume_task;
-        taskName = "AR6K resume";
-    }
-    /* create resume thread */
-    pTask = kthread_create(taskFunc, (void *)device, taskName);
-    if (IS_ERR(pTask)) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("AR6000: %s(), to create resume task\n", __FUNCTION__));
-        return A_ERROR;
-    }
-    AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: start resume task\n"));
-    wake_up_process(pTask);
-    return A_SUCCESS(ret) ? 0 : ret;
-}
-#endif /* CONFIG_PM */
 
 static HIF_DEVICE *
 addHifDevice(struct sdio_func *func)
@@ -917,34 +758,6 @@ void HIFDetachHTC(HIF_DEVICE *device)
     A_MEMZERO(&device->htcCallbacks,sizeof(device->htcCallbacks));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM)
-#define SDIO_SET_CMD52_ARG(arg,rw,func,raw,address,writedata) \
-    (arg) = (((rw) & 1) << 31)           | \
-            (((func) & 0x7) << 28)       | \
-            (((raw) & 1) << 27)          | \
-            (1 << 26)                    | \
-            (((address) & 0x1FFFF) << 9) | \
-            (1 << 8)                     | \
-            ((writedata) & 0xFF)
-            
-#define SDIO_SET_CMD52_READ_ARG(arg,func,address) \
-    SDIO_SET_CMD52_ARG(arg,0,(func),0,address,0x00)
-#define SDIO_SET_CMD52_WRITE_ARG(arg,func,address,value) \
-    SDIO_SET_CMD52_ARG(arg,1,(func),0,address,value)
-    
-static int Func0_CMD52WriteByte(struct mmc_card *card, unsigned int address, unsigned char byte)
-{
-    struct mmc_command ioCmd;
-    unsigned long      arg;
-    
-    memset(&ioCmd,0,sizeof(ioCmd));
-    SDIO_SET_CMD52_WRITE_ARG(arg,0,address,byte);
-    ioCmd.opcode = SD_IO_RW_DIRECT;
-    ioCmd.arg = arg;
-    ioCmd.flags = MMC_RSP_R5 | MMC_CMD_AC;
-    
-    return mmc_wait_for_cmd(card->host, &ioCmd, 0);
-}
 
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27) && defined(CONFIG_PM) */
+
 

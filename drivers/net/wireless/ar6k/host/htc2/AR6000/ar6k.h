@@ -1,23 +1,23 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="ar6k.h" company="Atheros"> */
-/*    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* AR6K device layer that handles register level I/O */
-/* */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="ar6k.h" company="Atheros">
+//    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// AR6K device layer that handles register level I/O
+//
+// Author(s): ="Atheros"
+//==============================================================================
 #ifndef AR6K_H_
 #define AR6K_H_
 
@@ -32,7 +32,7 @@
                             INT_STATUS_ENABLE_CPU_MASK   |   \
                             INT_STATUS_ENABLE_COUNTER_MASK)
 
-/*#define MBOXHW_UNIT_TEST 1 */
+//#define MBOXHW_UNIT_TEST 1
 
 #include "athstartpack.h"
 typedef PREPACK struct _AR6K_IRQ_PROC_REGISTERS {
@@ -127,7 +127,7 @@ static INLINE A_STATUS DevSendPacket(AR6K_DEVICE *pDev, HTC_PACKET *pPacket, A_U
        /* adjust the length to be a multiple of block size if appropriate */
     paddedLength = (SendLength + (pDev->BlockMask)) &
                     (~(pDev->BlockMask));
-#if 0 /* BufferLength may not be set in , fix this... */
+#if 0 // BufferLength may not be set in , fix this...
     if (paddedLength > pPacket->BufferLength) {
         AR_DEBUG_ASSERT(FALSE);
         if (pPacket->Completion != NULL) {

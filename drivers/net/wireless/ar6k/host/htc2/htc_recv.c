@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="htc_recv.c" company="Atheros"> */
-/*    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="htc_recv.c" company="Atheros">
+//    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 #include "htc_internal.h"
 
 #define HTCIssueRecv(t, p) \
@@ -632,11 +632,6 @@ A_STATUS HTCRecvMessagePendingHandler(void *Context, A_UINT32 *LookAhead, A_BOOL
         if (pPacket != NULL) {
                 /* clean up packet on error */
             HTC_RECYCLE_RX_PKT(target, pPacket, pEndpoint);
-        }
-        if (HTC_STOPPING(target)) {
-            AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
-                (" HTC stopping... blocking receiver to finish the stop \n"));
-            DevStopRecv(&target->Device, asyncProc ? DEV_STOP_RECV_ASYNC : DEV_STOP_RECV_SYNC);    
         }
     }
 

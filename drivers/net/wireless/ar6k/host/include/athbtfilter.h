@@ -1,22 +1,22 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="athbtfilter.h" company="Atheros"> */
-/*    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Public Bluetooth filter APIs */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="athbtfilter.h" company="Atheros">
+//    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Public Bluetooth filter APIs
+// Author(s): ="Atheros"
+//==============================================================================
 #ifndef ATHBTFILTER_H_
 #define ATHBTFILTER_H_
 
@@ -58,9 +58,7 @@ typedef void   (*ATHBT_INDICATE_STATE_FN)(void *pContext, ATHBT_STATE_INDICATION
 typedef struct _ATHBT_FILTER_INSTANCE {
 #ifdef UNDER_CE
     WCHAR                       *pWlanAdapterName;  /* filled in by user */
-#else
-    A_CHAR                      *pWlanAdapterName;  /* filled in by user */
-#endif /* UNDER_CE */
+#endif
     int                         FilterEnabled;      /* filtering is enabled */
     int                         Attached;           /* filter library is attached */
     void                        *pContext;          /* private context for filter library */

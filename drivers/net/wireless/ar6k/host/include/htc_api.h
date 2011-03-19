@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="htc_api.h" company="Atheros"> */
-/*    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="htc_api.h" company="Atheros">
+//    Copyright (c) 2007-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 #ifndef _HTC_API_H_
 #define _HTC_API_H_
 
@@ -29,7 +29,7 @@ extern "C" {
 
 /* TODO.. for BMI */
 #define ENDPOINT1 0
-/* TODO -remove me, but we have to fix BMI first */
+// TODO -remove me, but we have to fix BMI first
 #define HTC_MAILBOX_NUM_MAX    4
 
 /* this is the amount of header room required by users of HTC */
@@ -50,11 +50,11 @@ typedef void   (*HTC_EP_SEND_PKT_COMPLETE)(void *,HTC_PACKET *);
 typedef void   (*HTC_EP_RECV_PKT)(void *,HTC_PACKET *);
 
 /* Optional per service connection receive buffer re-fill callback,
- *  Packets are allocated from a global pool and indicated up
- *  to the network stack.  The driver never gets the packets back from the stack.  So
- *  refill callback can be used to allocate and re-queue buffers into HTC.
+ * On some OSes (like Linux) packets are allocated from a global pool and indicated up
+ * to the network stack.  The driver never gets the packets back from the OS.  For these OSes
+ * a refill callback can be used to allocate and re-queue buffers into HTC.
  *
- * On other cases,, the network stack can call into the driver's specifc "return_packet" handler and
+ * On other OSes, the network stack can call into the driver's OS-specifc "return_packet" handler and
  * the driver can re-queue these buffers into HTC. In this regard a refill callback is
  * unnecessary */
 typedef void   (*HTC_EP_RECV_REFILL)(void *, HTC_ENDPOINT_ID Endpoint);
@@ -82,14 +82,14 @@ typedef enum _HTC_SEND_FULL_ACTION {
 
 /* Optional per service connection callback when a send queue is full. This can occur if the
  * host continues queueing up TX packets faster than credits can arrive
- * To prevent the host from continuously queueing packets
+ * To prevent the host (on some Oses like Linux) from continuously queueing packets
  * and consuming resources, this callback is provided so that that the host
  * can disable TX in the subsystem (i.e. network stack).
  * This callback is invoked for each packet that "overflows" the HTC queue. The callback can
  * determine whether the new packet that overflowed the queue can be kept (HTC_SEND_FULL_KEEP) or
  * dropped (HTC_SEND_FULL_DROP).  If a packet is dropped, the EpTxComplete handler will be called
  * and the packet's status field will be set to A_NO_RESOURCE.
- * In other cases, "per-packet" indication for each completed TX packet, this
+ * Other OSes require a "per-packet" indication for each completed TX packet, this
  * closed loop mechanism will prevent the network stack from overunning the NIC
  * The packet to keep or drop is passed for inspection to the registered handler the handler
  * must ONLY inspect the packet, it may not free or reclaim the packet. */
@@ -151,7 +151,7 @@ typedef struct _HTC_ENDPOINT_CREDIT_DIST {
                                                and endpoint needs credits in order to transmit */
     int                 TxCreditSize;       /* size in bytes of each credit (set by HTC) */
     int                 TxCreditsPerMaxMsg; /* credits required for a maximum sized messages (set by HTC) */
-    void                *pHTCReserved;      /* reserved for HTC use */
+    void                *pHTCReserved;      /* reserved for HTC use */    
     int                 TxQueueDepth;       /* current depth of TX queue , i.e. messages waiting for credits
                                                This field is valid only when HTC_CREDIT_DIST_ACTIVITY_CHANGE
                                                or HTC_CREDIT_DIST_SEND_COMPLETE is indicated on an endpoint
@@ -220,7 +220,7 @@ typedef struct _HTC_ENDPOINT_STATS {
            pInfo - initialization information
   @output:
   @return: HTC_HANDLE on success, NULL on failure
-  @notes:
+  @notes: 
   @example:
   @see also: HTCDestroy
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
@@ -348,7 +348,7 @@ void        HTCStop(HTC_HANDLE HTCHandle);
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   @desc: Destory HTC service
   @function name: HTCDestroy
-  @input: HTCHandle
+  @input: HTCHandle 
   @output:
   @return:
   @notes:  This cleans up all resources allocated by HTCCreate().

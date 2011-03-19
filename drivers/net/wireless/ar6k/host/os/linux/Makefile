@@ -1,23 +1,3 @@
-#------------------------------------------------------------------------------
-# <copyright file="Makefile" company="Atheros">
-#    Copyright (c) 2005-2007 Atheros Corporation.  All rights reserved.
-# 
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation;
-#
-# Software distributed under the License is distributed on an "AS
-# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# rights and limitations under the License.
-#
-#
-#------------------------------------------------------------------------------
-#==============================================================================
-# Author(s): ="Atheros"
-#==============================================================================
-#
-
 #######################################################################################
 #  AR6K Kernel Module makefile.
 #
@@ -26,48 +6,63 @@
 #    makefile which will subsequently pick up this makefile.
 #
 #######################################################################################
+#
+#
+#histroy 
+# when           who       what why                   tag
+# 2010-01-06      hp       fix CQ431832 and CQ430643 ZTE_WIFI_HP_007
 
+REV ?= 2
 
-#+++FIH+++
-#ATH_SRC_BASE :=$(CUR_PATH)../..
-ATH_SRC_BASE :=drivers/net/wireless/ar6k/host
-#---FIH---
+# ATHENV
+EXTRA_CFLAGS += -D__linux__
+export EXTRA_CFLAGS
+# ATHENV
 
 ATH_ARCH_CPU_TYPE := arm
 ATH_ANDROID_ENV := yes
 ATH_BUS_TYPE := sdio
 ATH_BUS_SUBTYPE := linux_sdio
 ATH_HTC_RAW_INT_ENV := yes
-#ATH_FAKE_EEPROM_USED := yes
 
-REV ?= 2
+#ZTE_WIFI_HP_007 
+#fix CQ431832 and CQ430643
+ifeq ($(ATH_SAVE_EEPROM_TO_FILE), yes)
+	EXTRA_CFLAGS += -DSAVE_EEPROM_TO_FILE
+endif
+
+ATH_SRC_BASE :=drivers/net/wireless/ar6k/host
+ATH_ANDROID_ENV := yes
 
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/include
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/../include
 # TBDXXX....handle include/AR6002
-EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/../include/AR6001
+EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/../include/AR6002
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/wlan/include
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/os/linux/include
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/os/
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/bmi/include
 EXTRA_CFLAGS += -I$(ATH_SRC_BASE)/hif/sdio/linux_sdio/include
 
-EXTRA_CFLAGS += -DLINUX -D__KERNEL__ \
+EXTRA_CFLAGS += -DLINUX -DDEBUG -D__KERNEL__ \
                 -DTCMD -DSEND_EVENT_TO_APP -DUSER_KEYS \
                 -DNO_SYNC_FLUSH #\
                 -DMULTIPLE_FRAMES_PER_INTERRUPT -DAR6000REV$(REV) \
                 -DBLOCK_TX_PATH_FLAG \
 
-EXTRA_CFLAGS += -D__linux__
-
 # ATHENV
 ifeq ($(ATH_ANDROID_ENV),yes)
   EXTRA_CFLAGS += -DANDROID_ENV
-else
-$(error "WTF?? ANDROID_ENV IS DISABLED!")
 endif
-ifeq ($(ATH_FAKE_EEPROM_USED),yes)
-  EXTRA_CFLAGS += -DFAKE_EEPROM_USED
+ifeq ($(ATH_EEPROM_FILE_USED),yes)
+  EXTRA_CFLAGS += -DEEPROM_FILE_USED
+endif
+ifeq ($(ATH_FORCE_TCMD_MODE),yes)
+  EXTRA_CFLAGS += -DFORCE_TCMD_MODE
+endif
+ifeq ($(ATH_FORCE_ART_MODE),yes)
+  EXTRA_CFLAGS += -DFORCE_ART_MODE -DHTC_RAW_INTERFACE
+  ATH_HTC_RAW_INT_ENV = yes
 endif
 # ATHENV
 
@@ -105,6 +100,11 @@ ifeq ($(ATH_ANDROID_ENV),yes)
   ar6000-objs += eeprom.o
 endif
 # ATHENV
+# ZTE_WIFI_HP_007 
+ifeq ($(ATH_SAVE_EEPROM_TO_FILE), yes)
+	ar6000-objs += ath_kfs.o
+endif
+# ZTE_WIFI_HP_007 end 
 
 endif
 

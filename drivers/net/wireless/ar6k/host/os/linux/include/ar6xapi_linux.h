@@ -1,24 +1,23 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="ar6xapi_linux.h" company="Atheros"> */
-/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
-
 #ifndef _AR6XAPI_LINUX_H
 #define _AR6XAPI_LINUX_H
+/*
+ *
+ * Copyright (c) 2004-2007 Atheros Communications Inc.
+ * All rights reserved.
+ *
+ * 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+ *
+ */
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,8 +148,6 @@ void ar6000_pspoll_event(struct ar6_softc *ar,A_UINT8 aid);
 
 void ar6000_dtimexpiry_event(struct ar6_softc *ar);
 
-A_STATUS ar6000_connect_to_ap(struct ar6_softc *ar);
-A_STATUS ar6000_set_wlan_state(struct ar6_softc *ar, AR6000_WLAN_STATE state);
 #ifdef __cplusplus
 }
 #endif

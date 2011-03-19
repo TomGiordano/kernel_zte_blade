@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="wmi.h" company="Atheros"> */
-/*    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+//------------------------------------------------------------------------------
+// <copyright file="wmi.h" company="Atheros">
+//    Copyright (c) 2004-2008 Atheros Corporation.  All rights reserved.
+// 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+//------------------------------------------------------------------------------
+//==============================================================================
+// Author(s): ="Atheros"
+//==============================================================================
 
 /*
  * This file contains the definitions of the WMI protocol specified in the
@@ -219,7 +219,7 @@ typedef enum {
     WMI_ABORT_SCAN_CMDID,
     WMI_SET_TARGET_EVENT_REPORT_CMDID,
 
-    /* Pyxis specific Command IDs */
+    // Pyxis specific Command IDs
     WMI_PYXIS_CONFIG_CMDID,
     WMI_PYXIS_OPERATION_CMDID,    /* 0xF00A */
 
@@ -235,7 +235,7 @@ typedef enum {
     WMI_AP_SET_PVB_CMDID,
     WMI_AP_CONN_INACT_CMDID,
     WMI_AP_PROT_SCAN_TIME_CMDID,
-    WMI_SET_COUNTRY_CMDID,     /* 0xF014 */
+    WMI_AP_SET_COUNTRY_CMDID,     /* 0xF014 */
     WMI_AP_SET_DTIM_CMDID,
 
     WMI_SET_IP_CMDID,
@@ -288,32 +288,17 @@ typedef enum {
     WEP_CRYPT           = 0x02,
     TKIP_CRYPT          = 0x03,
     AES_CRYPT           = 0x04,
-#ifdef WAPI_ENABLE
-    WAPI_CRYPT          = 0x05,
-#endif /* WAPI_ENABLE */
 } CRYPTO_TYPE;
 
-#ifdef WAPI_ENABLE
-#define IW_ENCODE_ALG_SM4              0x20
-#define IW_AUTH_WAPI_ENABLED           0x20
-#endif /* WAPI_ENABLE */
 
 #define WMI_MIN_CRYPTO_TYPE NONE_CRYPT
 #define WMI_MAX_CRYPTO_TYPE (AES_CRYPT + 1)
 
-#ifdef WAPI_ENABLE
-#undef WMI_MAX_CRYPTO_TYPE
-#define WMI_MAX_CRYPTO_TYPE (WAPI_CRYPT + 1)
-#endif /* WAPI_ENABLE */
 
 
 #define WMI_MIN_KEY_INDEX   0
 #define WMI_MAX_KEY_INDEX   3
 
-#ifdef WAPI_ENABLE
-#undef WMI_MAX_KEY_INDEX
-#define WMI_MAX_KEY_INDEX   7 /* wapi grpKey 0-3, prwKey 4-7 */
-#endif /* WAPI_ENABLE */
 
 #define WMI_MAX_KEY_LEN     32
 
@@ -369,9 +354,6 @@ typedef enum {
  */
 #define KEY_OP_INIT_TSC       0x01
 #define KEY_OP_INIT_RSC       0x02
-#ifdef WAPI_ENABLE
-#define KEY_OP_INIT_WAPIPN    0x10
-#endif /* WAPI_ENABLE */
 
 #define KEY_OP_INIT_VAL     0x03     /* Default Initialise the TSC & RSC */
 #define KEY_OP_VALID_MASK   0x03
@@ -1003,7 +985,6 @@ typedef enum {
     BT_STREAM_A2DP,            /* A2DP stream */
     BT_STREAM_SCAN,            /* BT Discovery or Page */
     BT_STREAM_ESCO,
-    BT_STREAM_ALL,
     BT_STREAM_MAX
 } BT_STREAM_TYPE;
 
@@ -1035,10 +1016,6 @@ typedef enum {
     BT_STATUS_STOP,
     BT_STATUS_RESUME,
     BT_STATUS_SUSPEND,
-    BT_STATUS_SUSPEND_A2DP,
-    BT_STATUS_SUSPEND_SCO,
-    BT_STATUS_SUSPEND_ACL,
-    BT_STATUS_SUSPEND_SCAN,
     BT_STATUS_MAX
 } BT_STREAM_STATUS;
 
@@ -1148,6 +1125,57 @@ typedef PREPACK struct {
 }POSTPACK BT_PARAMS_ACLCOEX;
 
 typedef PREPACK struct {
+    A_UINT32 mode;
+    A_UINT32 scoWghts;
+    A_UINT32 a2dpWghts;
+    A_UINT32 genWghts;
+    A_UINT32 mode2;
+    A_UINT8  setVal;
+} POSTPACK BT_COEX_REGS;
+
+typedef enum {
+    WLAN_PROTECT_POLICY = 1,
+    WLAN_COEX_CTRL_FLAGS
+} BT_PARAMS_MISC_TYPE;
+
+typedef enum {
+    WLAN_PROTECT_PER_STREAM = 0x01,   /* default */
+    WLAN_PROTECT_ANY_TX = 0x02
+} WLAN_PROTECT_FLAGS;
+
+
+#define WLAN_DISABLE_COEX_IN_DISCONNECT   0x01 /* default */
+#define WLAN_KEEP_COEX_IN_DISCONNECT      0x02
+#define WLAN_STOMPBT_IN_DISCONNECT        0x04
+
+#define WLAN_DISABLE_COEX_IN_ROAM         0x10 /* default */
+#define WLAN_KEEP_COEX_IN_ROAM            0x20
+#define WLAN_STOMPBT_IN_ROAM              0x40
+
+#define WLAN_DISABLE_COEX_IN_SCAN        0x100 /* default */
+#define WLAN_KEEP_COEX_IN_SCAN           0x200
+#define WLAN_STOMPBT_IN_SCAN             0x400
+
+#define WLAN_DISABLE_COEX_BT_OFF        0x1000 /* default */
+#define WLAN_KEEP_COEX_BT_OFF           0x2000
+#define WLAN_STOMPBT_BT_OFF             0x4000
+
+typedef PREPACK struct {
+    A_UINT32 period;
+    A_UINT32 dutycycle;
+    A_UINT8  stompbt;
+    A_UINT8  policy;
+} POSTPACK WLAN_PROTECT_POLICY_TYPE;
+
+typedef PREPACK struct {
+    PREPACK union {
+        WLAN_PROTECT_POLICY_TYPE protectParams;
+        A_UINT16 configCtrlFlags;
+    } POSTPACK info;
+    A_UINT8 paramType;
+} POSTPACK BT_PARAMS_MISC;
+
+typedef PREPACK struct {
     PREPACK union {
         BT_PARAMS_SCO scoParams;
         BT_PARAMS_A2DP a2dpParams;
@@ -1246,8 +1274,7 @@ typedef enum {
     WMI_PSPOLL_EVENTID,
     WMI_DTIMEXPIRY_EVENTID,
     WMI_WLAN_VERSION_EVENTID,
-    WMI_SET_PARAMS_REPLY_EVENTID,
-    WMI_ACM_REJECT_EVENTID
+    WMI_SET_PARAMS_REPLY_EVENTID
 } WMI_EVENT_ID;
 
 typedef enum {
@@ -1373,13 +1400,6 @@ typedef PREPACK struct {
     A_UINT8     trafficDirection;
     A_UINT8     trafficClass;
 } POSTPACK WMI_PSTREAM_TIMEOUT_EVENT;
-
-typedef PREPACK struct {
-    A_UINT8     reserve1;
-    A_UINT8     reserve2;
-    A_UINT8     reserve3;
-    A_UINT8     trafficClass;
-} POSTPACK WMI_ACM_REJECT_EVENT;
 
 /*
  * The WMI_NEIGHBOR_REPORT Event is generated by the target to inform
@@ -2039,8 +2059,8 @@ typedef enum {
 } WMI_PYXIS_CONFIG_TYPE;
 
 typedef PREPACK struct {
-    A_UINT16   pyxisConfigType;  /* One of WMI_PYXIS_CONFIG_TYPE */
-    A_UINT16   pyxisConfigLen;   /* Length in Bytes of Information that follows */
+    A_UINT16   pyxisConfigType;  // One of WMI_PYXIS_CONFIG_TYPE
+    A_UINT16   pyxisConfigLen;   // Length in Bytes of Information that follows
 } POSTPACK WMI_PYXIS_CONFIG_HDR;
 
 typedef PREPACK struct {
@@ -2072,7 +2092,7 @@ typedef enum {
 
 typedef PREPACK struct {
     A_UINT16  pyxisCmd;
-    A_UINT16  pyxisCmdLen;  /* Length following this header */
+    A_UINT16  pyxisCmdLen;  // Length following this header
 } POSTPACK WMI_PYXIS_CMD_HDR;
 
 typedef PREPACK struct {
@@ -2203,7 +2223,7 @@ typedef PREPACK struct {
 
 typedef PREPACK struct {
     A_UCHAR countryCode[3];
-} POSTPACK WMI_SET_COUNTRY_CMD;
+} POSTPACK WMI_AP_SET_COUNTRY_CMD;
 
 typedef PREPACK struct {
     A_UINT8 dtim;

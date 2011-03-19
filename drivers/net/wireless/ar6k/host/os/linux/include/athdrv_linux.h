@@ -1,21 +1,21 @@
-/*------------------------------------------------------------------------------ */
-/* <copyright file="athdrv_linux.h" company="Atheros"> */
-/*    Copyright (c) 2004-2009 Atheros Corporation.  All rights reserved. */
-/*  */
-/* This program is free software; you can redistribute it and/or modify */
-/* it under the terms of the GNU General Public License version 2 as */
-/* published by the Free Software Foundation; */
-/* */
-/* Software distributed under the License is distributed on an "AS */
-/* IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or */
-/* implied. See the License for the specific language governing */
-/* rights and limitations under the License. */
-/* */
-/* */
-/*------------------------------------------------------------------------------ */
-/*============================================================================== */
-/* Author(s): ="Atheros" */
-/*============================================================================== */
+/*
+ * Copyright (c) 2004-2009 Atheros Communications Inc.
+ * All rights reserved.
+ *
+ *
+ * 
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 2 as
+// published by the Free Software Foundation;
+//
+// Software distributed under the License is distributed on an "AS
+// IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+// implied. See the License for the specific language governing
+// rights and limitations under the License.
+//
+//
+ *
+ */
 
 #ifndef _ATHDRV_LINUX_H
 #define _ATHDRV_LINUX_H
@@ -41,11 +41,11 @@ extern "C" {
 #define IEEE80211_IOCTL_SETMLME              (SIOCIWFIRSTPRIV+3)
 #define IEEE80211_IOCTL_ADDPMKID             (SIOCIWFIRSTPRIV+4)
 #define IEEE80211_IOCTL_SETOPTIE             (SIOCIWFIRSTPRIV+5)
-/*#define IEEE80211_IOCTL_GETPARAM             (SIOCIWFIRSTPRIV+6) */
-/*#define IEEE80211_IOCTL_SETWMMPARAMS         (SIOCIWFIRSTPRIV+7) */
-/*#define IEEE80211_IOCTL_GETWMMPARAMS         (SIOCIWFIRSTPRIV+8) */
-/*#define IEEE80211_IOCTL_GETOPTIE             (SIOCIWFIRSTPRIV+9) */
-/*#define IEEE80211_IOCTL_SETAUTHALG           (SIOCIWFIRSTPRIV+10) */
+//#define IEEE80211_IOCTL_GETPARAM             (SIOCIWFIRSTPRIV+6)
+//#define IEEE80211_IOCTL_SETWMMPARAMS         (SIOCIWFIRSTPRIV+7)
+//#define IEEE80211_IOCTL_GETWMMPARAMS         (SIOCIWFIRSTPRIV+8)
+//#define IEEE80211_IOCTL_GETOPTIE             (SIOCIWFIRSTPRIV+9)
+//#define IEEE80211_IOCTL_SETAUTHALG           (SIOCIWFIRSTPRIV+10)
 #define IEEE80211_IOCTL_LASTONE              (SIOCIWFIRSTPRIV+10)
 
 
@@ -885,7 +885,7 @@ typedef enum {
 
 #define AR6000_XIOCTL_AP_PROT_SCAN_TIME             107
 
-#define AR6000_XIOCTL_SET_COUNTRY                   108
+#define AR6000_XIOCTL_AP_SET_COUNTRY                108
 
 #define AR6000_XIOCTL_AP_SET_DTIM                   109
 
@@ -911,8 +911,6 @@ typedef enum {
 #define AR6000_XIOCTL_AP_GET_BINTVL                 118
 
 #define AR6000_XIOCTL_AP_GET_RTS                    119
-
-#define AR6000_XIOCTL_TCMD_GET_MAC                  120
 
 /* used by AR6000_IOCTL_WMI_GETREV */
 struct ar6000_version {
