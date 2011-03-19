@@ -162,6 +162,13 @@ config MACH_BLADE
 	help
 	  Support for the ZTE MSM7x27 Blade phone.
 
+config JESUS_PHONE
+	bool "Enable Jesus Phone mode (DANGEROUS)"
+	depends on MSM_CPU_FREQ_SET_MIN_MAX
+	default n
+	help
+	  Enable support for dangerous acpuclock frequencies/voltages.
+
 config MACH_BLADE_CAMERA5MP
 	depends on MACH_BLADE
 	default n
