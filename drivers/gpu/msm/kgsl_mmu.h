@@ -151,6 +151,10 @@ kgsl_mmu_isenabled(struct kgsl_mmu *mmu)
 
 int kgsl_mmu_init(struct kgsl_device *device);
 
+int kgsl_mmu_start(struct kgsl_device *device);
+
+int kgsl_mmu_stop(struct kgsl_device *device);
+
 int kgsl_mmu_close(struct kgsl_device *device);
 
 struct kgsl_pagetable *kgsl_mmu_getpagetable(struct kgsl_mmu *mmu,
@@ -190,6 +194,10 @@ static inline int kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 { return 0; }
 
 #endif
+
+int kgsl_mmu_map_global(struct kgsl_pagetable *pagetable,
+			struct kgsl_memdesc *memdesc, unsigned int protflags,
+			unsigned int flags);
 
 int kgsl_mmu_querystats(struct kgsl_pagetable *pagetable,
 			struct kgsl_ptstats *stats);

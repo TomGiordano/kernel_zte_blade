@@ -25,9 +25,9 @@ config MSM_KGSL_MMU
 config KGSL_PER_PROCESS_PAGE_TABLE
 	bool "Enable Per Process page tables for the KGSL driver"
 	default n
-	depends on MSM_KGSL_MMU
+	depends on MSM_KGSL_MMU && !MSM_KGSL_DRM
 
 config MSM_KGSL_MMU_PAGE_FAULT
 	bool "Force the GPU MMU to page fault for unmapped regions"
 	default n
-	depends on MSM_KGSL_MMU
+	depends on MSM_KGSL_MMU && !MSM_KGSL_DRM

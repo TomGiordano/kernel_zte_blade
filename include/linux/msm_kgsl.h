@@ -33,6 +33,9 @@
 #define KGSL_CONTEXT_SAVE_GMEM		1
 #define KGSL_CONTEXT_NO_GMEM_ALLOC	2
 
+/* Memory allocayion flags */
+#define KGSL_MEMFLAGS_GPUREADONLY	0x01000000
+
 /* generic flag values */
 #define KGSL_FLAGS_NORMALMODE  0x00000000
 #define KGSL_FLAGS_SAFEMODE    0x00000001
@@ -49,6 +52,12 @@ enum kgsl_deviceid {
 	KGSL_DEVICE_YAMATO	= 0x00000000,
 	KGSL_DEVICE_G12		= 0x00000001,
 	KGSL_DEVICE_MAX		= 0x00000002
+};
+
+enum kgsl_user_mem_type {
+	KGSL_USER_MEM_TYPE_PMEM		= 0x00000000,
+	KGSL_USER_MEM_TYPE_ASHMEM	= 0x00000001,
+	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002
 };
 
 struct kgsl_devinfo {
@@ -235,6 +244,22 @@ struct kgsl_drawctxt_destroy {
 #define IOCTL_KGSL_DRAWCTXT_DESTROY \
 	_IOW(KGSL_IOC_TYPE, 0x14, struct kgsl_drawctxt_destroy)
 
+/* add a block of pmem, fb, ashmem or user allocated address
+ * into the GPU address space */
+struct kgsl_map_user_mem {
+	int fd;
+	unsigned int gpuaddr;   /*output param */
+	unsigned int len;
+	unsigned int offset;
+	unsigned int hostptr;   /*input param */
+	enum kgsl_user_mem_type memtype;
+	unsigned int reserved;	/* May be required to add
+				params for another mem type */
+};
+
+#define IOCTL_KGSL_MAP_USER_MEM \
+	_IOWR(KGSL_IOC_TYPE, 0x15, struct kgsl_map_user_mem)
+
 /* add a block of pmem or fb into the GPU address space */
 struct kgsl_sharedmem_from_pmem {
 	int pmem_fd;
@@ -288,9 +313,7 @@ struct kgsl_bind_gmem_shadow {
 struct kgsl_sharedmem_from_vmalloc {
 	unsigned int gpuaddr;	/*output param */
 	unsigned int hostptr;
-	/* If set from user space then will attempt to
-	 * allocate even if low watermark is crossed */
-	int force_no_low_watermark;
+	unsigned int flags;
 };
 
 #define IOCTL_KGSL_SHAREDMEM_FROM_VMALLOC \
@@ -326,4 +349,12 @@ struct kgsl_cmdwindow_write {
 #define IOCTL_KGSL_CMDWINDOW_WRITE \
 	_IOW(KGSL_IOC_TYPE, 0x2e, struct kgsl_cmdwindow_write)
 
+#ifdef __KERNEL__
+#ifdef CONFIG_MSM_KGSL_DRM
+int kgsl_gem_obj_addr(int drm_fd, int handle, unsigned long *start,
+			unsigned long *len);
+#else
+#define kgsl_gem_obj_addr(...) 0
+#endif
+#endif
 #endif /* _MSM_KGSL_H */
