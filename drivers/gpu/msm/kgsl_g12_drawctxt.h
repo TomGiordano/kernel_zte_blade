@@ -59,6 +59,8 @@ struct kgsl_device_private;
 				 sizeof(unsigned int))
 #define KGSL_G12_CONTEXT_MAX 16
 
+#define KGSL_G12_INVALID_CONTEXT UINT_MAX
+
 int
 kgsl_g12_drawctxt_create(struct kgsl_device_private *dev_priv,
 			uint32_t unused,

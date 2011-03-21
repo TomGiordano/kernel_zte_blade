@@ -39,8 +39,12 @@
 
 struct kgsl_g12_device;
 
-int kgsl_g12_cmdstream_check_timestamp(struct kgsl_g12_device *g12_device,
-					unsigned int timestamp);
+int kgsl_g12_cmdstream_init(struct kgsl_device *device);
+
+int kgsl_g12_cmdstream_start(struct kgsl_device *device);
+
+void kgsl_g12_cmdstream_close(struct kgsl_device *device);
+
 unsigned int kgsl_g12_cmdstream_readtimestamp(struct kgsl_device *device,
 					enum kgsl_timestamp_type unused);
 void kgsl_g12_cmdstream_memqueue_drain(struct kgsl_g12_device *g12_device);

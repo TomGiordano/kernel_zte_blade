@@ -18,11 +18,69 @@
 #include <linux/io.h>
 #include <linux/spinlock.h>
 #include <linux/genalloc.h>
+#include <asm/cacheflush.h>
 
 #include "kgsl_sharedmem.h"
 #include "kgsl_device.h"
 #include "kgsl.h"
 #include "kgsl_log.h"
+
+#ifdef CONFIG_OUTER_CACHE
+static void _outer_cache_range_op(unsigned long addr, int size,
+				  unsigned int flags)
+{
+	unsigned long end;
+
+	for (end = addr; end < (addr + size); end += KGSL_PAGESIZE) {
+		unsigned long physaddr = 0;
+
+		if (flags & KGSL_MEMFLAGS_VMALLOC_MEM)
+			physaddr = page_to_phys(vmalloc_to_page((void *) end));
+		else if (flags & KGSL_MEMFLAGS_HOSTADDR)
+			physaddr = kgsl_virtaddr_to_physaddr(end);
+		else if (flags & KGSL_MEMFLAGS_CONPHYS)
+			physaddr = __pa(end);
+
+		if (physaddr == 0) {
+			KGSL_MEM_ERR("Unable to find physaddr for "
+				     "address: %x\n", (unsigned int)end);
+			return;
+		}
+
+		if (flags & KGSL_MEMFLAGS_CACHE_FLUSH)
+			outer_flush_range(physaddr, physaddr + KGSL_PAGESIZE);
+		else if (flags & KGSL_MEMFLAGS_CACHE_CLEAN)
+			outer_clean_range(physaddr, physaddr + KGSL_PAGESIZE);
+		else if (flags & KGSL_MEMFLAGS_CACHE_INV)
+			outer_inv_range(physaddr, physaddr + KGSL_PAGESIZE);
+	}
+}
+#else
+static void _outer_cache_range_op(unsigned long addr, int size,
+				  unsigned int flags)
+{
+}
+#endif
+
+void kgsl_cache_range_op(unsigned long addr, int size,
+			 unsigned int flags)
+{
+	BUG_ON(addr & (KGSL_PAGESIZE - 1));
+	BUG_ON(size & (KGSL_PAGESIZE - 1));
+
+	if (flags & KGSL_MEMFLAGS_CACHE_FLUSH)
+		dmac_flush_range((const void *)addr,
+				 (const void *)(addr + size));
+	else if (flags & KGSL_MEMFLAGS_CACHE_CLEAN)
+		dmac_clean_range((const void *)addr,
+				 (const void *)(addr + size));
+	else if (flags & KGSL_MEMFLAGS_CACHE_INV)
+		dmac_inv_range((const void *)addr,
+			       (const void *)(addr + size));
+
+	_outer_cache_range_op(addr, size, flags);
+}
+
 
 /*  block alignment shift count */
 static inline unsigned int
