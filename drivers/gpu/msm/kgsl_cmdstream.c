@@ -52,16 +52,6 @@ kgsl_cmdstream_readtimestamp(struct kgsl_device *device,
 	return timestamp;
 }
 
-int kgsl_cmdstream_check_timestamp(struct kgsl_device *device,
-				   unsigned int timestamp)
-{
-	unsigned int ts_processed;
-
-	ts_processed = kgsl_cmdstream_readtimestamp(device,
-						    KGSL_TIMESTAMP_RETIRED);
-	return timestamp_cmp(ts_processed, timestamp);
-}
-
 void kgsl_cmdstream_memqueue_drain(struct kgsl_device *device)
 {
 	struct kgsl_mem_entry *entry, *entry_tmp;

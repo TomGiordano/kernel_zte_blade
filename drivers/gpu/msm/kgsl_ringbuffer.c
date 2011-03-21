@@ -51,6 +51,8 @@
 
 #define YAMATO_PFP_FW "yamato_pfp.fw"
 #define YAMATO_PM4_FW "yamato_pm4.fw"
+#define LEIA_PFP_470_FW "leia_pfp_470.fw"
+#define LEIA_PM4_470_FW "leia_pm4_470.fw"
 
 /*  ringbuffer size log2 quadwords equivalent */
 inline unsigned int kgsl_ringbuffer_sizelog2quadwords(unsigned int sizedwords)
@@ -301,12 +303,26 @@ static int kgsl_ringbuffer_load_pm4_ucode(struct kgsl_device *device)
 	unsigned int *fw_ptr = NULL;
 	size_t fw_word_size = 0;
 
-	status = request_firmware(&fw, YAMATO_PM4_FW,
-				kgsl_driver.base_dev[KGSL_DEVICE_YAMATO]);
-	if (status != 0) {
-		KGSL_DRV_ERR("request_firmware failed for %s with error %d\n",
+	if (device->chip_id == KGSL_CHIPID_LEIA_REV470) {
+		status = request_firmware(&fw, LEIA_PM4_470_FW,
+			kgsl_driver.base_dev[KGSL_DEVICE_YAMATO]);
+		if (status != 0) {
+			KGSL_DRV_ERR(
+				"request_firmware failed for %s  \
+				 with error %d\n",
+				LEIA_PM4_470_FW, status);
+			goto done;
+		}
+	} else {
+		status = request_firmware(&fw, YAMATO_PM4_FW,
+			kgsl_driver.base_dev[KGSL_DEVICE_YAMATO]);
+		if (status != 0) {
+			KGSL_DRV_ERR(
+				"request_firmware failed for %s  \
+				 with error %d\n",
 				YAMATO_PM4_FW, status);
-		goto done;
+			goto done;
+		}
 	}
 	/*this firmware must come in 3 word chunks. plus 1 word of version*/
 	if ((fw->size % (sizeof(uint32_t)*3)) != 4) {
@@ -336,12 +352,26 @@ static int kgsl_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
 	unsigned int *fw_ptr = NULL;
 	size_t fw_word_size = 0;
 
-	status = request_firmware(&fw, YAMATO_PFP_FW,
+	if (device->chip_id == KGSL_CHIPID_LEIA_REV470) {
+		status = request_firmware(&fw, LEIA_PFP_470_FW,
 				kgsl_driver.base_dev[KGSL_DEVICE_YAMATO]);
-	if (status != 0) {
-		KGSL_DRV_ERR("request_firmware for %s failed with error %d\n",
+		if (status != 0) {
+			KGSL_DRV_ERR(
+				"request_firmware for %s \
+				 failed with error %d\n",
+				LEIA_PFP_470_FW, status);
+			return status;
+		}
+	} else {
+		status = request_firmware(&fw, YAMATO_PFP_FW,
+				kgsl_driver.base_dev[KGSL_DEVICE_YAMATO]);
+		if (status != 0) {
+			KGSL_DRV_ERR(
+				"request_firmware for %s \
+				 failed with error %d\n",
 				YAMATO_PFP_FW, status);
-		return status;
+			return status;
+		}
 	}
 	/*this firmware must come in 1 word chunks. */
 	if ((fw->size % sizeof(uint32_t)) != 0) {
@@ -362,7 +392,7 @@ static int kgsl_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
 	return status;
 }
 
-static int kgsl_ringbuffer_start(struct kgsl_ringbuffer *rb)
+int kgsl_ringbuffer_start(struct kgsl_ringbuffer *rb)
 {
 	int status;
 	/*cp_rb_cntl_u cp_rb_cntl; */
@@ -505,7 +535,7 @@ static int kgsl_ringbuffer_start(struct kgsl_ringbuffer *rb)
 	return status;
 }
 
-static int kgsl_ringbuffer_stop(struct kgsl_ringbuffer *rb)
+int kgsl_ringbuffer_stop(struct kgsl_ringbuffer *rb)
 {
 	KGSL_CMD_VDBG("enter (rb=%p)\n", rb);
 
@@ -515,6 +545,8 @@ static int kgsl_ringbuffer_stop(struct kgsl_ringbuffer *rb)
 
 		/* ME_HALT */
 		kgsl_yamato_regwrite(rb->device, REG_CP_ME_CNTL, 0x10000000);
+
+		kgsl_cmdstream_memqueue_drain(rb->device);
 
 		rb->flags &= ~KGSL_FLAGS_STARTED;
 		kgsl_ringbuffer_dump(rb);
@@ -567,26 +599,10 @@ int kgsl_ringbuffer_init(struct kgsl_device *device)
 		return status;
 	}
 
-	/* last allocation of init process is made here so map all
-	 * allocations to MMU */
-	status = kgsl_yamato_setup_pt(device, device->mmu.defaultpagetable);
-	if (status != 0) {
-		kgsl_ringbuffer_close(rb);
-		KGSL_CMD_VDBG("return %d\n", status);
-		return status;
-	}
-
 	/* overlay structure on memptrs memory */
 	rb->memptrs = (struct kgsl_rbmemptrs *) rb->memptrs_desc.hostptr;
 
 	rb->flags |= KGSL_FLAGS_INITIALIZED;
-
-	status = kgsl_ringbuffer_start(rb);
-	if (status != 0) {
-		kgsl_ringbuffer_close(rb);
-		KGSL_CMD_VDBG("return %d\n", status);
-		return status;
-	}
 
 	KGSL_CMD_VDBG("return %d\n", 0);
 	return 0;
@@ -595,13 +611,6 @@ int kgsl_ringbuffer_init(struct kgsl_device *device)
 int kgsl_ringbuffer_close(struct kgsl_ringbuffer *rb)
 {
 	KGSL_CMD_VDBG("enter (rb=%p)\n", rb);
-
-	kgsl_cmdstream_memqueue_drain(rb->device);
-
-	kgsl_ringbuffer_stop(rb);
-
-	/* this must happen before first sharedmem_free */
-	kgsl_yamato_cleanup_pt(rb->device, rb->device->mmu.defaultpagetable);
 
 	if (rb->buffer_desc.hostptr)
 		kgsl_sharedmem_free(&rb->buffer_desc);
@@ -664,6 +673,9 @@ kgsl_ringbuffer_addcmds(struct kgsl_ringbuffer *rb,
 	*ringcmds++ = rb->timestamp;
 
 	if (!(flags & KGSL_CMD_FLAGS_NO_TS_CMP)) {
+		/*  Add idle packet so avoid RBBM errors */
+		*ringcmds++ = pm4_type3_packet(PM4_WAIT_FOR_IDLE, 1);
+		*ringcmds++ = 0x00000000;
 		/* Conditional execution based on memory values */
 		*ringcmds++ = pm4_type3_packet(PM4_COND_EXEC, 4);
 		*ringcmds++ = (rb->device->memstore.gpuaddr +
@@ -672,9 +684,7 @@ kgsl_ringbuffer_addcmds(struct kgsl_ringbuffer *rb,
 			KGSL_DEVICE_MEMSTORE_OFFSET(ref_wait_ts)) >> 2;
 		*ringcmds++ = rb->timestamp;
 		/* # of conditional command DWORDs */
-		*ringcmds++ = 4;
-		*ringcmds++ = pm4_type3_packet(PM4_WAIT_FOR_IDLE, 1);
-		*ringcmds++ = 0x00000000;
+		*ringcmds++ = 2;
 		*ringcmds++ = pm4_type3_packet(PM4_INTERRUPT, 1);
 		*ringcmds++ = CP_INT_CNTL__RB_INT_MASK;
 	}
@@ -756,7 +766,6 @@ kgsl_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 
 	return 0;
 }
-
 
 #ifdef DEBUG
 void kgsl_ringbuffer_debug(struct kgsl_ringbuffer *rb,

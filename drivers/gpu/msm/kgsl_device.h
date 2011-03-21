@@ -72,11 +72,10 @@
 
 #define KGSL_CHIPID_YAMATODX_REV21  0x20100
 #define KGSL_CHIPID_YAMATODX_REV211 0x20101
+#define KGSL_CHIPID_LEIA_REV470_TEMP 0x10001
+#define KGSL_CHIPID_LEIA_REV470 0x2010000
 
-int kgsl_yamato_setup_pt(struct kgsl_device *device,
-			 struct kgsl_pagetable *pagetable);
-int kgsl_yamato_cleanup_pt(struct kgsl_device *device,
-			   struct kgsl_pagetable *pagetable);
+
 
 #define KGSL_GRAPHICS_MEMORY_LOW_WATERMARK  0x1000000
 
@@ -96,9 +95,10 @@ struct kgsl_functable {
 	int (*device_setstate) (struct kgsl_device *device, uint32_t flags);
 	int (*device_idle) (struct kgsl_device *device, unsigned int timeout);
 	int (*device_suspend) (struct kgsl_device *device);
+	int (*device_sleep) (struct kgsl_device *device, const int idle);
 	int (*device_wake) (struct kgsl_device *device);
-	int (*device_last_release_locked) (struct kgsl_device *device);
-	int (*device_first_open_locked) (struct kgsl_device *device);
+	int (*device_start) (struct kgsl_device *device);
+	int (*device_stop) (struct kgsl_device *device);
 	int (*device_getproperty) (struct kgsl_device *device,
 					enum kgsl_property_type type,
 					void *value,
@@ -122,6 +122,11 @@ struct kgsl_functable {
 	long (*device_ioctl) (struct kgsl_device_private *dev_priv,
 					unsigned int cmd,
 					unsigned long arg);
+	int (*device_setup_pt)(struct kgsl_device *device,
+			       struct kgsl_pagetable *pagetable);
+
+	int (*device_cleanup_pt)(struct kgsl_device *device,
+				 struct kgsl_pagetable *pagetable);
 
 };
 
@@ -146,6 +151,7 @@ struct kgsl_device {
 	struct kgsl_functable ftbl;
 	struct work_struct idle_check_ws;
 	struct timer_list idle_timer;
+	unsigned int interval_timeout;
 	atomic_t open_count;
 
 	struct atomic_notifier_head ts_notifier_list;
@@ -179,6 +185,8 @@ struct kgsl_devconfig {
 
 	struct kgsl_memregion gmemspace;
 };
+
+struct kgsl_device *kgsl_get_device(int dev_idx);
 
 static inline struct kgsl_mmu *
 kgsl_get_mmu(struct kgsl_device *device)
