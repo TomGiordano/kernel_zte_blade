@@ -21,6 +21,9 @@
 #include "ieee80211_ioctl.h"
 #include "ar6kap_common.h"
 
+#include <mach/gpio.h>
+#include <mach/vreg.h>
+
 static A_UINT8 bcast_mac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 static A_UINT8 null_mac[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 extern unsigned int wmitimeout;
@@ -1015,9 +1018,45 @@ static A_BOOL gpio_ack_received;   /* GPIO ack was received */
 /* Host-side initialization for General Purpose I/O support */
 void ar6000_gpio_init(void)
 {
+    int ret = 0,rc = 255;
+    struct vreg *vreg;
+
     gpio_intr_available = FALSE;
     gpio_data_available = FALSE;
     gpio_ack_received   = FALSE;
+
+    vreg = vreg_get(0, "wlan");
+    ret = vreg_enable(vreg);
+    printk(KERN_ERR"powerup wlan,ret:%d\n", ret);
+    if(ret)
+       printk(KERN_ERR"voltage enable failed\n");
+    ret = vreg_set_level(vreg, 1800);
+    if(ret)
+      printk(KERN_ERR"voltage set level failed\n");
+
+    rc = gpio_request(18, "wlan_chip_pwd");
+    if(!rc)
+    {
+         gpio_direction_output(18, 0);
+         mdelay(50);
+         gpio_direction_output(18, 1);
+    }
+    else
+    {
+         printk(KERN_ERR"gpio_request:%d failed\n", 18);
+    }
+    gpio_free(18);
+
+    rc = gpio_request(17, "wlan_reset");
+    if(!rc)
+    {
+         gpio_direction_output(17, 1);
+    }
+    else
+    {
+         printk(KERN_ERR"gpio_request:%d failed \n", 17);
+    }
+    gpio_free(17);
 }
 
 /*

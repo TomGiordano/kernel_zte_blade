@@ -131,8 +131,8 @@ char *eeprom_file = "/system/etc/firmware/calData_ar6102_15dBm.bin";
 char *eeprom_file = NULL;
 #endif
 
-/* int refClock = 26000000; */
-int refClock =   19200000;
+int refClock = 26000000; 
+//int refClock =   19200000;
 int regCode = 0x0;
 /* int regCode = 0x4067; */
 int txpwr = 0;
