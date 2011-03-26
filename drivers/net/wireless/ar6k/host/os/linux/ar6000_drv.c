@@ -1397,7 +1397,7 @@ ar6000_avail_ev(void *context, void *hif_handle)
         }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
-        if (def_ifname[0] != '\0') 
+        if (def_ifname[0] != '\0' && ifname[0] == '\0') 
             strcpy(ifname, def_ifname);
 
         if (ifname[0])
