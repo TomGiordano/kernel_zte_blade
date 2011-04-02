@@ -35,7 +35,6 @@
 #include <linux/clk.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
-#include <linux/regulator/consumer.h>
 
 #include <asm/atomic.h>
 
@@ -93,9 +92,6 @@ struct kgsl_driver {
 	unsigned int is_suspended;
 	unsigned int clk_freq[KGSL_NUM_FREQ];
 
-	struct regulator *yamato_reg;
-	struct regulator *g12_reg;
-
 	struct kgsl_devconfig g12_config;
 	struct kgsl_devconfig yamato_config;
 
@@ -109,15 +105,13 @@ struct kgsl_driver {
 	struct list_head pagetable_list;
 	/* Mutex for accessing the pagetable list */
 	struct mutex pt_mutex;
-
-	struct kgsl_pagetable *global_pt;
 };
 
 extern struct kgsl_driver kgsl_driver;
 
 struct kgsl_mem_entry {
 	struct kgsl_memdesc memdesc;
-	struct file *file_ptr;
+	struct file *pmem_file;
 	struct list_head list;
 	struct list_head free_list;
 	uint32_t free_timestamp;
@@ -136,6 +130,7 @@ enum kgsl_status {
 
 #define KGSL_PRE_HWACCESS() \
 while (1) { \
+	mutex_lock(&kgsl_driver.mutex); \
 	if (device == NULL) \
 		break; \
 	if (device->hwaccess_blocked == KGSL_FALSE) { \
@@ -161,19 +156,12 @@ while (1) { \
 void kgsl_remove_mem_entry(struct kgsl_mem_entry *entry, bool preserve);
 
 int kgsl_pwrctrl(unsigned int pwrflag);
-void kgsl_timer(unsigned long data);
-void kgsl_idle_check(struct work_struct *work);
 int kgsl_idle(struct kgsl_device *device, unsigned int timeout);
 int kgsl_setstate(struct kgsl_device *device, uint32_t flags);
 int kgsl_regread(struct kgsl_device *device, unsigned int offsetwords,
 			unsigned int *value);
 int kgsl_regwrite(struct kgsl_device *device, unsigned int offsetwords,
 			unsigned int value);
-int kgsl_check_timestamp(struct kgsl_device *device, unsigned int timestamp);
-
-int kgsl_setup_pt(struct kgsl_pagetable *);
-
-int kgsl_cleanup_pt(struct kgsl_pagetable *);
 
 int kgsl_register_ts_notifier(struct kgsl_device *device,
 			      struct notifier_block *nb);
