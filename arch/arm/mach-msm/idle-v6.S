@@ -22,16 +22,15 @@
 .extern write_to_strongly_ordered_memory
 
 ENTRY(msm_arch_idle)
-	mrs	r2, cpsr		/* save the CPSR state */
-	cpsid   iaf			/* explictly disable I,A and F */
+	cpsid   af
 
 #if defined(CONFIG_ARCH_MSM7X27)
 	mov     r0, #0
 	mcr     p15, 0, r0, c7, c10, 0   /* flush entire data cache */
 	mcr     p15, 0, r0, c7, c10, 4   /* dsb                */
-	stmfd   sp!, {r2, lr}            /* preserve r2, thus CPSR and LR */
+	stmfd   sp!, {lr}
 	bl      write_to_strongly_ordered_memory  /* flush AXI bus buffer */
-	ldmfd   sp!, {r2, lr}
+	ldmfd   sp!, {lr}
 	mcr     p15, 0, r0, c7, c0, 4    /* wait for interrupt */
 #else
 	mrc     p15, 0, r1, c1, c0, 0    /* read current CR    */
@@ -51,7 +50,7 @@ ENTRY(msm_arch_idle)
 	mcr     p15, 0, r0, c7, c5, 4    /* isb                */
 #endif
 
-	msr	cpsr_c, r2		/* restore the CPSR state */
+	cpsie   af
 	mov     pc, lr
 
 ENTRY(msm_pm_collapse)
