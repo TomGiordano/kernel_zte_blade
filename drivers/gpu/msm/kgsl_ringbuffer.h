@@ -28,8 +28,6 @@
  */
 #ifndef __GSL_RINGBUFFER_H
 #define __GSL_RINGBUFFER_H
-
-#include <linux/types.h>
 #include <linux/msm_kgsl.h>
 #include <linux/mutex.h>
 #include "kgsl_log.h"
@@ -247,6 +245,10 @@ int kgsl_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 				unsigned int flags);
 
 int kgsl_ringbuffer_init(struct kgsl_device *device);
+
+int kgsl_ringbuffer_start(struct kgsl_ringbuffer *rb);
+
+int kgsl_ringbuffer_stop(struct kgsl_ringbuffer *rb);
 
 int kgsl_ringbuffer_close(struct kgsl_ringbuffer *rb);
 

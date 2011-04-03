@@ -135,4 +135,7 @@ int kgsl_sharedmem_init(struct kgsl_sharedmem *shmem);
 
 int kgsl_sharedmem_close(struct kgsl_sharedmem *shmem);
 
+void kgsl_cache_range_op(unsigned long addr, int size,
+			 unsigned int flags);
+
 #endif /* __GSL_SHAREDMEM_H */

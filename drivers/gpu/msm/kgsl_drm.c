@@ -29,6 +29,7 @@
 #include "kgsl_drm.h"
 #include "kgsl_mmu.h"
 #include "kgsl_yamato.h"
+#include "kgsl_sharedmem.h"
 
 #define DRIVER_AUTHOR           "Qualcomm"
 #define DRIVER_NAME             "kgsl"
@@ -61,14 +62,12 @@
    ((_t & DRM_KGSL_GEM_TYPE_MEM_MASK) == DRM_KGSL_GEM_TYPE_KMEM_NOCACHE) || \
    ((_t) & DRM_KGSL_GEM_TYPE_MEM))
 
-/* Cache clean/flush ops */
-#define KGSL_GEM_CACHE_INV          0x00000001
-#define KGSL_GEM_CACHE_CLEAN        0x00000002
-#define KGSL_GEM_CACHE_FLUSH        0x00000004
+/* Returns true if KMEM region is uncached */
 
-/* GEM mem addr types */
-#define KGSL_GEM_CACHE_PMEM_ADDR    0x00000010
-#define KGSL_GEM_CACHE_VMALLOC_ADDR 0x00000020
+#define IS_MEM_UNCACHED(_t) \
+  ((_t == DRM_KGSL_GEM_TYPE_KMEM_NOCACHE) || \
+   (_t == DRM_KGSL_GEM_TYPE_KMEM) || \
+   (TYPE_IS_MEM(_t) && (_t & DRM_KGSL_GEM_CACHE_WCOMBINE)))
 
 struct drm_kgsl_gem_object {
 	struct drm_gem_object *obj;
@@ -93,83 +92,39 @@ struct drm_kgsl_gem_object {
 /* This is a global list of all the memory currently mapped in the MMU */
 static struct list_head kgsl_mem_list;
 
-static long kgsl_gem_cache_range_op(const void *addr, unsigned long size,
-					uint32_t flags)
-{
-#ifdef CONFIG_OUTER_CACHE
-	unsigned long end;
-
-	BUG_ON(addr & (PAGE_SIZE - 1));
-	BUG_ON(size & (PAGE_SIZE - 1));
-
-#endif
-	if (flags & KGSL_GEM_CACHE_FLUSH)
-		dmac_flush_range((const void *)addr,
-				(const void *)(addr + size));
-	else if (flags & KGSL_GEM_CACHE_CLEAN)
-		dmac_clean_range((const void *)addr,
-					(const void *)(addr + size));
-	else
-		dmac_inv_range((const void *)addr,
-					(const void *)(addr + size));
-
-#ifdef CONFIG_OUTER_CACHE
-	for (end = addr; end < (addr + size); end += PAGE_SIZE) {
-		unsigned long physaddr;
-
-		/* vmalloc addr */
-		if (flags & KGSL_GEM_CACHE_VMALLOC_ADDR) {
-			physaddr = vmalloc_to_pfn((void *)end);
-			physaddr <<= PAGE_SHIFT;
-		} else /* pmem addr */
-			physaddr = __pa(addr);
-
-		if (flags & KGSL_GEM_CACHE_FLUSH)
-			outer_flush_range(physaddr, physaddr + PAGE_SIZE);
-		else if (flags & KGSL_GEM_CACHE_CLEAN)
-			outer_clean_range(physaddr,
-				physaddr + PAGE_SIZE);
-		else
-			outer_inv_range(physaddr,
-				physaddr + PAGE_SIZE);
-	}
-#endif
-	return 0;
-}
-
 static void kgsl_gem_mem_flush(void *addr,
 		unsigned long size, uint32_t type, int op)
 {
 	int flags = 0;
 
-	if (op == DRM_KGSL_GEM_CACHE_OP_TO_DEV) {
+	switch (op) {
+	case DRM_KGSL_GEM_CACHE_OP_TO_DEV:
 		if (type & (DRM_KGSL_GEM_CACHE_WBACK |
-				DRM_KGSL_GEM_CACHE_WBACKWA))
-			flags |= KGSL_GEM_CACHE_CLEAN;
+			    DRM_KGSL_GEM_CACHE_WBACKWA))
+			flags |= KGSL_MEMFLAGS_CACHE_CLEAN;
 
-	} else if (op == DRM_KGSL_GEM_CACHE_OP_FROM_DEV) {
+		break;
+
+	case DRM_KGSL_GEM_CACHE_OP_FROM_DEV:
 		if (type & (DRM_KGSL_GEM_CACHE_WBACK |
-				DRM_KGSL_GEM_CACHE_WBACKWA |
-				DRM_KGSL_GEM_CACHE_WTHROUGH))
-			flags |= KGSL_GEM_CACHE_INV;
+			    DRM_KGSL_GEM_CACHE_WBACKWA |
+			    DRM_KGSL_GEM_CACHE_WTHROUGH))
+			flags |= KGSL_MEMFLAGS_CACHE_INV;
 	}
 
 	if (!flags)
 		return;
 
-#ifdef CONFIG_OUTER_CACHE
-	if (TYPE_IS_PMEM(type))
-		flags |= KGSL_GEM_CACHE_PMEM_ADDR;
+	if (TYPE_IS_PMEM(type)) {
+		flags |= KGSL_MEMFLAGS_CONPHYS;
+		addr = __va(addr);
+	}
 	else if (TYPE_IS_MEM(type))
-		flags |= KGSL_GEM_CACHE_VMALLOC_ADDR;
+		flags |= KGSL_MEMFLAGS_VMALLOC_MEM;
 	else
 		return;
-#endif
 
-	if (TYPE_IS_PMEM(type))
-		addr = __va(addr);
-
-	kgsl_gem_cache_range_op(addr, size, flags);
+	kgsl_cache_range_op((unsigned long) addr, size, flags);
 }
 
 /* Flush all the memory mapped in the MMU */
@@ -621,7 +576,6 @@ kgsl_gem_map(struct drm_gem_object *obj)
 	int index;
 	int ret = -EINVAL;
 	int flags = KGSL_MEMFLAGS_CONPHYS;
-	struct kgsl_device *yamato_device = kgsl_get_yamato_generic_device();
 
 	if (priv->flags & DRM_KGSL_GEM_FLAG_MAPPED)
 		return 0;
@@ -634,9 +588,11 @@ kgsl_gem_map(struct drm_gem_object *obj)
 	/* Get the global page table */
 
 	if (priv->pagetable == NULL) {
-		struct kgsl_mmu *mmu = kgsl_get_mmu(yamato_device);
+		struct kgsl_device *kgsldev =
+			kgsl_get_device(KGSL_DEVICE_YAMATO);
+		struct kgsl_mmu *mmu = kgsl_get_mmu(kgsldev);
 
-		if (mmu == NULL || !kgsl_mmu_isenabled(mmu))
+		if (mmu == NULL)
 			return -EINVAL;
 
 		priv->pagetable =
@@ -1093,14 +1049,13 @@ int msm_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 			pgprot_writecombine(vma->vm_page_prot);
 	}
 
-	/* flush out existing cached mappings */
-	if ((TYPE_IS_MEM(gpriv->type) &&
-		gpriv->type & DRM_KGSL_GEM_CACHE_WCOMBINE) ||
-		gpriv->type & DRM_KGSL_GEM_TYPE_KMEM_NOCACHE)
-			kgsl_gem_cache_range_op((void *)gpriv->cpuaddr,
-						(obj->size * gpriv->bufcount),
-						(KGSL_GEM_CACHE_VMALLOC_ADDR |
-						KGSL_GEM_CACHE_FLUSH));
+	/* flush out existing KMEM cached mappings if new ones are
+	 * of uncached type */
+	if (IS_MEM_UNCACHED(gpriv->type))
+			kgsl_cache_range_op((unsigned long) gpriv->cpuaddr,
+					    (obj->size * gpriv->bufcount),
+					    KGSL_MEMFLAGS_CACHE_FLUSH |
+					    KGSL_MEMFLAGS_VMALLOC_MEM);
 
 	/* Add the other memory types here */
 
