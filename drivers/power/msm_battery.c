@@ -928,9 +928,9 @@ static void msm_batt_start_cb_thread(void)
     queue_work(msm_batt_info.msm_batt_wq, &msm_batt_cb_work);
     DEBUG_MSM_BATTERY("task queue end!\n");
 }
-
+/*
 static void msm_batt_early_suspend(struct early_suspend *h);
-
+*/
 static int msm_batt_cleanup(void)
 {
     int rc = 0;
@@ -950,11 +950,12 @@ static int msm_batt_cleanup(void)
         power_supply_unregister(msm_batt_info.msm_psy_usb);
     if (msm_batt_info.msm_psy_batt)
         power_supply_unregister(msm_batt_info.msm_psy_batt);
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
     if (msm_batt_info.early_suspend.suspend == msm_batt_early_suspend)
         unregister_early_suspend(&msm_batt_info.early_suspend);
 #endif
+ */
     return rc;
 }
 
@@ -965,7 +966,7 @@ static u32 msm_batt_capacity(u32 current_voltage)
 
     return (current_voltage - low_voltage) * 100 / (high_voltage - low_voltage);
 }
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
 void msm_batt_early_suspend(struct early_suspend *h)
 {
@@ -979,6 +980,7 @@ void msm_batt_late_resume(struct early_suspend *h)
     //msm_batt_send_event(RESUME_EVENT);
 }
 #endif
+ */
 static int msm_batt_suspend(struct platform_device *pdev, pm_message_t state)
 {
     msm_batt_handle_suspend();
@@ -1084,14 +1086,14 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
         return rc;
     }
     msm_batt_info.msm_psy_batt = &msm_psy_batt;
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
     msm_batt_info.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     msm_batt_info.early_suspend.suspend = msm_batt_early_suspend;
     msm_batt_info.early_suspend.resume = msm_batt_late_resume;
     register_early_suspend(&msm_batt_info.early_suspend);
 #endif
-
+*/
     msm_batt_info.is_resume = FALSE;
     del_timer(msm_batt_info.battery_timer);
     msm_batt_info.battery_timer->expires = jiffies + BATTERY_CAPACITY_POLL_TIME;
@@ -1404,9 +1406,9 @@ struct msm_battery_info
     struct workqueue_struct *msm_batt_wq;
 
     wait_queue_head_t wait_q;
-
+/*
     struct early_suspend early_suspend;
-
+ */
     atomic_t handle_event;
 
     u32 type_of_event;
@@ -2059,9 +2061,9 @@ static void msm_batt_start_cb_thread(void)
     queue_work(msm_batt_info.msm_batt_wq, &msm_batt_cb_work);
     DEBUG_MSM_BATTERY("task queue end!\n");
 }
-
+/*
 static void msm_batt_early_suspend(struct early_suspend *h);
-
+ */
 static int msm_batt_cleanup(void)
 {
     int rc = 0;
@@ -2078,11 +2080,12 @@ static int msm_batt_cleanup(void)
         power_supply_unregister(msm_batt_info.msm_psy_usb);
     if (msm_batt_info.msm_psy_batt)
         power_supply_unregister(msm_batt_info.msm_psy_batt);
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
     if (msm_batt_info.early_suspend.suspend == msm_batt_early_suspend)
         unregister_early_suspend(&msm_batt_info.early_suspend);
 #endif
+ */
     return rc;
 }
 
@@ -2093,7 +2096,7 @@ static u32 msm_batt_capacity(u32 current_voltage)
 
     return (current_voltage - low_voltage) * 100 / (high_voltage - low_voltage);
 }
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
 void msm_batt_early_suspend(struct early_suspend *h)
 {
@@ -2107,6 +2110,7 @@ void msm_batt_late_resume(struct early_suspend *h)
     //msm_batt_send_event(RESUME_EVENT);
 }
 #endif
+ */
 static int msm_batt_suspend(struct platform_device *pdev, pm_message_t state)
 {
     msm_batt_handle_suspend();
@@ -2188,14 +2192,14 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
         return rc;
     }
     msm_batt_info.msm_psy_batt = &msm_psy_batt;
-
+/*
 #ifdef CONFIG_HAS_EARLYSUSPEND
     msm_batt_info.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     msm_batt_info.early_suspend.suspend = msm_batt_early_suspend;
     msm_batt_info.early_suspend.resume = msm_batt_late_resume;
     register_early_suspend(&msm_batt_info.early_suspend);
 #endif
-
+ */
     msm_batt_start_cb_thread();
 
     return 0;
