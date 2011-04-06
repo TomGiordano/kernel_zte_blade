@@ -1566,7 +1566,7 @@ module_param_named(usb_chg_enable, usb_charger_enable, int, S_IRUGO | S_IWUSR | 
 
 #define BATTERY_ENABLE_DISABLE_USB_CHG_PROC 		6
 #define BATTERY_MAX_TEMP 	68
-#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 5
+#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 255
 
 /*--------------------------------------------------------------
 msm_batt_handle_control_usb_charging() is added according msm_chg_usb_charger_connected() in rpc_hsusb.c
@@ -1859,9 +1859,12 @@ void msm_batt_update_psy_status_v1(void)
     if (rep_batt_chg.battery_temp > BATTERY_MAX_TEMP &&
              msm_batt_info.battery_temp_exceeded_count < BATTERY_MAX_TEMP_EXCEEDED_COUNT)
     {
-        msm_batt_info.battery_temp = -1;
+        msm_batt_info.battery_temp = 10;
         msm_batt_info.battery_temp_exceeded_count += 1;
-        printk("%() : Max Battery Temperature (%d) Exceeded for %d successive time.", __func__, rep_batt_chg.battery_temp, msm_batt_info.battery_temp_exceeded_count);
+        printk("%s(): batt_temp = %u exceeded max for %u time.\n",
+               __func__,
+               rep_batt_chg.battery_temp,
+               msm_batt_info.battery_temp_exceeded_count);
     }
     else    
     {
