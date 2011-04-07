@@ -1861,7 +1861,7 @@ void msm_batt_update_psy_status_v1(void)
     {
         msm_batt_info.battery_temp = 10;
         msm_batt_info.battery_temp_exceeded_count += 1;
-        printk("%s(): batt_temp = %u exceeded max for %u time.\n",
+        printk("%s(): batt_temp = %u exceeded max %u time(s).\n",
                __func__,
                rep_batt_chg.battery_temp,
                msm_batt_info.battery_temp_exceeded_count);
