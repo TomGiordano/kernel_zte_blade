@@ -17,8 +17,6 @@
  *
  */
 
-#define OVERCLOCK_AHB
-
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -207,14 +205,16 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 0, 19200, ACPU_PLL_TCXO, 0, 0, 19200, 0, 0, 30720 },
 	{ 0, 120000, ACPU_PLL_0, 4, 7,  60000, 1, 3,  61440 },
 	{ 1, 122880, ACPU_PLL_1, 1, 1,  61440, 1, 3,  61440 },
-	{ 0, 200000, ACPU_PLL_2, 2, 5,  66667, 2, 4,  61440 },
+	{ 0, 201600, ACPU_PLL_2, 2, 5,  67200, 2, 4,  61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 122880, 1, 4,  61440 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 5, 122880 },
-	{ 0, 400000, ACPU_PLL_2, 2, 2, 133333, 2, 5, 122880 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
-	{ 1, 600000, ACPU_PLL_2, 2, 1, 200000, 2, 7, 200000 },
-#ifndef OVERCLOCK_AHB
+#ifndef CONFIG_OVERCLOCK_AHB
 /* Conservative AHB overclocking */
+	{ 0, 403200, ACPU_PLL_2, 2, 2, 134400, 2, 5, 122880 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
+	{ 1, 604800, ACPU_PLL_2, 2, 1, 201600, 2, 7, 200000 },
+	{ 1, 614400, ACPU_PLL_0, 4, 0, 204800, 2, 7, 200000 },
+	{ 1, 633600, ACPU_PLL_0, 4, 0, 211200, 2, 7, 200000 },
 	{ 1, 652800, ACPU_PLL_0, 4, 0, 217600, 2, 7, 200000 },
 	{ 1, 672000, ACPU_PLL_0, 4, 0, 224000, 2, 7, 200000 },
 	{ 1, 691200, ACPU_PLL_0, 4, 0, 230400, 2, 7, 200000 },
@@ -225,14 +225,17 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 787200, ACPU_PLL_0, 4, 0, 262400, 2, 7, 200000 },
 	{ 1, 806400, ACPU_PLL_0, 4, 0, 268800, 2, 7, 200000 },
 #ifdef CONFIG_JESUS_PHONE
-	{ 1, 825600, ACPU_PLL_0, 4, 1, 206400, 3, 7, 206400 },
-	{ 1, 844800, ACPU_PLL_0, 4, 1, 211200, 3, 7, 211200 },
-	{ 1, 864000, ACPU_PLL_0, 4, 1, 216000, 3, 7, 216000 },
+	{ 1, 825600, ACPU_PLL_0, 4, 0, 275200, 2, 7, 200000 },
+	{ 1, 844800, ACPU_PLL_0, 4, 0, 281600, 2, 7, 200000 },
+	{ 1, 864000, ACPU_PLL_0, 4, 0, 288000, 2, 7, 200000 },
 #endif
 #else
 /* Agressive AHB overclocking */
-//	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 6, 200000 },
-//	{ 1, 600000, ACPU_PLL_2, 2, 1, 300000, 1, 7, 200000 },
+	{ 0, 403200, ACPU_PLL_2, 2, 2, 201600, 1, 5, 200000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 6, 200000 },
+	{ 1, 604800, ACPU_PLL_2, 2, 1, 302400, 1, 7, 200000 },
+	{ 1, 614400, ACPU_PLL_0, 4, 0, 307200, 1, 7, 200000 },
+	{ 1, 633600, ACPU_PLL_0, 4, 0, 316800, 1, 7, 200000 },
 	{ 1, 652800, ACPU_PLL_0, 4, 0, 326400, 1, 7, 200000 },
 	{ 1, 672000, ACPU_PLL_0, 4, 0, 336000, 1, 7, 200000 },
 	{ 1, 691200, ACPU_PLL_0, 4, 0, 345600, 1, 7, 200000 },
@@ -243,9 +246,9 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 787200, ACPU_PLL_0, 4, 0, 393600, 1, 7, 200000 },
 	{ 1, 806400, ACPU_PLL_0, 4, 0, 403200, 1, 7, 200000 },
 #ifdef CONFIG_JESUS_PHONE
-	{ 1, 825600, ACPU_PLL_0, 4, 1, 206400, 2, 7, 206400 },
-	{ 1, 844800, ACPU_PLL_0, 4, 1, 211200, 2, 7, 211200 },
-	{ 1, 864000, ACPU_PLL_0, 4, 1, 216000, 2, 7, 216000 },
+	{ 1, 825600, ACPU_PLL_0, 4, 0, 412800, 1, 7, 200000 },
+	{ 1, 844800, ACPU_PLL_0, 4, 0, 422400, 1, 7, 200000 },
+	{ 1, 864000, ACPU_PLL_0, 4, 0, 432000, 1, 7, 200000 },
 #endif
 #endif
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
@@ -271,7 +274,8 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_1200[] = {
 #define PLL_768_MHZ	40
 #define PLL_960_MHZ	50
 #define PLL_1056_MHZ	55
-#define PLL_1200_MHZ	62
+//#define PLL_1200_MHZ	62
+#define PLL_1200_MHZ	63
 
 #define PLL_CONFIG(m0, m1, m2) { \
 	PLL_##m0##_MHZ, PLL_##m1##_MHZ, PLL_##m2##_MHZ, \
@@ -427,7 +431,7 @@ static int acpuclk_set_vdd_level(int vdd)
 
 /* Set proper dividers for the given clock speed. */
 static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s) {
-	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel, a11_div;
+	uint32_t reg_clkctl, reg_clksel, clk_div, src_sel;
 
 	reg_clksel = readl(A11S_CLK_SEL_ADDR);
 
@@ -435,25 +439,7 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s) {
 	clk_div = (reg_clksel >> 1) & 0x03;
 	/* CLK_SEL_SRC1NO */
 	src_sel = reg_clksel & 1;
-a11_div = hunt_s->a11clk_src_div;
 
-
-#ifdef CONFIG_JESUS_PHONE
-   if (hunt_s->a11clk_khz > 600000) {
-    a11_div=0;
-    writel(hunt_s->a11clk_khz/19200, PLLn_L_VAL(0));
-    cpu_relax();
-    udelay(50);
-  } else if (hunt_s->pll == ACPU_PLL_0) {
-    if ((readl(PLLn_L_VAL(0)) & 0x3f) != PLL_960_MHZ) {
-      /* Restore PLL0 to standard config */
-      writel(PLL_960_MHZ, PLLn_L_VAL(0));
-    }
-    cpu_relax();
-    udelay(50);
-  }
-#endif
- 
 	/*
 	 * If the new clock divider is higher than the previous, then
 	 * program the divider before switching the clock
@@ -465,25 +451,17 @@ a11_div = hunt_s->a11clk_src_div;
 	}
 
 	// Perform overclocking if requested
-	if(hunt_s->pll==0 && hunt_s->a11clk_khz>600000) {
+	if(hunt_s->a11clk_khz>604800) {
 		// Change the speed of PLL0
 		writel(hunt_s->a11clk_khz/19200, PLLn_L_VAL(0));
 		udelay(50);
 	}
 
-#ifdef OVERCLOCK_AHB
-	// Pump the PLL2 up another 19200kHz (overclock stock 600MHz from 595.2MHz to 604.8MHz)
-	if(hunt_s->pll==2 && hunt_s->a11clk_khz==600000) {
-		writel(63, PLLn_L_VAL(2));
-		udelay(50);
-	}
-#endif
-
 	/* Program clock source and divider */
 	reg_clkctl = readl(A11S_CLK_CNTL_ADDR);
 	reg_clkctl &= ~(0xFF << (8 * src_sel));
 	reg_clkctl |= hunt_s->a11clk_src_sel << (4 + 8 * src_sel);
-	reg_clkctl |= a11_div << (0 + 8 * src_sel);
+	reg_clkctl |= hunt_s->a11clk_src_div << (0 + 8 * src_sel);
 	writel(reg_clkctl, A11S_CLK_CNTL_ADDR);
 
 	/* Program clock source selection */
@@ -491,9 +469,9 @@ a11_div = hunt_s->a11clk_src_div;
 	writel(reg_clksel, A11S_CLK_SEL_ADDR);
 
 	// Recover from overclocking
-	if(hunt_s->pll==0 && hunt_s->a11clk_khz<=600000) {
+	if(hunt_s->a11clk_khz<=604800) {
 		// Restore the speed of PLL0
-		writel(50, PLLn_L_VAL(0));
+		writel(PLL_960_MHZ, PLLn_L_VAL(0));
 		udelay(50);
 	}
 
@@ -776,6 +754,12 @@ static void __init acpu_freq_tbl_fixup(void)
 		cpu_relax();
 		udelay(50);
 	} while (pll1_l == 0);
+	/* Overclock PLL2 to it's maximum frequency */
+	/* This little trick overclocks the default */
+	/* 595.2MHz to 604.8MHz and also oveclocks  */
+	/* the GPU with 1.6%						*/
+	writel(PLL_1200_MHZ, PLLn_L_VAL(2));
+	udelay(50);
 	do {
 		pll2_l = readl(PLLn_L_VAL(2)) & 0x3f;
 		cpu_relax();

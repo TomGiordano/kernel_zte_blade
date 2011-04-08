@@ -1202,4 +1202,11 @@ config MSM7200A_TLMM
 
 config MSM8660_TLMM
        bool
+
+config OVERCLOCK_AHB
+	bool "Overclock the AHB-bus with 50% for all frequencies from 480MHz and above."
+	default n
+	help
+	  Increases the speed of memory read/writes but can cause instability.
+	  If unsure, choose N.
 endif
