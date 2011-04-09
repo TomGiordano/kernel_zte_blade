@@ -91,8 +91,10 @@ config YAFFS_AUTO_YAFFS2
 	  If unsure, say Y.
 
 config YAFFS_DISABLE_TAGS_ECC
-	bool "Disable YAFFS from doing ECC on tags by default"
+	bool
+	prompt "Disable YAFFS from doing ECC on tags by default" if !ZTE_PLATFORM
 	depends on YAFFS_FS && YAFFS_YAFFS2
+	default y if ZTE_PLATFORM=y
 	default n
 	help
 	  This defaults Yaffs to using its own ECC calculations on tags instead of
