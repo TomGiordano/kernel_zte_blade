@@ -430,7 +430,7 @@ module_param_named(usb_chg_enable, usb_charger_enable, int, S_IRUGO | S_IWUSR | 
 
 #define BATTERY_ENABLE_DISABLE_USB_CHG_PROC 		6
 #define BATTERY_MAX_TEMP 	68
-#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 30
+#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 40
 
 /*--------------------------------------------------------------
 msm_batt_handle_control_usb_charging() is added according msm_chg_usb_charger_connected() in rpc_hsusb.c
