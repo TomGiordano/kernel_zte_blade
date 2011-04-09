@@ -8,10 +8,17 @@ initrd_phys-$(CONFIG_ARCH_MSM7X01A)	:= 0x10800000
 params_phys-$(CONFIG_ARCH_MSM7X25)	:= 0x00200100
 initrd_phys-$(CONFIG_ARCH_MSM7X25)	:= 0x0A000000
 
-# MSM7x27
+ifeq ($(CONFIG_ZTE_BLADE_GEN2),y)
+# MSM7x27 - Blade Gen2
+   zreladdr-$(CONFIG_ARCH_MSM7X27)	:= 0x02608000
+params_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x02600100
+initrd_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x0A000000
+else
+# MSM7x27 - Blade Gen1
    zreladdr-$(CONFIG_ARCH_MSM7X27)	:= 0x02A08000
 params_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x02A00100
 initrd_phys-$(CONFIG_ARCH_MSM7X27)	:= 0x0A000000
+endif
 
 # MSM7x30
    zreladdr-$(CONFIG_ARCH_MSM7X30)	:= 0x00208000

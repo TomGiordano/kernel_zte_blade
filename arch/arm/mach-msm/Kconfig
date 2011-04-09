@@ -354,13 +354,23 @@ config MSM_STACKED_MEMORY
 	  memory.  When present this memory bank is used for a high speed
 	  shared memory interface.  When not present regular RAM is used.
 
+config ZTE_BLADE_GEN2
+	bool "ZTE Blade Generation 2"
+	default n
+	help
+	  This option is used to indicate if the kernel is to be compiled
+	  for a ZTE Blade Generation 2 (phone that is sold with Android 2.2
+	  and loads the kernel to 0x02600000.)
+
 #ZTE_BOOT_HUANGYANJUN_20100903_01 0x2A00000 ->0x02600000
 config PHYS_OFFSET
 	hex
-	default "0x02A00000" if !MSM_STACKED_MEMORY
-	default "0x00000000" if ARCH_QSD8X50 && MSM_SOC_REV_A
-	default "0x20000000" if ARCH_QSD8X50
-	default "0x40200000" if ARCH_MSM8X60
+	default "0x02600000" if ZTE_BLADE_GEN2
+	default "0x02A00000" if !ZTE_BLADE_GEN2
+#	default "0x02A00000" if !MSM_STACKED_MEMORY
+#	default "0x00000000" if ARCH_QSD8X50 && MSM_SOC_REV_A
+#	default "0x20000000" if ARCH_QSD8X50
+#	default "0x40200000" if ARCH_MSM8X60
 	default "0x10000000"
 
 config KERNEL_PMEM_EBI_REGION
@@ -1192,4 +1202,11 @@ config MSM7200A_TLMM
 
 config MSM8660_TLMM
        bool
+
+config OVERCLOCK_AHB
+	bool "Overclock the AHB-bus with 50% for all frequencies from 480MHz and above."
+	default n
+	help
+	  Increases the speed of memory read/writes but can cause instability.
+	  If unsure, choose N.
 endif
