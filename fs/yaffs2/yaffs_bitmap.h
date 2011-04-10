@@ -13,17 +13,21 @@
  * Note: Only YAFFS headers are LGPL, YAFFS C code is covered by GPL.
  */
 
-#ifndef __YAFFS_MTDIF2_H__
-#define __YAFFS_MTDIF2_H__
+/*
+ * Chunk bitmap manipulations
+ */
+
+#ifndef __YAFFS_BITMAP_H__
+#define __YAFFS_BITMAP_H__
 
 #include "yaffs_guts.h"
-int nandmtd2_WriteChunkWithTagsToNAND(yaffs_Device *dev, int chunkInNAND,
-				const __u8 *data,
-				const yaffs_ExtendedTags *tags);
-int nandmtd2_ReadChunkWithTagsFromNAND(yaffs_Device *dev, int chunkInNAND,
-				__u8 *data, yaffs_ExtendedTags *tags);
-int nandmtd2_MarkNANDBlockBad(struct yaffs_DeviceStruct *dev, int blockNo);
-int nandmtd2_QueryNANDBlock(struct yaffs_DeviceStruct *dev, int blockNo,
-			yaffs_BlockState *state, __u32 *sequenceNumber);
+
+void yaffs_VerifyChunkBitId(yaffs_Device *dev, int blk, int chunk);
+void yaffs_ClearChunkBits(yaffs_Device *dev, int blk);
+void yaffs_ClearChunkBit(yaffs_Device *dev, int blk, int chunk);
+void yaffs_SetChunkBit(yaffs_Device *dev, int blk, int chunk);
+int yaffs_CheckChunkBit(yaffs_Device *dev, int blk, int chunk);
+int yaffs_StillSomeChunkBits(yaffs_Device *dev, int blk);
+int yaffs_CountChunkBits(yaffs_Device *dev, int blk);
 
 #endif
