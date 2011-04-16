@@ -182,6 +182,97 @@ static int synaptics_i2c_write(struct i2c_client *client, int reg, u8 data)
     return ret;
 }
 
+#if (CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PDT != 0)
+static int synaptics_ts_get_func_addr(struct i2c_client *client, int fn,
+		int *data, int *ctrl, int *cmd, int *query)
+{
+	int addr = CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PDT - 1;
+	int ret;
+	char buf, func;
+
+	ret = synaptics_i2c_read(client, addr, &func, 1);
+	if (ret)
+		goto error;
+	while (func) {
+		if (func == fn) {
+			if (data) {
+				ret = synaptics_i2c_read(client, addr - 2, &buf, 1);
+				if (ret)
+					goto error;
+				*data = buf;
+			}
+			if (ctrl) {
+				ret = synaptics_i2c_read(client, addr - 3, &buf, 1);
+				if (ret)
+					goto error;
+				*ctrl = buf;
+			}
+			if (cmd) {
+				ret = synaptics_i2c_read(client, addr - 4, &buf, 1);
+				if (ret)
+					goto error;
+				*cmd = buf;
+			}
+			if (query) {
+				ret = synaptics_i2c_read(client, addr - 5, &buf, 1);
+				if (ret)
+					goto error;
+				*query = buf;
+			}
+			return 0;
+		}
+		addr -= 6;
+		ret = synaptics_i2c_read(client, addr, &func, 1);
+		if (ret)
+			goto error;
+	}
+	return -1;
+
+error:
+	printk(KERN_ERR "synaptics_ts_get_func_addr: error reading PDT\n");
+	return -1;
+}
+
+static int synaptics_ts_get_opmode(struct i2c_client *client)
+{
+	int addr, ret;
+	char buf;
+
+	ret = synaptics_ts_get_func_addr(client, 1, &addr, NULL, NULL, NULL);
+	if (ret)
+		goto error;
+
+	ret = synaptics_i2c_read(client, addr, &buf, 1);
+	if (ret)
+		goto error;
+	if (buf & 0x40)
+		return buf & 0x0F;
+	else
+		return 0;
+
+error:
+	printk(KERN_ERR "synaptics_ts_get_opmode: error reading device status\n");
+	return 0;
+}
+
+static int synaptics_ts_reset(struct i2c_client *client)
+{
+	int ret, ctrl, cmd;
+
+	ret = synaptics_ts_get_func_addr(client, 1, NULL, &ctrl, &cmd, NULL);
+	if (ret)
+		return -1;
+	ret = synaptics_i2c_write(client, cmd, 1);
+	if (ret)
+		return -1;
+	msleep(100);
+	ret = synaptics_i2c_write(client, ctrl, 0x80);
+	if (ret)
+		return -1;
+
+	return 0;
+}
+#endif
 
 static int
 proc_read_val(char *page, char **start, off_t off, int count, int *eof,
@@ -410,6 +501,17 @@ static int synaptics_ts_probe(
 		ret = -ENOMEM;
 		goto err_alloc_data_failed;
 	}
+
+#if (CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_PDT != 0)
+	ret = synaptics_ts_get_opmode(client);
+	if (ret) {
+		printk(KERN_WARNING "synaptics_ts_probe: device in "
+				"bootloader mode: status=0x%02x. Resetting.\n", ret);
+		ret = synaptics_ts_reset(client);
+		if (ret)
+			printk(KERN_ERR "synaptics_ts_probe: error resetting device\n");
+	}
+#endif
 
 	INIT_WORK(&ts->work, synaptics_ts_work_func);
 	ts->client = client;
