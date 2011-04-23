@@ -1,5 +1,5 @@
 /*
- * BFQ-v2 for 2.6.37: data structures and common functions prototypes.
+ * BFQ: data structures and common functions prototypes.
  *
  * Based on ideas and code from CFQ:
  * Copyright (C) 2003 Jens Axboe <axboe@kernel.dk>
@@ -16,8 +16,10 @@
 #include <linux/ioprio.h>
 #include <linux/rbtree.h>
 
+#define ASYNC			0
+#define SYNC			1
+
 #define BFQ_IOPRIO_CLASSES	3
-#define BFQ_CL_IDLE_TIMEOUT	HZ/5
 
 #define BFQ_MIN_WEIGHT	1
 #define BFQ_MAX_WEIGHT	1000
@@ -25,6 +27,19 @@
 #define BFQ_DEFAULT_GRP_WEIGHT	10
 #define BFQ_DEFAULT_GRP_IOPRIO	0
 #define BFQ_DEFAULT_GRP_CLASS	IOPRIO_CLASS_BE
+
+/* Constants used in weight boosting (in its turn used to reduce latencies): */
+/* max factor by which the weight of a boosted queue is multiplied */
+#define BFQ_BOOST_COEFF	10
+/* max number of sectors that can be served during a boosting period */
+#define BFQ_BOOST_BUDGET	49152
+/* max duration of a boosting period, msec */
+#define BFQ_BOOST_TIMEOUT	6000
+/* min idle period after which boosting may be reactivated for a queue, msec */
+#define BFQ_MIN_ACT_INTERVAL	20000
+
+typedef u64 bfq_timestamp_t;
+typedef unsigned long bfq_service_t;
 
 struct bfq_entity;
 
@@ -49,7 +64,7 @@ struct bfq_service_tree {
 	struct bfq_entity *first_idle;
 	struct bfq_entity *last_idle;
 
-	u64 vtime;
+	bfq_timestamp_t vtime;
 	unsigned long wsum;
 };
 
@@ -134,14 +149,14 @@ struct bfq_entity {
 
 	int on_st;
 
-	u64 finish;
-	u64 start;
+	bfq_timestamp_t finish;
+	bfq_timestamp_t start;
 
 	struct rb_root *tree;
 
-	u64 min_start;
+	bfq_timestamp_t min_start;
 
-	unsigned long service, budget;
+	bfq_service_t service, budget;
 	unsigned short weight, new_weight;
 	unsigned short orig_weight;
 
@@ -183,7 +198,6 @@ struct bfq_group;
  * @peak_rate: peak transfer rate observed for a budget.
  * @peak_rate_samples: number of samples used to calculate @peak_rate.
  * @bfq_max_budget: maximum budget allotted to a bfq_queue before rescheduling.
- * @cic_index: use small consequent indexes as radix tree keys to reduce depth
  * @cic_list: list of all the cics active on the bfq_data device.
  * @group_list: list of all the bfq_groups active on the device.
  * @active_list: list of all the bfq_queues active on the device.
@@ -204,13 +218,6 @@ struct bfq_group;
  *               they are charged for the whole allocated budget, to try
  *               to preserve a behavior reasonably fair among them, but
  *               without service-domain guarantees).
- * @bfq_raising_coeff: Maximum factor by which the weight of a boosted
- *                            queue is multiplied
- * @bfq_raising_max_time: maximum duration of a weight-raising period (jiffies)
- * @bfq_raising_min_idle_time: minimum idle period after which weight-raising
- *			       may be reactivated for a queue (in jiffies)
- * @bfq_raising_max_softrt_rate: max service-rate for a soft real-time queue,
- *			         sectors per seconds
  *
  * All the fields are protected by the @queue lock.
  */
@@ -242,9 +249,8 @@ struct bfq_data {
 	ktime_t last_idling_start;
 	int peak_rate_samples;
 	u64 peak_rate;
-	unsigned long bfq_max_budget;
+	bfq_service_t bfq_max_budget;
 
-	unsigned int cic_index;
 	struct list_head cic_list;
 	struct hlist_head group_list;
 	struct list_head active_list;
@@ -255,19 +261,12 @@ struct bfq_data {
 	unsigned int bfq_back_penalty;
 	unsigned int bfq_back_max;
 	unsigned int bfq_slice_idle;
-	u64 bfq_class_idle_last_service;
 
 	unsigned int bfq_user_max_budget;
 	unsigned int bfq_max_budget_async_rq;
 	unsigned int bfq_timeout[2];
 
 	bool low_latency;
-
-	/* parameters of the low_latency heuristics */
-	unsigned int bfq_raising_coeff;
-	unsigned int bfq_raising_max_time;
-	unsigned int bfq_raising_min_idle_time;
-	unsigned int bfq_raising_max_softrt_rate;
 };
 
 /**
@@ -293,7 +292,7 @@ struct bfq_data {
  * @seek_mean: mean seek distance
  * @last_request_pos: position of the last request enqueued
  * @pid: pid of the process owning the queue, used for logging purposes.
- * @last_rais_start_time: last (idle -> weight-raised) transition attempt
+ * @last_activation_time: time of the last (idle -> backlogged) transition
  * @high_weight_budget: number of sectors left to serve with boosted weight
  *
  * A bfq_queue is a leaf request queue; it can be associated to an io_context
@@ -316,7 +315,7 @@ struct bfq_queue {
 
 	struct bfq_entity entity;
 
-	unsigned long max_budget;
+	bfq_service_t max_budget;
 	unsigned long budget_timeout;
 
 	int dispatched;
@@ -335,9 +334,8 @@ struct bfq_queue {
 
 	pid_t pid;
 
-	/* weight-raising fileds */
-	u64 last_rais_start_finish, soft_rt_next_start;
-	unsigned int raising_coeff;
+	u64 last_activation_time;
+	bfq_service_t high_weight_budget;
 };
 
 enum bfqq_state_flags {
@@ -500,14 +498,6 @@ static inline void call_for_each_cic(struct io_context *ioc,
 	rcu_read_unlock();
 }
 
-#define CIC_DEAD_KEY    1ul
-#define CIC_DEAD_INDEX_SHIFT    1
-
-static inline void *bfqd_dead_key(struct bfq_data *bfqd)
-{
-	return (void *)(bfqd->cic_index << CIC_DEAD_INDEX_SHIFT | CIC_DEAD_KEY);
-}
-
 /**
  * bfq_get_bfqd_locked - get a lock to a bfqd using a RCU protected pointer.
  * @ptr: a pointer to a bfqd.
@@ -529,15 +519,14 @@ static inline struct bfq_data *bfq_get_bfqd_locked(void **ptr,
 
 	rcu_read_lock();
 	bfqd = rcu_dereference(*(struct bfq_data **)ptr);
-
-	if (bfqd != NULL && !((unsigned long) bfqd & CIC_DEAD_KEY)) {
+	if (bfqd != NULL) {
 		spin_lock_irqsave(bfqd->queue->queue_lock, *flags);
 		if (*ptr == bfqd)
 			goto out;
 		spin_unlock_irqrestore(bfqd->queue->queue_lock, *flags);
+		bfqd = NULL;
 	}
 
-	bfqd = NULL;
 out:
 	rcu_read_unlock();
 	return bfqd;

@@ -54,13 +54,11 @@ static void bfq_cic_free(struct cfq_io_context *cic)
 static void cic_free_func(struct io_context *ioc, struct cfq_io_context *cic)
 {
 	unsigned long flags;
-	unsigned long dead_key = (unsigned long) cic->key;
 
-	BUG_ON(!(dead_key & CIC_DEAD_KEY));
+	BUG_ON(cic->dead_key == 0);
 
 	spin_lock_irqsave(&ioc->lock, flags);
-	radix_tree_delete(&ioc->bfq_radix_root,
-		dead_key >> CIC_DEAD_INDEX_SHIFT);
+	radix_tree_delete(&ioc->bfq_radix_root, cic->dead_key);
 	hlist_del_init_rcu(&cic->cic_list);
 	spin_unlock_irqrestore(&ioc->lock, flags);
 
@@ -85,7 +83,9 @@ static void bfq_free_io_context(struct io_context *ioc)
  *
  * Whenever no more tasks are using @cic or @bfqd is deallocated we
  * need to invalidate its entry in the radix tree hash table and to
- * release the queues it refers to.
+ * release the queues it refers to.  Save the key used for insertion
+ * in @cic->dead_key to remove @cic from the radix tree later and assign
+ * %NULL to its search key to prevent future lookups to succeed on it.
  *
  * Called under the queue lock.
  */
@@ -97,10 +97,12 @@ static void __bfq_exit_single_io_context(struct bfq_data *bfqd,
 	list_del_init(&cic->queue_list);
 
 	/*
-	 * Make sure dead mark is seen for dead queues
+	 * Make sure key == NULL is seen for dead queues.
 	 */
+	cic->dead_key = (unsigned long)cic->key;
 	smp_wmb();
-	rcu_assign_pointer(cic->key, bfqd_dead_key(bfqd));
+
+	rcu_assign_pointer(cic->key, NULL);
 
 	/*
 	 * No write-side locking as no task is using @ioc (they're exited
@@ -109,14 +111,14 @@ static void __bfq_exit_single_io_context(struct bfq_data *bfqd,
 	if (ioc->ioc_data == cic)
 		rcu_assign_pointer(ioc->ioc_data, NULL);
 
-	if (cic->cfqq[BLK_RW_ASYNC] != NULL) {
-		bfq_exit_bfqq(bfqd, cic->cfqq[BLK_RW_ASYNC]);
-		cic->cfqq[BLK_RW_ASYNC] = NULL;
+	if (cic->cfqq[ASYNC] != NULL) {
+		bfq_exit_bfqq(bfqd, cic->cfqq[ASYNC]);
+		cic->cfqq[ASYNC] = NULL;
 	}
 
-	if (cic->cfqq[BLK_RW_SYNC] != NULL) {
-		bfq_exit_bfqq(bfqd, cic->cfqq[BLK_RW_SYNC]);
-		cic->cfqq[BLK_RW_SYNC] = NULL;
+	if (cic->cfqq[SYNC] != NULL) {
+		bfq_exit_bfqq(bfqd, cic->cfqq[SYNC]);
+		cic->cfqq[SYNC] = NULL;
 	}
 }
 
@@ -188,7 +190,6 @@ static void bfq_drop_dead_cic(struct bfq_data *bfqd, struct io_context *ioc,
 	unsigned long flags;
 
 	WARN_ON(!list_empty(&cic->queue_list));
-	BUG_ON(cic->key != bfqd_dead_key(bfqd));
 
 	spin_lock_irqsave(&ioc->lock, flags);
 
@@ -202,7 +203,7 @@ static void bfq_drop_dead_cic(struct bfq_data *bfqd, struct io_context *ioc,
 	 * times.
 	 */
 	if (!hlist_unhashed(&cic->cic_list)) {
-		radix_tree_delete(&ioc->bfq_radix_root, bfqd->cic_index);
+		radix_tree_delete(&ioc->bfq_radix_root, (unsigned long)bfqd);
 		hlist_del_init_rcu(&cic->cic_list);
 		bfq_cic_free(cic);
 	}
@@ -240,12 +241,12 @@ static struct cfq_io_context *bfq_cic_lookup(struct bfq_data *bfqd,
 
 	do {
 		cic = radix_tree_lookup(&ioc->bfq_radix_root,
-					bfqd->cic_index);
+					(unsigned long)bfqd);
 		if (cic == NULL)
 			goto out;
 
 		k = rcu_dereference(cic->key);
-		if (unlikely(k != bfqd)) {
+		if (unlikely(k == NULL)) {
 			rcu_read_unlock();
 			bfq_drop_dead_cic(bfqd, ioc, cic);
 			rcu_read_lock();
@@ -291,7 +292,7 @@ static int bfq_cic_link(struct bfq_data *bfqd, struct io_context *ioc,
 
 		spin_lock_irqsave(&ioc->lock, flags);
 		ret = radix_tree_insert(&ioc->bfq_radix_root,
-					bfqd->cic_index, cic);
+					(unsigned long)bfqd, cic);
 		if (ret == 0)
 			hlist_add_head_rcu(&cic->cic_list, &ioc->bfq_cic_list);
 		spin_unlock_irqrestore(&ioc->lock, flags);

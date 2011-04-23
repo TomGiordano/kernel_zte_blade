@@ -16,8 +16,7 @@
 	for (; entity && ({ parent = entity->parent; 1; }); entity = parent)
 
 static struct bfq_entity *bfq_lookup_next_entity(struct bfq_sched_data *sd,
-						 int extract,
-						 struct bfq_data *bfqd);
+						 int extract);
 
 static int bfq_update_next_active(struct bfq_sched_data *sd)
 {
@@ -35,7 +34,7 @@ static int bfq_update_next_active(struct bfq_sched_data *sd)
 	 * next from this subtree.  By now we worry more about
 	 * correctness than about performance...
 	 */
-	next_active = bfq_lookup_next_entity(sd, 0, NULL);
+	next_active = bfq_lookup_next_entity(sd, 0);
 	sd->next_active = next_active;
 
 	if (next_active != NULL) {
@@ -86,7 +85,7 @@ static inline void bfq_check_next_active(struct bfq_sched_data *sd,
  *
  * Return @a > @b, dealing with wrapping correctly.
  */
-static inline int bfq_gt(u64 a, u64 b)
+static inline int bfq_gt(bfq_timestamp_t a, bfq_timestamp_t b)
 {
 	return (s64)(a - b) > 0;
 }
@@ -109,10 +108,10 @@ static inline struct bfq_queue *bfq_entity_to_bfqq(struct bfq_entity *entity)
  * @service: amount of service.
  * @weight: scale factor (weight of an entity or weight sum).
  */
-static inline u64 bfq_delta(unsigned long service,
+static inline bfq_timestamp_t bfq_delta(bfq_service_t service,
 					unsigned long weight)
 {
-	u64 d = (u64)service << WFQ_SERVICE_SHIFT;
+	bfq_timestamp_t d = (bfq_timestamp_t)service << WFQ_SERVICE_SHIFT;
 
 	do_div(d, weight);
 	return d;
@@ -124,7 +123,7 @@ static inline u64 bfq_delta(unsigned long service,
  * @service: the service to be charged to the entity.
  */
 static inline void bfq_calc_finish(struct bfq_entity *entity,
-				   unsigned long service)
+				   bfq_service_t service)
 {
 	struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
 
@@ -135,8 +134,9 @@ static inline void bfq_calc_finish(struct bfq_entity *entity,
 
 	if (bfqq != NULL) {
 		bfq_log_bfqq(bfqq->bfqd, bfqq,
-			"calc_finish: serv %lu, w %lu",
-			service, entity->weight);
+			"calc_finish: serv %lu, w %lu, hi-budg %lu",
+			service, entity->weight,
+			bfqq->high_weight_budget);
 		bfq_log_bfqq(bfqq->bfqd, bfqq,
 			"calc_finish: start %llu, finish %llu, delta %llu",
 			entity->start, entity->finish,
@@ -518,7 +518,18 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 	struct bfq_service_tree *new_st = old_st;
 
 	if (entity->ioprio_changed) {
+		int new_boost_coeff = 1;
 		struct bfq_queue *bfqq = bfq_entity_to_bfqq(entity);
+
+		if (bfqq != NULL) {
+			new_boost_coeff +=
+				bfqq->high_weight_budget * BFQ_BOOST_COEFF /
+				BFQ_BOOST_BUDGET;
+			bfq_log_bfqq(bfqq->bfqd, bfqq,
+				"update_w_prio: wght %lu, hi-budg %lu, coef %d",
+				entity->weight, bfqq->high_weight_budget,
+				new_boost_coeff);
+		}
 
 		BUG_ON(old_st->wsum < entity->weight);
 		old_st->wsum -= entity->weight;
@@ -546,8 +557,7 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
 		 * when entity->finish <= old_st->vtime).
 		 */
 		new_st = bfq_entity_service_tree(entity);
-		entity->weight = entity->orig_weight *
-			(bfqq != NULL ? bfqq->raising_coeff : 1);
+		entity->weight = entity->orig_weight * new_boost_coeff;
 		new_st->wsum += entity->weight;
 
 		if (new_st != old_st)
@@ -566,7 +576,7 @@ __bfq_entity_update_weight_prio(struct bfq_service_tree *old_st,
  * are synchronized every time a new bfqq is selected for service.  By now,
  * we keep it to better check consistency.
  */
-static void bfq_bfqq_served(struct bfq_queue *bfqq, unsigned long served)
+static void bfq_bfqq_served(struct bfq_queue *bfqq, bfq_service_t served)
 {
 	struct bfq_entity *entity = &bfqq->entity;
 	struct bfq_service_tree *st;
@@ -883,30 +893,20 @@ static struct bfq_entity *__bfq_lookup_next_entity(struct bfq_service_tree *st)
  * structures.
  */
 static struct bfq_entity *bfq_lookup_next_entity(struct bfq_sched_data *sd,
-						 int extract,
-						 struct bfq_data *bfqd)
+						 int extract)
 {
 	struct bfq_service_tree *st = sd->service_tree;
 	struct bfq_entity *entity;
-	int i=0;
+	int i;
 
 	BUG_ON(sd->active_entity != NULL);
 
-	if (bfqd != NULL &&
-	    jiffies - bfqd->bfq_class_idle_last_service > BFQ_CL_IDLE_TIMEOUT) {
-		entity = __bfq_lookup_next_entity(st + BFQ_IOPRIO_CLASSES - 1);
-		if (entity != NULL) {
-			i = BFQ_IOPRIO_CLASSES - 1;
-			bfqd->bfq_class_idle_last_service = jiffies;
-			sd->next_active = entity;
-		}
-	}
-	for (; i < BFQ_IOPRIO_CLASSES; i++) {
-		entity = __bfq_lookup_next_entity(st + i);
+	for (i = 0; i < BFQ_IOPRIO_CLASSES; i++, st++) {
+		entity = __bfq_lookup_next_entity(st);
 		if (entity != NULL) {
 			if (extract) {
 				bfq_check_next_active(sd, entity);
-				bfq_active_extract(st + i, entity);
+				bfq_active_extract(st, entity);
 				sd->active_entity = entity;
 				sd->next_active = NULL;
 			}
@@ -933,7 +933,7 @@ static struct bfq_queue *bfq_get_next_queue(struct bfq_data *bfqd)
 
 	sd = &bfqd->root_group->sched_data;
 	for (; sd != NULL; sd = entity->my_sched_data) {
-		entity = bfq_lookup_next_entity(sd, 1, bfqd);
+		entity = bfq_lookup_next_entity(sd, 1);
 		BUG_ON(entity == NULL);
 		entity->service = 0;
 	}
