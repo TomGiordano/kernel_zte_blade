@@ -1,9 +1,10 @@
 /*
  * YAFFS: Yet another FFS. A NAND-flash specific file system.
- * yaffs_mtdif1.c  NAND mtd interface functions for small-page NAND.
  *
- * Copyright (C) 2002 Aleph One Ltd.
+ * Copyright (C) 2002-2010 Aleph One Ltd.
  *   for Toby Churchill Ltd and Brightstar Engineering
+ *
+ * Created by Charles Manning <charles@aleph1.co.uk>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -24,9 +25,11 @@
  */
 
 #include "yportenv.h"
+#include "yaffs_trace.h"
 #include "yaffs_guts.h"
 #include "yaffs_packedtags1.h"
 #include "yaffs_tagscompat.h"	/* for yaffs_CalcTagsECC */
+#include "yaffs_linux.h"
 
 #include "linux/kernel.h"
 #include "linux/version.h"
@@ -35,8 +38,6 @@
 
 /* Don't compile this module if we don't have MTD's mtd_oob_ops interface */
 #if (MTD_VERSION_CODE > MTD_VERSION(2, 6, 17))
-
-const char *yaffs_mtdif1_c_version = "$Id$";
 
 #ifndef CONFIG_YAFFS_9BYTE_TAGS
 # define YTAG1_SIZE 8
@@ -91,7 +92,7 @@ static struct nand_ecclayout nand_oob_16 = {
 int nandmtd1_WriteChunkWithTagsToNAND(yaffs_Device *dev,
 	int chunkInNAND, const __u8 *data, const yaffs_ExtendedTags *etags)
 {
-	struct mtd_info *mtd = dev->genericDevice;
+	struct mtd_info *mtd = yaffs_DeviceToMtd(dev);
 	int chunkBytes = dev->nDataBytesPerChunk;
 	loff_t addr = ((loff_t)chunkInNAND) * chunkBytes;
 	struct mtd_oob_ops ops;
@@ -135,9 +136,9 @@ int nandmtd1_WriteChunkWithTagsToNAND(yaffs_Device *dev,
 
 	retval = mtd->write_oob(mtd, addr, &ops);
 	if (retval) {
-		yaffs_trace(YAFFS_TRACE_MTD,
-			"write_oob failed, chunk %d, mtd error %d\n",
-			chunkInNAND, retval);
+		T(YAFFS_TRACE_MTD,
+			(TSTR("write_oob failed, chunk %d, mtd error %d"TENDSTR),
+			chunkInNAND, retval));
 	}
 	return retval ? YAFFS_FAIL : YAFFS_OK;
 }
@@ -169,7 +170,7 @@ static int rettags(yaffs_ExtendedTags *etags, int eccResult, int retval)
 int nandmtd1_ReadChunkWithTagsFromNAND(yaffs_Device *dev,
 	int chunkInNAND, __u8 *data, yaffs_ExtendedTags *etags)
 {
-	struct mtd_info *mtd = dev->genericDevice;
+	struct mtd_info *mtd = yaffs_DeviceToMtd(dev);
 	int chunkBytes = dev->nDataBytesPerChunk;
 	loff_t addr = ((loff_t)chunkInNAND) * chunkBytes;
 	int eccres = YAFFS_ECC_RESULT_NO_ERROR;
@@ -196,9 +197,9 @@ int nandmtd1_ReadChunkWithTagsFromNAND(yaffs_Device *dev,
 	 */
 	retval = mtd->read_oob(mtd, addr, &ops);
 	if (retval) {
-		yaffs_trace(YAFFS_TRACE_MTD,
-			"read_oob failed, chunk %d, mtd error %d\n",
-			chunkInNAND, retval);
+		T(YAFFS_TRACE_MTD,
+			(TSTR("read_oob failed, chunk %d, mtd error %d"TENDSTR),
+			chunkInNAND, retval));
 	}
 
 	switch (retval) {
@@ -280,11 +281,11 @@ int nandmtd1_ReadChunkWithTagsFromNAND(yaffs_Device *dev,
  */
 int nandmtd1_MarkNANDBlockBad(struct yaffs_DeviceStruct *dev, int blockNo)
 {
-	struct mtd_info *mtd = dev->genericDevice;
-	int blocksize = dev->nChunksPerBlock * dev->nDataBytesPerChunk;
+	struct mtd_info *mtd = yaffs_DeviceToMtd(dev);
+	int blocksize = dev->param.nChunksPerBlock * dev->nDataBytesPerChunk;
 	int retval;
 
-	yaffs_trace(YAFFS_TRACE_BAD_BLOCKS, "marking block %d bad\n", blockNo);
+	T(YAFFS_TRACE_BAD_BLOCKS,(TSTR("marking block %d bad"TENDSTR), blockNo));
 
 	retval = mtd->block_markbad(mtd, (loff_t)blocksize * blockNo);
 	return (retval) ? YAFFS_FAIL : YAFFS_OK;
@@ -301,9 +302,9 @@ static int nandmtd1_TestPrerequists(struct mtd_info *mtd)
 	int oobavail = mtd->ecclayout->oobavail;
 
 	if (oobavail < YTAG1_SIZE) {
-		yaffs_trace(YAFFS_TRACE_ERROR,
-			"mtd device has only %d bytes for tags, need %d\n",
-			oobavail, YTAG1_SIZE);
+		T(YAFFS_TRACE_ERROR,
+			(TSTR("mtd device has only %d bytes for tags, need %d"TENDSTR),
+			oobavail, YTAG1_SIZE));
 		return YAFFS_FAIL;
 	}
 	return YAFFS_OK;
@@ -321,8 +322,8 @@ static int nandmtd1_TestPrerequists(struct mtd_info *mtd)
 int nandmtd1_QueryNANDBlock(struct yaffs_DeviceStruct *dev, int blockNo,
 	yaffs_BlockState *pState, __u32 *pSequenceNumber)
 {
-	struct mtd_info *mtd = dev->genericDevice;
-	int chunkNo = blockNo * dev->nChunksPerBlock;
+	struct mtd_info *mtd = yaffs_DeviceToMtd(dev);
+	int chunkNo = blockNo * dev->param.nChunksPerBlock;
 	loff_t addr = (loff_t)chunkNo * dev->nDataBytesPerChunk;
 	yaffs_ExtendedTags etags;
 	int state = YAFFS_BLOCK_STATE_DEAD;
@@ -338,8 +339,8 @@ int nandmtd1_QueryNANDBlock(struct yaffs_DeviceStruct *dev, int blockNo,
 	retval = nandmtd1_ReadChunkWithTagsFromNAND(dev, chunkNo, NULL, &etags);
 	etags.blockBad = (mtd->block_isbad)(mtd, addr);
 	if (etags.blockBad) {
-		yaffs_trace(YAFFS_TRACE_BAD_BLOCKS,
-			"block %d is marked bad\n", blockNo);
+		T(YAFFS_TRACE_BAD_BLOCKS,
+			(TSTR("block %d is marked bad"TENDSTR), blockNo));
 		state = YAFFS_BLOCK_STATE_DEAD;
 	} else if (etags.eccResult != YAFFS_ECC_RESULT_NO_ERROR) {
 		/* bad tags, need to look more closely */
