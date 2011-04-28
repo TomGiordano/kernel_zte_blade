@@ -1,5 +1,3 @@
-#warning compile out
-#if 0
 /* drivers/misc/timed_gpio.c
  *
  * Copyright (C) 2008 Google, Inc.
@@ -18,6 +16,7 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 #include <linux/hrtimer.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
@@ -175,4 +174,3 @@ module_exit(timed_gpio_exit);
 MODULE_AUTHOR("Mike Lockwood <lockwood@android.com>");
 MODULE_DESCRIPTION("timed gpio driver");
 MODULE_LICENSE("GPL");
-#endif
