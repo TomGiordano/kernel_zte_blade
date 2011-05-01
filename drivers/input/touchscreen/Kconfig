@@ -301,6 +301,20 @@ config TOUCHSCREEN_SYNAPTICS_I2C_RMI
 	help
 	  This enables support for Synaptics RMI over I2C based touchscreens.
 
+config TOUCHSCREEN_SYNAPTICS_I2C_RMI_PDT
+	hex "RMI Page Description Table offset"
+	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI
+	default 0xEF
+	help
+	  In some cases, the Synaptics RMI driver may want to enumerate the RMI
+	  functions available on a device. On most devices, this information is
+	  contained in a page description table stored at offset 0xEF.
+
+	  However, RMI devices may deviate from this standard and place the
+	  table at a different address, or not implement it at all. You can
+	  change this setting to match your device's datasheet, or set it to 0
+	  if your device doesn't have a PDT.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
