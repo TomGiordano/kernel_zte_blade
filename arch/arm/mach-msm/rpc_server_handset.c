@@ -627,7 +627,7 @@ static int __devinit hs_probe(struct platform_device *pdev)
 	input_set_capability(ipdev, EV_KEY, KEY_MEDIA);
 	input_set_capability(ipdev, EV_KEY, KEY_VOLUMEUP);
 	input_set_capability(ipdev, EV_KEY, KEY_VOLUMEDOWN);
-	input_set_capability(ipdev, EV_SW, SW_HEADPHONE_INSERT);
+	//input_set_capability(ipdev, EV_SW, SW_HEADPHONE_INSERT);
 	input_set_capability(ipdev, EV_KEY, KEY_POWER);
 	input_set_capability(ipdev, EV_KEY, KEY_SLEEP);
 	rc = input_register_device(ipdev);
