@@ -72,6 +72,22 @@ enum VIDC_SM_ref_picture{
 	VIDC_SM_REF_PICT_FRAME_OR_TOP_FIELD   = 0,
 	VIDC_SM_REF_PICT_BOTTOM_FIELD         = 1
 };
+
+struct ddl_profile_info_type {
+	u32 bit_depth_chroma_minus8;
+	u32 bit_depth_luma_minus8;
+	u32 pic_level;
+	u32 chroma_format_idc;
+	u32 pic_profile;
+};
+
+enum vidc_sm_mpeg4_profileinfo {
+	VIDC_SM_PROFILE_INFO_DISABLE  = 0,
+	VIDC_SM_PROFILE_INFO_SP       = 1,
+	VIDC_SM_PROFILE_INFO_ASP      = 2,
+	VIDC_SM_PROFILE_INFO_MAX      = 0x7fffffff
+};
+
 void vidc_sm_get_extended_decode_status(struct ddl_buf_addr *shared_mem,
 	u32 *pn_decode_status);
 void vidc_sm_set_frame_tag(struct ddl_buf_addr *shared_mem,
@@ -145,4 +161,14 @@ void vidc_sm_set_encoder_new_frame_rate(struct ddl_buf_addr *shared_mem,
 	u32 new_frame_rate);
 void vidc_sm_set_encoder_new_i_period(struct ddl_buf_addr *shared_mem,
 	u32 new_i_period);
+void vidc_sm_set_encoder_init_rc_value(struct ddl_buf_addr *shared_mem,
+	u32 new_rc_value);
+void vidc_sm_set_idr_decode_only(struct ddl_buf_addr *shared_mem,
+	u32 enable);
+void vidc_sm_set_concealment_color(struct ddl_buf_addr *shared_mem,
+	u32 conceal_ycolor, u32 conceal_ccolor);
+void vidc_sm_set_chroma_addr_change(struct ddl_buf_addr *shared_mem,
+	u32 addr_change);
+void vidc_sm_set_mpeg4_profile_override(struct ddl_buf_addr *shared_mem,
+	enum vidc_sm_mpeg4_profileinfo profile_info);
 #endif

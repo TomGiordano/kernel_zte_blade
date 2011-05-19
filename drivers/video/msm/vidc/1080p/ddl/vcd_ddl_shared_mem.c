@@ -549,3 +549,52 @@ void vidc_sm_set_encoder_new_i_period(struct ddl_buf_addr *shared_mem,
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_NEW_I_PERIOD_ADDR,
 		new_i_period);
 }
+void vidc_sm_set_encoder_init_rc_value(struct ddl_buf_addr *shared_mem,
+	u32 new_rc_value)
+{
+	DDL_MEM_WRITE_32(shared_mem, 0x011C, new_rc_value);
+
+}
+void vidc_sm_set_idr_decode_only(struct ddl_buf_addr *shared_mem,
+	u32 enable)
+{
+	u32 idr_decode_only = VIDC_SETFIELD((enable) ? 1 : 0,
+			VIDC_SM_IDR_DECODING_ONLY_SHIFT,
+			VIDC_SM_IDR_DECODING_ONLY_BMSK
+			);
+	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_IDR_DECODING_ONLY_ADDR,
+			idr_decode_only);
+}
+
+void vidc_sm_set_chroma_addr_change(struct ddl_buf_addr *shared_mem,
+	u32 addr_change)
+{
+	u32 chroma_addr_change = VIDC_SETFIELD((addr_change) ? 1 : 0,
+					VIDC_SM_CHROMA_ADDR_CHANGE_SHFT,
+					VIDC_SM_CHROMA_ADDR_CHANGE_BMASK);
+	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_CHROMA_ADDR_CHANGE_ADDR,
+					 chroma_addr_change);
+
+}
+
+void vidc_sm_set_mpeg4_profile_override(struct ddl_buf_addr *shared_mem,
+	enum vidc_sm_mpeg4_profileinfo profile_info)
+{
+	u32 profile_enforce = 0;
+	if (shared_mem) {
+		profile_enforce = 1;
+		switch (profile_info) {
+		case VIDC_SM_PROFILE_INFO_ASP:
+			profile_enforce |= 4;
+			break;
+		case VIDC_SM_PROFILE_INFO_SP:
+			profile_enforce |= 2;
+			break;
+		case VIDC_SM_PROFILE_INFO_DISABLE:
+		default:
+			profile_enforce = 0;
+			break;
+		}
+	}
+	DDL_MEM_WRITE_32(shared_mem, 0x15c, profile_enforce);
+}
