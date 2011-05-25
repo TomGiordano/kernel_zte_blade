@@ -62,6 +62,7 @@
 #include <linux/power_supply.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/time.h>
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
@@ -224,6 +225,10 @@ struct __attribute__((packed)) smem_batt_chg_t
 };
 
 static struct smem_batt_chg_t rep_batt_chg;
+
+static long last_resume_secs;
+static s16 last_good_temperature;
+static int in_suspend;
 
 struct msm_battery_info
 {
@@ -430,7 +435,7 @@ module_param_named(usb_chg_enable, usb_charger_enable, int, S_IRUGO | S_IWUSR | 
 
 #define BATTERY_ENABLE_DISABLE_USB_CHG_PROC 		6
 #define BATTERY_MAX_TEMP 	68
-#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 40
+#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 5
 
 /*--------------------------------------------------------------
 msm_batt_handle_control_usb_charging() is added according msm_chg_usb_charger_connected() in rpc_hsusb.c
@@ -720,20 +725,32 @@ void msm_batt_update_psy_status_v1(void)
     msm_batt_info.battery_voltage = rep_batt_chg.battery_voltage;
     msm_batt_info.battery_capacity = rep_batt_chg.battery_capacity;
 
-    if (rep_batt_chg.battery_temp > BATTERY_MAX_TEMP &&
-             msm_batt_info.battery_temp_exceeded_count < BATTERY_MAX_TEMP_EXCEEDED_COUNT)
+    /* Battery temperature measurements are unreliable up to about 90 seconds after resume. */
+    if(((current_kernel_time().tv_sec - last_resume_secs) < 90) || in_suspend)
     {
-        msm_batt_info.battery_temp = 10;
-        msm_batt_info.battery_temp_exceeded_count += 1;
-        printk("%s(): batt_temp = %u exceeded max %u time(s).\n",
-               __func__,
-               rep_batt_chg.battery_temp,
-               msm_batt_info.battery_temp_exceeded_count);
+        printk("%s(): ignoring battery temperature reading (%u) - too early after resume.\n", __func__, rep_batt_chg.battery_temp);
+        msm_batt_info.battery_temp = last_good_temperature;
     }
-    else    
+    else
     {
-        msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
-        msm_batt_info.battery_temp_exceeded_count = 0;
+        /* Android shuts down if any one temperature reading is above 68 C (see BatteryService.java). */
+        /* As Blade temperature readings are unreliable, give some more leeway. */
+        if (rep_batt_chg.battery_temp > BATTERY_MAX_TEMP &&
+                 msm_batt_info.battery_temp_exceeded_count < BATTERY_MAX_TEMP_EXCEEDED_COUNT)
+        {
+            msm_batt_info.battery_temp = BATTERY_MAX_TEMP;
+            msm_batt_info.battery_temp_exceeded_count += 1;
+            printk("%s(): batt_temp = %u exceeded max %u time(s).\n",
+                   __func__,
+                   rep_batt_chg.battery_temp,
+                   msm_batt_info.battery_temp_exceeded_count);
+        }
+        else
+        {
+            msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
+            msm_batt_info.battery_temp_exceeded_count = 0;
+        }
+        last_good_temperature = msm_batt_info.battery_temp;
     }
 
     msm_batt_info.chg_fulled = rep_batt_chg.chg_fulled;
@@ -759,11 +776,14 @@ void msm_batt_force_update(void)
 
 static int msm_batt_handle_suspend(void)
 {
+    in_suspend = 1;
     return 0;
 }
 
 static int msm_batt_handle_resume(void)
 {
+    last_resume_secs = current_kernel_time().tv_sec;
+    in_suspend = 0;
     msm_batt_update_psy_status_v1();
     return 0;
 }
@@ -1068,6 +1088,9 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
         return rc;
     }
     msm_batt_info.msm_psy_batt = &msm_psy_batt;
+    last_good_temperature = 10;
+    last_resume_secs = 0;
+    in_suspend = 0;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
     msm_batt_info.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
