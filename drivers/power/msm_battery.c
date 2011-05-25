@@ -80,6 +80,7 @@ when         who        what, where, why                         comment tag
 #include <linux/power_supply.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
+#include <linux/time.h>
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
@@ -1109,6 +1110,8 @@ static int __devinit msm_batt_probe(struct platform_device *pdev)
         return rc;
     }
     msm_batt_info.msm_psy_batt = &msm_psy_batt;
+    last_resume_secs = 0;
+    in_suspend = 0;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
     msm_batt_info.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
@@ -1389,6 +1392,9 @@ struct __attribute__((packed)) smem_batt_chg_t
 
 static struct smem_batt_chg_t rep_batt_chg;
 
+static long last_resume_secs;
+static int in_suspend;
+
 struct msm_battery_info
 {
     u32 voltage_max_design;
@@ -1645,6 +1651,7 @@ module_param_named(usb_chg_enable, usb_charger_enable, int, S_IRUGO | S_IWUSR | 
 #define CHG_RPC_VERS		0x00010003
 
 #define BATTERY_ENABLE_DISABLE_USB_CHG_PROC 		6
+#define BATTERY_MAX_TEMP 	68
 
 
 
@@ -1988,7 +1995,18 @@ void msm_batt_update_psy_status_v1(void)
     msm_batt_info.battery_level = rep_batt_chg.battery_level;
     msm_batt_info.battery_voltage = rep_batt_chg.battery_voltage;
     msm_batt_info.battery_capacity = rep_batt_chg.battery_capacity;/*LHX_CHG_20100122 update the capacity*/
-    msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
+
+    /* Battery temperature measurements are unreliable up to about 90 seconds after resume. */
+    /* Android shuts down if any one temperature reading is above 68 C (see BatteryService.java). */
+    /* Blade temperature readings are especially high after using GPS. */
+    if((((current_kernel_time().tv_sec - last_resume_secs) < 90) || in_suspend) && rep_batt_chg.battery_temp > BATTERY_MAX_TEMP)
+    {
+      printk("%s(): ignoring battery temperature reading (%u) - too early after resume.\n", __func__, rep_batt_chg.battery_temp);
+      msm_batt_info.battery_temp = BATTERY_MAX_TEMP;
+    }
+    else
+      msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
+
     msm_batt_info.chg_fulled = rep_batt_chg.chg_fulled;
     msm_batt_info.charging = rep_batt_chg.charging;
 
@@ -2045,11 +2063,14 @@ void msm_batt_force_update(void)
 
 static int msm_batt_handle_suspend(void)
 {
+    in_suspend = 1;
     return 0;
 }
 
 static int msm_batt_handle_resume(void)
 {
+    last_resume_secs = current_kernel_time().tv_sec;
+    in_suspend = 0;
     msm_batt_update_psy_status_v1();
     return 0;
 }
