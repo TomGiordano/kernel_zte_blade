@@ -585,8 +585,8 @@ static int synaptics_ts_probe(
 #endif
 	
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, max_x, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, max_y, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, -1, max_x+1, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, -1, max_y+1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_SINGLE_TAP, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_TAP_HOLD, 0, 5, 0, 0);
