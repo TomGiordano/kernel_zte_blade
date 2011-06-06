@@ -806,8 +806,8 @@ static int synaptics_ts_probe(
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, max_y, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, max_x, 0, 0);
 #else
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, max_x, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, max_y, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, -1, max_x+1, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, -1, max_y+1, 0, 0);
 #endif
 
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
