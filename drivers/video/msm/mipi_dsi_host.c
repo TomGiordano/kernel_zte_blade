@@ -41,6 +41,143 @@
 
 #include "msm_fb.h"
 #include "mipi_dsi.h"
+#include "mdp.h"
+#include "mdp4.h"
+
+int mipi_dsi_clk_on;
+static struct completion dsi_dma_comp;
+static struct dsi_buf dsi_tx_buf;
+static int dsi_irq_enabled;
+static spinlock_t dsi_lock;
+
+static struct list_head pre_kickoff_list;
+static struct list_head post_kickoff_list;
+
+void mipi_dsi_init(void)
+{
+	init_completion(&dsi_dma_comp);
+	mipi_dsi_buf_alloc(&dsi_tx_buf, DSI_BUF_SIZE);
+	spin_lock_init(&dsi_lock);
+
+	INIT_LIST_HEAD(&pre_kickoff_list);
+	INIT_LIST_HEAD(&post_kickoff_list);
+}
+
+void mipi_dsi_enable_irq(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dsi_lock, flags);
+	if (dsi_irq_enabled) {
+		pr_debug("%s: IRQ aleady enabled\n", __func__);
+		spin_unlock_irqrestore(&dsi_lock, flags);
+		return;
+	}
+	dsi_irq_enabled = 1;
+	enable_irq(dsi_irq);
+	spin_unlock_irqrestore(&dsi_lock, flags);
+}
+
+void mipi_dsi_disable_irq(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&dsi_lock, flags);
+	if (dsi_irq_enabled == 0) {
+		pr_debug("%s: IRQ already disabled\n", __func__);
+		spin_unlock_irqrestore(&dsi_lock, flags);
+		return;
+	}
+
+	dsi_irq_enabled = 0;
+	disable_irq(dsi_irq);
+	spin_unlock_irqrestore(&dsi_lock, flags);
+}
+
+/*
+ * mipi_dsi_disale_irq_nosync() should be called
+ * from interrupt context
+ */
+ void mipi_dsi_disable_irq_nosync(void)
+{
+	spin_lock(&dsi_lock);
+	if (dsi_irq_enabled == 0) {
+		pr_debug("%s: IRQ cannot be disabled\n", __func__);
+		return;
+	}
+
+	dsi_irq_enabled = 0;
+	disable_irq_nosync(dsi_irq);
+	spin_unlock(&dsi_lock);
+}
+
+void mipi_dsi_turn_on_clks(void)
+{
+	if (mipi_dsi_clk_on) {
+		pr_err("%s: mipi_dsi_clks already ON\n", __func__);
+		return;
+	}
+	mipi_dsi_clk_on = 1;
+	local_bh_disable();
+	mipi_dsi_ahb_ctrl(1);
+	mipi_dsi_clk_enable();
+	local_bh_enable();
+}
+
+void mipi_dsi_turn_off_clks(void)
+{
+	if (mipi_dsi_clk_on == 0) {
+		pr_err("%s: mipi_dsi_clks already OFF\n", __func__);
+		return;
+	}
+	mipi_dsi_clk_on = 0;
+	local_bh_disable();
+	mipi_dsi_clk_disable();
+	mipi_dsi_ahb_ctrl(0);
+	local_bh_enable();
+}
+
+static void mipi_dsi_action(struct list_head *act_list)
+{
+	struct list_head *lp;
+	struct dsi_kickoff_action *act;
+
+	list_for_each(lp, act_list) {
+		act = list_entry(lp, struct dsi_kickoff_action, act_entry);
+		if (act && act->action)
+			act->action(act->data);
+	}
+}
+
+void mipi_dsi_pre_kickoff_action(void)
+{
+	mipi_dsi_action(&pre_kickoff_list);
+}
+
+void mipi_dsi_post_kickoff_action(void)
+{
+	mipi_dsi_action(&post_kickoff_list);
+}
+
+/*
+ * mipi_dsi_pre_kickoff_add:
+ * ov_mutex need to be acquired before call this function.
+ */
+void mipi_dsi_pre_kickoff_add(struct dsi_kickoff_action *act)
+{
+	if (act)
+		list_add_tail(&act->act_entry, &pre_kickoff_list);
+}
+
+/*
+ * mipi_dsi_pre_kickoff_add:
+ * ov_mutex need to be acquired before call this function.
+ */
+void mipi_dsi_post_kickoff_add(struct dsi_kickoff_action *act)
+{
+	if (act)
+		list_add_tail(&act->act_entry, &post_kickoff_list);
+}
 
 static struct completion dsi_comp;
 

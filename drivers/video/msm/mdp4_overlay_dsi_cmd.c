@@ -49,8 +49,13 @@ struct timer_list dsi_clock_timer;
 
 static void dsi_clock_tout(unsigned long data)
 {
-	if (mipi_dsi_clk_on)
-		mipi_dsi_clk_disable();
+	if (mipi_dsi_clk_on) {
+		if (dsi_state == ST_DSI_PLAYING) {
+			mdp4_stat.dsi_clkoff++;
+			mipi_dsi_turn_off_clks();
+			mdp4_overlay_dsi_state_set(ST_DSI_CLK_OFF);
+		}
+	}
 }
 #endif
 
@@ -308,11 +313,24 @@ void mdp4_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
 	mod_timer(&dsi_clock_timer, jiffies + HZ); /* one second */
 #endif
 
-	spin_lock_irqsave(&mdp_spin_lock, flag);
-#ifdef DSI_CLK_CTRL
-	if (mipi_dsi_clk_on == 0)
-		mipi_dsi_clk_enable();
-#endif
+
+	if (dsi_clock_timer.function) {
+		if (time_after(jiffies, tout_expired)) {
+			tout_expired = jiffies + TOUT_PERIOD;
+			mod_timer(&dsi_clock_timer, tout_expired);
+			tout_expired -= MS_100;
+		}
+	}
+
+	pr_debug("%s: start pid=%d dsi_clk_on=%d\n",
+			__func__, current->pid, mipi_dsi_clk_on);
+
+	/* satrt dsi clock if necessary */
+	if (mipi_dsi_clk_on == 0) {
+		local_bh_disable();
+		mipi_dsi_turn_on_clks();
+		local_bh_enable();
+	}
 
 	if (mfd->dma->busy == TRUE) {
 		if (busy_wait_cnt == 0)
