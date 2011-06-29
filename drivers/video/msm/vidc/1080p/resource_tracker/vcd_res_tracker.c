@@ -405,9 +405,31 @@ void res_trk_init(struct device *device, u32 irq)
 		resource_context.device = device;
 		resource_context.irq_num = irq;
 		resource_context.core_type = VCD_CORE_1080P;
+		if (!ddl_pmem_alloc(&resource_context.firmware_addr,
+			VIDC_FW_SIZE, DDL_KILO_BYTE(128))) {
+			pr_err("%s() Firmware buffer allocation failed",
+				   __func__);
+			memset(&resource_context.firmware_addr, 0,
+				   sizeof(resource_context.firmware_addr));
+		}
 	}
 }
 
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
+}
+
+u32 res_trk_get_firmware_addr(struct ddl_buf_addr *firm_addr)
+{
+	int status = -1;
+	if (resource_context.firmware_addr.mapped_buffer) {
+		memcpy(firm_addr, &resource_context.firmware_addr,
+			   sizeof(struct ddl_buf_addr));
+		status = 0;
+	}
+	return status;
+}
+
+u32 res_trk_get_mem_type(void){
+	return resource_context.memtype;
 }

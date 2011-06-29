@@ -57,6 +57,7 @@ struct res_trk_context {
 	uint32_t     pcl;
 #endif
 	u32 core_type;
+	struct ddl_buf_addr firmware_addr;
 };
 
 #ifdef CONFIG_MSM_BUS_SCALING

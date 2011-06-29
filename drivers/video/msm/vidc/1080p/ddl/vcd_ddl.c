@@ -65,8 +65,12 @@ u32 ddl_device_init(struct ddl_init_config *ddl_init_config,
 	ddl_client_transact(DDL_INIT_CLIENTS, NULL);
 	ddl_context->fw_memory_size =
 		DDL_FW_INST_GLOBAL_CONTEXT_SPACE_SIZE;
-	ptr = ddl_pmem_alloc(&ddl_context->dram_base_a,
-		ddl_context->fw_memory_size, DDL_KILO_BYTE(128));
+	if (res_trk_get_firmware_addr(&ddl_context->dram_base_a)) {
+		DDL_MSG_ERROR("firmware allocation failed");
+		ptr = NULL;
+	} else {
+		ptr = (void *)ddl_context->dram_base_a.virtual_base_addr;
+	}
 	if (!ptr) {
 		DDL_MSG_ERROR("Memory Aocation Failed for FW Base");
 		status = VCD_ERR_ALLOC_FAIL;
