@@ -270,6 +270,7 @@ static void hdmi_msm_hpd_state_work(struct work_struct *work)
 	mutex_unlock(&hdmi_msm_state_mutex);
 #endif
 
+	DEV_DBG("%s:Got interrupt\n", __func__);
 	/* HPD_INT_STATUS[0x0250] */
 	hpd_state = (HDMI_INP(0x0250) & 0x2) >> 1;
 	mutex_lock(&external_common_state_hpd_mutex);
@@ -632,17 +633,24 @@ void hdmi_msm_set_mode(boolean power_on)
 	if (power_on) {
 		/* ENABLE */
 		reg_val |= 0x00000001; /* Enable the block */
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT
-		/* HDMI_DVI_SEL */
-		reg_val |= 0x00000002;
-		/* HDMI_CTRL */
-		HDMI_OUTP(0x0000, reg_val);
-		/* HDMI_DVI_SEL */
-		reg_val &= ~0x00000002;
-#else /* CONFIG_FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT */
-		reg_val |= 0x00000002;
-#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT */
-	} else {
+		if (external_common_state->hdmi_sink == 0) {
+			/* HDMI_DVI_SEL */
+			reg_val |= 0x00000002;
+			if (external_common_state->present_hdcp)
+				/* HDMI Encryption */
+				reg_val |= 0x00000004;
+			/* HDMI_CTRL */
+			HDMI_OUTP(0x0000, reg_val);
+			/* HDMI_DVI_SEL */
+			reg_val &= ~0x00000002;
+		} else {
+			if (external_common_state->present_hdcp)
+				/* HDMI_Encryption_ON */
+				reg_val |= 0x00000006;
+			else
+				reg_val |= 0x00000002;
+		}
+	} else
 		reg_val = 0x00000002;
 	}
 	/* HDMI_CTRL */
