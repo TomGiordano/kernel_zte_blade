@@ -1,0 +1,172 @@
+Introduction
+============
+
+Node Power Architecture is a software framework to manage resources and state
+requests. In most architectures there are multiple sub-systems sharing
+resources like clocks, registers etc. The NPA framework is designed to address
+the issue where multiple sub-systems require the same resource concurrently.
+
+
+Hardware description
+====================
+
+None. NPA is a software framework designed to be hardware agnostic.
+
+Software description
+====================
+
+NPA was intended to be used to exert control on the resource state requests
+and understand state requests during execution to better profile the system for
+power consumption. There are 3 major entities at play here –
+
+•       ‘Resources/Nodes’ that provide interface to the h/w or virtual
+parameters,
+•       ‘Clients’  of these h/w resources that request a certain state and
+•       ‘Events’ that are notifications sent out when the state of the
+resource changes.
+
+NPA framework connects these 3 entities.
+
+NPA helps define an acyclic node graph as a data structure. Resources can
+depend on other resources and can issue requests to the dependents. Resources
+can receive requests with specific values, hints, deadlines and durations and
+have a better understanding of the system needs and better optimize for power
+and performance.
+
+NPA is designed to be modular, dynamic, fast and very slim layer. This adds
+little or no overheads when making requests. Resources register with NPA with
+string names. Resources can define their own update functions that determine
+the collective result of all state-requests. Sub-systems that want to request a
+resource state can register with NPA as a client of the resource and can then
+make requests. Requests for resource state may or may not effect a change in
+the resource state, depending on the resource current state, requests from
+other clients and resource update functions. Sub-systems interested in knowing
+resource state changes can register with NPA to recieve 'events' from NPA. When
+the resource state changes as a result of a client request, NPA will send out
+events to the interested parties. NPA provides debugging support in the form of
+logs. NPA can be configured to log requests, calculated resource
+states,resource current states.
+
+NPA uses workqueue to handle events. Events are fired asynchronously to
+resource state changes. NPA creates a work queue on init and work structures
+are initialized when an event is created. NPA sends events in sequence and its
+the responsibility of the event handlers to return back from the event handler
+as soon as possbile.
+
+NPA uses ONCRPC and PROC-COMM to talk to the NPA nodes on the modem processor.
+NPA supports two types of remoted resources -
+
+•       Local Aggreation Resource that aggregate all requests on a processor
+before sending one request to the actual resource.
+•       Remote Aggreation Resource that send every request across the processor
+boundary.
+
+A copy of the remote resource is made on the local processor and clients are
+created for this copy of the resource. Issuing the request across the process
+boundary happens under the hood using the library of functions provided.
+
+Design
+======
+
+Handle concurrent requests.
+Provide feedback to clients on resource state changes.
+Little or no overhead when making requests.
+Should provide a transparent layer to NPA clients across architectures.
+Clients should have minimum or no compile time dependencies on resources.
+
+NPA graphs can only be acyclic. Any cyclic redundancy will lock up the request.
+NPA uses 'node' as a collection of resources that are inter-dependent. Node is
+thus a collection of resources sharing same driver functions and locks.
+NPA uses unsigned int for resource state for faster simpler resource state
+requests.
+
+NPA resources are identified by string names. Clients requests resources by
+their names. A resource an have mulitple aliases. Aliases can also be
+multi-level. This makes for easy abstraction of resources across architectures.
+
+NPA remoted resources can define their protocol of choice as a dependency. When
+the protocol is ready for use, the NPA remote resource is then defined. It will
+be made active in the local processor when the actual resource is available on
+the other processor.
+
+Power Management
+================
+
+NPA is a resource framework for better QoS and power management. NPA as such
+does not provide any power management options, however resource can better
+optimize power since they are presented with all the requests.
+
+SMP/multi-core
+==============
+
+NPA locks resource using mutex that are tied to a node. The mutex protects
+against concurrent requests across cores.
+
+Security
+========
+
+None
+
+Performance
+===========
+
+NPA is a light weight resource framework. NPA identifies resource by resource
+names. Client creation involves string comparison against all resources in the
+system. However, subsequent requests use the resource pointer to invoke the
+update and driver functions on the resource. NPA logging can be expensive and
+can be turned off (default behavior) or even compiled out using a configuration
+option.
+
+Interface
+=========
+
+NPA is designed to be used in kernel space only and exports API to be used by
+drivers. However, there is no interface exposed to userspace. Kernel API
+exposed help register resource, resource update function, driver function with
+NPA, create clients, make resource state requests, register for events.
+
+Driver parameters
+=================
+
+log_mask: This parameter can configure NPA log to print out when NPA API are
+invoked by resources, clients or events etc.
+log_resource_name: Specify the resource that NPA should print for.
+log_reset: Reset logging. Will stop logging.
+
+Config options
+==============
+
+CONFIG_MSM_NPA: Enable/Disable NPA
+CONFIG_MSM_NPA_LOG: Enable/Disable NPA logging in code.
+CONFIG_MSM_NPA_DEBUG: Enable/Disable NPA debugging code.
+CONFIG_MSM_NPA_TEST: Enable/Disable NPA stress and performance test code.
+CONFIG_MSM_NPA_REMOTE: Enable/Disable remote NPA support.
+CONFIG_MSM_NPA_REMOTE_ONCRPC: Use ONCRPC protocol to communicate with modem.
+CONFIG_MSM_NPA_PROC_COMM: Use PROC-COMM to issue requests after setup is done
+through ONCRPC.
+
+Dependencies
+============
+
+None
+
+User space utilities
+====================
+
+None
+
+Other
+=====
+
+None
+
+Known issues
+============
+
+None
+
+To do
+=====
+
+Return values for issued required requests.
+

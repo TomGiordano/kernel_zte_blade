@@ -1,0 +1,26 @@
+
+menu "Modemctl device drivers"
+	
+
+config MODEMCTL
+	tristate "Modemctl driver"
+	default no
+	help
+	  Modemctl driver.
+	  This driver is required if you want to use Double modem 
+
+	  Say Y here to compile support for Modemctl devices into the
+	  kernel or say M to compile it as module (btusb).
+	  
+config MODEMCTL_IFX_GSM
+	tristate "Modemctl driver ifx gsm modem support"
+	depends on MODEMCTL
+	help
+	  Modemctl driver ifx gsm modem support.
+	  This driver is required if you want to use IFX GSM modem
+
+	  Say Y here to compile support for IFX Modem devices into the
+	  kernel or say M to compile it as module (btsdio).
+
+endmenu
+
