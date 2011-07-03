@@ -271,31 +271,6 @@ static ssize_t msm_hsusb_show_ftm(struct device *dev,
 
 //end
 
-/*wangzy_101025, for the control of cdrom interface start*/
-static ssize_t msm_hsusb_show_enable_cdrom(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	int i = 0;	
-	i = scnprintf(buf, PAGE_SIZE, "%d\n", g_enable_cdrom);	
-	return i;
-}
-
-static ssize_t msm_hsusb_store_enable_cdrom(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
-{
-       unsigned long cdrom_enable = 0;
-      	if (!strict_strtoul(buf, 16, &cdrom_enable)) {
-		g_enable_cdrom = (cdrom_enable == 0x5656)? 1 : 0;
-		pr_info("%s: Requested enable_cdrom = %d 0x%lx\n",
-			__func__, g_enable_cdrom, cdrom_enable);	
-	} else {
-		pr_info("%s: strict_strtoul conversion failed, %s\n", __func__, buf);
-	}
-	return size;
-}
-/*wangzy_101025, for the control of cdrom interface end*/
 /* serial number */
 #define MAX_SERIAL_LEN 256
 static char serial_number[MAX_SERIAL_LEN] = "1234567890ABCDEF";
@@ -402,160 +377,6 @@ android_func_attr(cdc_ecm, ANDROID_CDC_ECM);
 android_func_attr(rmnet, ANDROID_RMNET);
 android_func_attr(rndis, ANDROID_RNDIS);
 
-//ruanmeisi_20100713
-static ssize_t msm_hsusb_show_exwork(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	int i = 0;
-	struct usb_ex_work *p = &global_usbwork;
-	i = scnprintf(buf, PAGE_SIZE,
-				"auto switch: %s\nlinux switch: %s\nswitch_pid: 0x%x\ncur_pid: 0x%x\nlinux_pid: 0x%x\n",
-		      p->enable_switch?"enable":"disable",
-		      p->enable_linux_switch?"enable":"disable",
-		      p->switch_pid,
-		      p->cur_pid,
-		      p->linux_pid);
-	
-	return i;
-}
-static ssize_t msm_hsusb_store_enable_switch(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
-{
-     unsigned long enable;
-      	if (!strict_strtoul(buf, 16, &enable)) {
-		global_usbwork.enable_switch = enable;
-	} 
-	return size;
-}
-
-
-static ssize_t msm_hsusb_store_enable_linux_switch(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
-{
-     unsigned long enable;
-      	if (!strict_strtoul(buf, 16, &enable)) {
-		global_usbwork.enable_linux_switch = enable;
-	} 
-	return size;
-}
-
-static ssize_t msm_hsusb_store_cur_pid(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf, size_t size)
-{     
-    
-       unsigned long value;
-	if (!strict_strtoul(buf, 16, &value)) {
-      		printk("usb: cur_pid value=0x%x\n",(unsigned int)value);
-		if(android_validate_product_id((unsigned short)value))
-			global_usbwork.cur_pid=(unsigned int) value;
-	}
-	return size;
-}
-
-
-static ssize_t msm_hsusb_store_switch_pid(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf, size_t size)
-{     
-     
-       unsigned long value;
-	if (!strict_strtoul(buf, 16, &value)) {
-      		printk("usb: switch_pid value=0x%x\n",(unsigned int)value);
-		if(android_validate_product_id((u16)value))
-			global_usbwork.switch_pid= (unsigned int)value;
-	}
-	
-	return size;
-}
-
-static ssize_t msm_hsusb_store_linux_pid(struct device *dev,
-					   struct device_attribute *attr,
-					   const char *buf, size_t size)
-{     
-   
-       unsigned long value;
-	if (!strict_strtoul(buf, 16, &value)) {
-      		printk("usb: linux_pid value=0x%x\n",(unsigned int)value);
-		if(android_validate_product_id((u16)value))
-			global_usbwork.linux_pid= (unsigned int)value;
-	}
-
-	return size;
-}
-
-//ruanmeisi_20110110
-
-static ssize_t android_show_product_name(struct device *dev,
-			     struct device_attribute *attr,
-			     char *buf)
-{
-	int len = 0;
-	len = scnprintf(buf, PAGE_SIZE,
-		"hsusb product_name is %s \n",
-			strings_dev[STRING_PRODUCT_IDX].s);
-	return len;
-}
-	
-
-static ssize_t android_store_product_name(struct device *dev, 
-						struct device_attribute *attr,
-						const char* buf, size_t size)
-{
-
-	strncpy(g_product_name, buf, sizeof(g_product_name));
-	g_product_name[sizeof(g_product_name) - 1] = 0;
-	strings_dev[STRING_PRODUCT_IDX].s = g_product_name;
-	return size;
-}
-
-static ssize_t android_show_manufacturer_name(struct device *dev,
-			     struct device_attribute *attr,
-					      char *buf)
-{
-	int len = 0;
-	
-	len = scnprintf(buf, PAGE_SIZE,
-			"hsusb manufacturer_name is %s\n",
-			strings_dev[STRING_MANUFACTURER_IDX].s);
-	return len;
-}
-
-
-static ssize_t android_store_manufacturer_name(struct device *dev, 
-						struct device_attribute *attr,
-						const char* buf, size_t size)
-{
-	strncpy(g_manufacturer_name, buf, sizeof(g_manufacturer_name));
-	g_manufacturer_name[sizeof(g_manufacturer_name) - 1] = 0;
-	strings_dev[STRING_MANUFACTURER_IDX].s = g_manufacturer_name;
-	return size;
-}
-
-static ssize_t android_show_mass_vendor_name(struct device *dev,
-			     struct device_attribute *attr,
-					      char *buf)
-{
-	int len = 0;
-	
-	len = scnprintf(buf, PAGE_SIZE,
-			"hsusb mass manufacturer_name is %s\n",
-			g_mass_vendor_name);
-	return len;
-}
-
-
-static ssize_t android_store_mass_vendor_name(struct device *dev, 
-						struct device_attribute *attr,
-						const char* buf, size_t size)
-{
-	strncpy(g_mass_vendor_name, buf, sizeof(g_mass_vendor_name));
-	g_mass_vendor_name[sizeof(g_mass_vendor_name) - 1] = 0;
-	return size;
-}
 
 const char * get_mass_vendor_name(void)
 {
@@ -563,36 +384,11 @@ const char * get_mass_vendor_name(void)
 }
 EXPORT_SYMBOL(get_mass_vendor_name);
 
-static DEVICE_ATTR(exwork, 0664,
-		   msm_hsusb_show_exwork, NULL);
-static DEVICE_ATTR(enable_switch, 0664,
-		   NULL, msm_hsusb_store_enable_switch);
 
-static DEVICE_ATTR(linux_switch, 0664,
-		   NULL, msm_hsusb_store_enable_linux_switch);
-static DEVICE_ATTR(cur_pid, 0664,
-		   NULL, msm_hsusb_store_cur_pid);
-static DEVICE_ATTR(switch_pid, 0664,
-		   NULL, msm_hsusb_store_switch_pid);
-static DEVICE_ATTR(linux_pid, 0664,
-		   NULL, msm_hsusb_store_linux_pid);
 static DEVICE_ATTR(pidnv, 0664,
                    msm_hsusb_show_pidnv, msm_hsusb_set_pidnv);
 static DEVICE_ATTR(ftm_mode, 0664,
                    msm_hsusb_show_ftm, NULL);
-
-static DEVICE_ATTR(enable_cdrom, 0664,
-		msm_hsusb_show_enable_cdrom, msm_hsusb_store_enable_cdrom);
-
-static DEVICE_ATTR(product_name, 0664,
-		   android_show_product_name, android_store_product_name);
-
-static DEVICE_ATTR(manufacturer_name, 0664,
-		android_show_manufacturer_name, android_store_manufacturer_name);
-static DEVICE_ATTR(mass_vendor_name, 0664,
-		   android_show_mass_vendor_name, android_store_mass_vendor_name);
-
-//end
 
 static struct attribute *android_func_attrs[] = {
 	&dev_attr_adb.attr,
@@ -606,25 +402,9 @@ static struct attribute *android_func_attrs[] = {
 	&dev_attr_cdc_ecm.attr,
 	&dev_attr_rmnet.attr,
 	&dev_attr_rndis.attr,
-	//for cdrom and auto install driver
-	&dev_attr_exwork.attr,
-	&dev_attr_cur_pid.attr,
-	&dev_attr_switch_pid.attr,
-	&dev_attr_linux_pid.attr,
-	&dev_attr_linux_switch.attr,
-	&dev_attr_enable_switch.attr,
-	
-	//end
 	//nv
 	&dev_attr_pidnv.attr,
 	&dev_attr_ftm_mode.attr,
-	&dev_attr_enable_cdrom.attr, //wangzy_101025, for the control of cdrom interface
-	//end
-	//ruanmeisi_20110110
-	&dev_attr_manufacturer_name.attr,
-	&dev_attr_product_name.attr,
-	&dev_attr_mass_vendor_name.attr,
-	//ruanmeisi_20110110 end
 	NULL,
 };
 
