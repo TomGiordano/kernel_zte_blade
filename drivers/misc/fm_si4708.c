@@ -815,6 +815,7 @@ static int si4708_open(struct inode *inode, struct file *filp)
 	if(fm_si4708_dev->initialized)
 	{
 	    	res = si4708_standby2normal();
+		fm_si4708_dev->initialized++;
 	}
 	else
        {
@@ -832,7 +833,7 @@ static int si4708_open(struct inode *inode, struct file *filp)
 		spin_unlock_irq(&fm_si4708_dev->lock);
 
 		res = si4708_init2normal();
-		if( res > 0)
+		if( res >= 0)
 		      fm_si4708_dev->initialized++;
 	}
 
@@ -860,7 +861,6 @@ static int si4708_open(struct inode *inode, struct file *filp)
 	#if defined(CONFIG_ZTE_PLATFORM)
 	fm_status = true;
 	#endif
-	
 
 	return res < 0 ? res : 0;
 }
@@ -888,15 +888,19 @@ static int si4708_release(struct inode *inode, struct file *filp)
 	#endif
 	
 	/*set close status,flag = 0*/
-	fm_si4708_dev->initialized = 0;
-	/* Make sure the device is power down. */
-	res = si4708_normal2standby();
+	if(fm_si4708_dev->initialized)
+	  fm_si4708_dev->initialized--;
+	/* Only power down when all fd are closed */
+	if(!fm_si4708_dev->initialized){
+	  /* Make sure the device is power down. */
+	  res = si4708_normal2standby();
 
 	
-	#if defined(CONFIG_ZTE_PLATFORM)
-	fm_status = false;
-	report_fm_closed();
-	#endif /* CONFIG_ZTE_PLATFORM */
+#if defined(CONFIG_ZTE_PLATFORM)
+	  fm_status = false;
+	  report_fm_closed();
+#endif /* CONFIG_ZTE_PLATFORM */
+	}
 	
 
 	return res < 0 ? res : 0;
