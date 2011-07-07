@@ -87,13 +87,6 @@
 
 const char * get_mass_vendor_name(void);
 
-//ruanmeisi_20100713 support switch usb mode
-void schedule_linux_os(void);
-void schedule_cdrom_stop(void);
-int os_switch_is_enable(void);
-//ruanmeisi_20100712 lun0 is udisk lun1 is cdrom 
-static int default_lunstype[MAX_LUNS] = {0,1};
-//end
 static const char shortname[] = DRIVER_NAME;
 
 #ifdef DEBUG
@@ -1322,17 +1315,6 @@ static int do_verify(struct fsg_dev *fsg)
 
 
 /*-------------------------------------------------------------------------*/
-//ruanmeisi_20100712 for cdrom
-static int do_bad_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
-{
-	u8	*buf = (u8 *) bh->buf;
-
-	fsg->bad_lun_okay = 1;
-	memset(buf, 0, 36);
-	buf[0] = 0x7f;		/* Unsupported, no device-type */
-	return 36;
-}
-//end
 
 static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 {
@@ -1346,9 +1328,7 @@ static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 	}
 
 	memset(buf, 0, 8);	/* Non-removable, direct-access device */
-	//ruanmeisi_20100712 for cdrom
-	buf[0] = (fsg->curlun->type? TYPE_CDROM : TYPE_DISK);
-	//end
+	buf[0] = TYPE_DISK;
 	buf[1] = 0x80;	/* set removable bit */
 	buf[2] = 2;		/* ANSI SCSI level 2 */
 	buf[3] = 2;		/* SCSI-2 INQUIRY data format */
@@ -1431,78 +1411,6 @@ static int do_read_capacity(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 	put_be32(&buf[4], 512);				/* Block length */
 	return 8;
 }
-
-//ruanmeisi,copy from ../gadget/file_storage.c,support cdrom
-static void
-store_cdrom_address(u8 *dest, int msf, u32 addr)
-{
-	if (msf) {
-		/* Convert to Minutes-Seconds-Frames */
-		addr >>= 2;		/* Convert to 2048-byte frames */
-		addr += 2*75;		/* Lead-in occupies 2 seconds */
-		dest[3] = addr % 75;	/* Frames */
-		addr /= 75;
-		dest[2] = addr % 60;	/* Seconds */
-		addr /= 60;
-		dest[1] = addr;		/* Minutes */
-		dest[0] = 0;		/* Reserved */
-	} else {
-		/* Absolute sector */
-		put_be32(dest, addr);
-	}
-}
-
-static int do_read_header(struct fsg_dev *fsg, struct fsg_buffhd *bh)
-{
-	struct lun	*curlun = fsg->curlun;
-	int		msf = fsg->cmnd[1] & 0x02;
-	u32		lba = get_be32(&fsg->cmnd[2]);
-	u8		*buf = (u8 *) bh->buf;
-
-	if ((fsg->cmnd[1] & ~0x02) != 0) {		/* Mask away MSF */
-		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
-		return -EINVAL;
-	}
-	if (lba >= curlun->num_sectors) {
-		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
-		return -EINVAL;
-	}
-
-	memset(buf, 0, 8);
-	buf[0] = 0x01;		/* 2048 bytes of user data, rest is EC */
-	store_cdrom_address(&buf[4], msf, lba);
-	return 8;
-}
-
-
-static int do_read_toc(struct fsg_dev *fsg, struct fsg_buffhd *bh)
-{
-	struct lun	*curlun = fsg->curlun;
-	int		msf = fsg->cmnd[1] & 0x02;
-	int		start_track = fsg->cmnd[6];
-	u8		*buf = (u8 *) bh->buf;
-
-	if ((fsg->cmnd[1] & ~0x02) != 0 ||		/* Mask away MSF */
-			start_track > 1) {
-		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
-		return -EINVAL;
-	}
-
-	memset(buf, 0, 20);
-	buf[1] = (20-2);		/* TOC data length */
-	buf[2] = 1;			/* First track number */
-	buf[3] = 1;			/* Last track number */
-	buf[5] = 0x16;			/* Data track, copying allowed */
-	buf[6] = 0x01;			/* Only track is number 1 */
-	store_cdrom_address(&buf[8], msf, 0);
-
-	buf[13] = 0x16;			/* Lead-out track is data */
-	buf[14] = 0xAA;			/* Lead-out track number */
-	store_cdrom_address(&buf[16], msf, curlun->num_sectors);
-	return 20;
-}
-//ruanmeisi,end
-
 
 static int do_mode_sense(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 {
@@ -1602,29 +1510,10 @@ static int do_start_stop(struct fsg_dev *fsg)
 		if (backing_file_is_open(curlun)) {
 			close_backing_file(fsg, curlun);
 			curlun->unit_attention_data = SS_MEDIUM_NOT_PRESENT;
-			//ruanmeisi_20100712 for cdrom  auto switch usb mode
-			schedule_cdrom_stop();
-			//end
 		}
 	}
 
 	return 0;
-}
-
-//USB_HML_20100602 
-static int do_switch_mode(struct fsg_dev *fsg,struct fsg_buffhd *bh)
-{
-	//struct lun	*curlun = fsg->curlun;
-	int			lun = fsg->cmnd[1] >> 5;
-	u8	*buf = (u8 *) bh->buf;
-
-	memset(buf, 0, 36);	/* Non-removable, direct-access device */
-	buf[0] = 1;
-
-	printk("usb:rms:%s %d: %d\n", __FUNCTION__, __LINE__, lun);
-	schedule_cdrom_stop();
-	
-	return 36;
 }
 
 static int do_prevent_allow(struct fsg_dev *fsg)
@@ -2037,24 +1926,6 @@ static int check_command(struct fsg_dev *fsg, int cmnd_size,
 	return 0;
 }
 
-
-
-int discovery_os(struct fsg_dev *fsg)
-{
-	int	lun = fsg->cmnd[1] >> 5;
-	if (!os_switch_is_enable()) {
-		return 0;
-	}
-	if (1 == fsg->lun && lun == 1) {
-	        printk(KERN_ERR"usb:rms: fsg->lun %d lun %d. connect to linux\n",
-		       fsg->lun, lun);
-		return 1;
-	}
-	
-	return 0;//os is windows
-}
-
-
 static int do_scsi_command(struct fsg_dev *fsg)
 {
 	struct fsg_buffhd	*bh;
@@ -2080,16 +1951,6 @@ static int do_scsi_command(struct fsg_dev *fsg)
 
 	case SC_INQUIRY:
 		fsg->data_size_from_cmnd = fsg->cmnd[4];
-		//ruanmeisi_20100702 for cdrom
-		if (1 == discovery_os(fsg)) {
-			if ((reply = check_command(fsg, 6, DATA_DIR_TO_HOST,
-						   (1<<4), 0,
-						   "INQUIRY")) == 0)
-				reply =	do_bad_inquiry(fsg, bh);
-			schedule_linux_os();
-			break;
-		}
-		//end
 		if ((reply = check_command(fsg, 6, DATA_DIR_TO_HOST,
 				(1<<4), 0,
 				"INQUIRY")) == 0)
@@ -2168,32 +2029,6 @@ static int do_scsi_command(struct fsg_dev *fsg)
 				"READ CAPACITY")) == 0)
 			reply = do_read_capacity(fsg, bh);
 		break;
-		//ruanmeisi,
-	case SC_READ_HEADER:
-		if (!fsg->curlun->type)
-			goto unknown_cmnd;
-		fsg->data_size_from_cmnd = get_be16(&fsg->cmnd[7]);
-		if ((reply = check_command(fsg, 10, DATA_DIR_TO_HOST,
-				(3<<7) | (0x1f<<1), 1,
-				"READ HEADER")) == 0)
-			reply = do_read_header(fsg, bh);
-		break;
-
-	case SC_READ_TOC:
-		if (!fsg->curlun->type)
-			goto unknown_cmnd;
-		fsg->data_size_from_cmnd = get_be16(&fsg->cmnd[7]);
-		if ((reply = check_command(fsg, 10, DATA_DIR_TO_HOST,
-				(7<<6) | (1<<1), 1,
-				"READ TOC")) == 0)
-			reply = do_read_toc(fsg, bh);
-		break;
-//ruanmeisi,end
-//USB_HML_20100602  extend SCSI command to switch usb mode
-       case SC_SWITCH_MODE:
-			reply = do_switch_mode(fsg, bh);
-		break;
-//USB_HML_20100602,end
 	case SC_READ_FORMAT_CAPACITIES:
 		fsg->data_size_from_cmnd = get_be16(&fsg->cmnd[7]);
 		if ((reply = check_command(fsg, 10, DATA_DIR_TO_HOST,
@@ -2279,7 +2114,6 @@ static int do_scsi_command(struct fsg_dev *fsg)
 		/* Fall through */
 
 	default:
-	unknown_cmnd:
 		fsg->data_size_from_cmnd = 0;
 		sprintf(unknown, "Unknown x%02x", fsg->cmnd[0]);
 		if ((reply = check_command(fsg, fsg->cmnd_size,
@@ -2759,7 +2593,6 @@ static int open_backing_file(struct fsg_dev *fsg, struct lun *curlun,
 	struct inode			*inode = NULL;
 	loff_t				size;
 	loff_t				num_sectors;
-	loff_t				min_sectors;
 
 	/* R/W if we can, R/O if we must */
 	ro = curlun->ro;
@@ -2809,24 +2642,6 @@ static int open_backing_file(struct fsg_dev *fsg, struct lun *curlun,
 		rc = -ETOOSMALL;
 		goto out;
 	}
-	//ruanmeisi for cdrom
-	min_sectors = 1;
-	if (curlun->type) {
-		num_sectors &= ~3;	// Reduce to a multiple of 2048
-		min_sectors = 300*4;	// Smallest track is 300 frames
-		if (num_sectors >= 256*60*75*4) {
-			num_sectors = (256*60*75 - 1) * 4;
-			LINFO(curlun, "file too big: %s\n", filename);
-			LINFO(curlun, "using only first %d blocks\n",
-					(int) num_sectors);
-		}
-	}
-	if (num_sectors < min_sectors) {
-		LINFO(curlun, "file too small: %s\n", filename);
-		rc = -ETOOSMALL;
-		goto out;
-	}
-//end
 
 
 	get_file(filp);
@@ -3068,12 +2883,6 @@ fsg_function_bind(struct usb_configuration *c, struct usb_function *f)
 	for (i = 0; i < fsg->nluns; ++i) {
 		curlun = &fsg->luns[i];
 		curlun->ro = 0;
-		//ruanmeisi_20100529 for cdrom
-		curlun->type = default_lunstype[i];
-		if (curlun->type == 1) {
-			curlun->ro = 1;
-		}
-		//end
 		curlun->dev.release = lun_release;
 		curlun->dev.parent = &cdev->gadget->dev;
 		dev_set_drvdata(&curlun->dev, fsg);

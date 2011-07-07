@@ -46,8 +46,6 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 
-void schedule_usb_plug(void);
-
 static const char driver_name[] = "msm72k_udc";
 
 #define DEBUG(x, fmt, arg...)  printk(KERN_ERR "msm72k, %s: " fmt "\n", __func__, ## arg)
@@ -1389,9 +1387,6 @@ static void usb_do_work(struct work_struct *w)
 				usb_do_work_check_vbus(ui);
 				msm72k_pm_qos_update(0);
 				wake_unlock(&ui->wlock);
-				//ruanmeisi_20100712
-				schedule_usb_plug();
-				//end
 				break;
 			}
 			if (flags & USB_FLAG_SUSPEND) {

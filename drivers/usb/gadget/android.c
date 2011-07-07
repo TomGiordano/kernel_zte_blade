@@ -100,7 +100,6 @@ struct usb_composition *android_validate_product_id(unsigned short pid);
 #define PRODUCT_ID_DIAG_NMEA_MODEM   0x0111
 #define PRODUCT_ID_MODEM_MS_ADB         0x1354
 #define PRODUCT_ID_MODEM_MS                 0x1355
-#define PRODUCT_ID_MS_CDROM                 0x0083
 #define PRODUCT_ID_RNDIS_MS                 0x1364
 #define PRODUCT_ID_RNDIS_MS_ADB             0x1364
 #define PRODUCT_ID_RNDIS             0x1365
@@ -113,33 +112,6 @@ int support_assoc_desc(void)
 {
 	return product_id == PRODUCT_ID_RNDIS ? 0 : 1;
 }
-
-//ruanmeisi_20100712 for cdrom auto install driver
-struct usb_ex_work
-{
-	struct workqueue_struct *workqueue;
-	int    enable_switch;
-	int    enable_linux_switch;
-	int switch_pid;
-	int has_switch;
-	int cur_pid;
-	int linux_pid;
-	struct delayed_work switch_work;
-	struct delayed_work linux_switch_work;
-	struct delayed_work plug_work;
-	spinlock_t lock;
-};
-
-struct usb_ex_work global_usbwork = {0};
-static int create_usb_work_queue(void);
-static int destroy_usb_work_queue(void);
-static void usb_plug_work(struct work_struct *w);
-static void usb_switch_work(struct work_struct *w);
-static void usb_switch_os_work(struct work_struct *w);
-static void clear_switch_flag(void);
-static int usb_cdrom_is_enable(void);
-static int enble_cdrom_after_switch(void);
-//end
 
 //ruanmeisi_20100715 nv
 enum usb_opt_nv_item
@@ -156,7 +128,6 @@ enum usb_opt_nv_type
 int
 msm_hsusb_get_set_usb_conf_nv_value(uint32_t nv_item,uint32_t value,uint32_t is_write);
 int get_ftm_from_tag(void);
-static unsigned short g_enable_cdrom = 0;
 static int zte_usb_pid[]={
 	PRODUCT_ID_ALL_INTERFACE,
         PRODUCT_ID_MS_ADB,
@@ -166,11 +137,8 @@ static int zte_usb_pid[]={
         PRODUCT_ID_DIAG_NMEA_MODEM,
         PRODUCT_ID_MODEM_MS_ADB,
         PRODUCT_ID_MODEM_MS,
-        
         PRODUCT_ID_DIAG_MODEM_NEMA_MS_AT, 
 	PRODUCT_ID_DIAG_MODEM_NEMA_MS_ADB_AT, 
-				
-        PRODUCT_ID_MS_CDROM,
 };
 #define PRODUCT_ID_COUNT    (sizeof(zte_usb_pid)/sizeof(zte_usb_pid[0]))
 
@@ -429,8 +397,7 @@ static int  android_bind_config(struct usb_configuration *c)
 				return ret;
 			break;
 		case ANDROID_MSC:
-			ret = mass_storage_function_add(dev->cdev, c,
-					     (usb_cdrom_is_enable()||enble_cdrom_after_switch())?2:dev->nluns);
+			ret = mass_storage_function_add(dev->cdev, c, dev->nluns);
 			if (ret)
 				return ret;
 			break;
@@ -793,9 +760,6 @@ static int android_set_pid(const char *val, struct kernel_param *kp)
 	mutex_lock(&_android_dev->lock);
 	ret = android_switch_composition(tmp);
 	mutex_unlock(&_android_dev->lock);
-	//ruanmeisi_20100713 for auto swith usb mode
-	clear_switch_flag();
-	//end
 out:
 	return ret;
 }
@@ -925,9 +889,6 @@ static int __init init(void)
 	_android_dev = dev;
 	mutex_init(&dev->lock);
 	
-	//ruanmeisi_20100713 for cdrom and auto switch usb mode
-	create_usb_work_queue();
-	//end
 	ret = adb_function_init();
 	if (ret)
 		goto free_dev;
@@ -991,251 +952,6 @@ static void __exit cleanup(void)
 	adb_function_exit();
 	kfree(_android_dev);
 	_android_dev = NULL;
-	//ruanmeisi_20100713
-	destroy_usb_work_queue();
-	//end
 }
 module_exit(cleanup);
-
-//ruanmeisi_20100712 add for switch usb mode
-
-
-
-static int create_usb_work_queue(void)
-{
-	struct usb_ex_work *p = &global_usbwork;
-	if (p->workqueue) {
-		printk(KERN_ERR"usb:workqueue has created");
-		return 0;
-	}
-	spin_lock_init(&p->lock);
-	p->enable_switch = 1;
-	p->enable_linux_switch = 0;
-	p->switch_pid = PRODUCT_ID_MS_ADB;
-	p->linux_pid = PRODUCT_ID_MS_ADB;
-	p->cur_pid = PRODUCT_ID_MS_CDROM;
-	p->has_switch = 0;
-	p->workqueue = create_singlethread_workqueue("usb_workqueue");
-	if (NULL == p->workqueue) {
-		printk(KERN_ERR"usb:workqueue created fail");
-		p->enable_switch = 0;
-		return -1;
-	}
-	INIT_DELAYED_WORK(&p->switch_work, usb_switch_work);
-	INIT_DELAYED_WORK(&p->linux_switch_work, usb_switch_os_work);
-	INIT_DELAYED_WORK(&p->plug_work, usb_plug_work);
-	return 0;
-}
-
-
-
-static int destroy_usb_work_queue(void)
-{
-	struct usb_ex_work *p = &global_usbwork;
-	if (NULL != p->workqueue) {
-		destroy_workqueue(p->workqueue);
-		p->workqueue = NULL;
-	}
-	memset(&global_usbwork, 0, sizeof(global_usbwork));
-	return 0;
-}
-
-static void usb_plug_work(struct work_struct *w)
-{
-	unsigned long flags;
-	int pid = 0;
-	struct usb_ex_work *p = container_of(w, struct usb_ex_work, plug_work.work);
-
-	if (!_android_dev) {
-
-		printk(KERN_ERR"usb:%s: %d: _android_dev == NULL\n",
-		       __FUNCTION__, __LINE__);
-		return ;
-	}
-	
-	spin_lock_irqsave(&p->lock, flags);
-	if (!p->has_switch) {
-		printk("usb:rms: %s %d: \n", __FUNCTION__, __LINE__);
-		spin_unlock_irqrestore(&p->lock, flags);
-		return ;
-	}
-	printk("usb:rms: %s %d: \n", __FUNCTION__, __LINE__);
-	p->has_switch = 0;
-	pid = p->cur_pid;
-	spin_unlock_irqrestore(&p->lock, flags);
-	//enable_cdrom(1);
-	//DBG("plug work");
-	printk("usb:rms %s:%d pid 0x%x cur_pid 0x%x\n",
-	       __FUNCTION__, __LINE__, product_id, pid);
-
-	mutex_lock(&_android_dev->lock);
-	android_switch_composition((unsigned short)pid);
-	mutex_unlock(&_android_dev->lock);
-
-	return ;
-}
-
-static void usb_switch_work(struct work_struct *w)
-{
-	struct usb_ex_work *p = container_of(w, struct usb_ex_work, switch_work.work);
-	unsigned long flags;
-	if (!_android_dev) {
-
-		printk(KERN_ERR"usb:%s: %d: _android_dev == NULL\n",
-		       __FUNCTION__, __LINE__);
-		return ;
-	}
-	if (!p->enable_switch) {
-		return ;
-	}
-	if (p->has_switch) {
-		printk("usb:rms:%s %d: already switch pid 0x%x switch_pid 0x%x\n",
-		       __FUNCTION__, __LINE__, product_id, p->switch_pid);
-		return ;
-	}
-	spin_lock_irqsave(&p->lock, flags);
-//	p->cur_pid = ui->composition->product_id;
-	p->has_switch = 1;
-	spin_unlock_irqrestore(&p->lock, flags);
-//	DBG("auto switch usb mode");
-	printk("usb:rms:%s %d: pid 0x%x switch_pid 0x%x\n",
-	       __FUNCTION__, __LINE__, product_id, p->switch_pid);
-	//enable_cdrom(0);
-
-	mutex_lock(&_android_dev->lock);
-	android_switch_composition((unsigned short)p->switch_pid);
-	mutex_unlock(&_android_dev->lock);
-
-	return ;
-}
-
-static void usb_switch_os_work(struct work_struct *w)
-{
-	struct usb_ex_work *p =
-		container_of(w, struct usb_ex_work, linux_switch_work.work);
-	unsigned long flags;
-
-	if (!_android_dev) {
-
-		printk(KERN_ERR"usb:%s: %d: _android_dev == NULL\n",
-		       __FUNCTION__, __LINE__);
-		return ;
-	}
-
-	if (!p->enable_switch || !p->enable_linux_switch || p->has_switch) {
-		//switch  or linux_switch are enable, or we has already switch,return direct
-		printk("usb:rms:%s:%d, switch %s: linux switch %s: %s switch\n",
-		       __FUNCTION__, __LINE__, p->enable_switch?"enable":"disable",
-		       p->enable_linux_switch?"enable":"disable",
-		       p->has_switch?"has":"has not");
-		return ;
-	}
-	spin_lock_irqsave(&p->lock, flags);
-//	p->cur_pid = ui->composition->product_id;
-	p->has_switch = 1;
-	spin_unlock_irqrestore(&p->lock, flags);
-	printk("usb:rms:%s %d: pid 0x%x linux_pid 0x%x\n",
-	       __FUNCTION__, __LINE__, product_id, p->linux_pid);
-
-	mutex_lock(&_android_dev->lock);
-	android_switch_composition((unsigned short)p->linux_pid);
-	mutex_unlock(&_android_dev->lock);
-
-	return ;
-}
-
-void schedule_cdrom_stop(void)
-{
-	
-	if (NULL == global_usbwork.workqueue) {
-		return ;
-	}
-	queue_delayed_work(global_usbwork.workqueue, &global_usbwork.switch_work, HZ/10);
-
-	return;
-}
-EXPORT_SYMBOL(schedule_cdrom_stop);
-void schedule_linux_os(void)
-{
-	if (NULL == global_usbwork.workqueue) {
-		return ;
-	}
-	queue_delayed_work(global_usbwork.workqueue,
-			   &global_usbwork.linux_switch_work, 0);
-
-	return;
-}
-EXPORT_SYMBOL(schedule_linux_os);
-
-void schedule_usb_plug(void)
-{
-	
-	if (NULL == global_usbwork.workqueue) {
-		return ;
-	}
-	printk("usb:rms: %s %d: \n", __FUNCTION__, __LINE__);
-	queue_delayed_work(global_usbwork.workqueue, &global_usbwork.plug_work, 0);
-
-	return ;
-}
-EXPORT_SYMBOL(schedule_usb_plug);
-
-static void clear_switch_flag(void)
-{
-	unsigned long flags;
-	struct usb_ex_work *p = &global_usbwork;
-	spin_lock_irqsave(&p->lock, flags);
-	p->has_switch = 0;
-	spin_unlock_irqrestore(&p->lock, flags);
-
-	return ;
-}
-
-
-static int usb_cdrom_is_enable(void)
-{
-	return (PRODUCT_ID_MS_CDROM == product_id) ? 1:0;
-}
-
-//enable cdrom when pid is match  wangzy_20101015 
-static int enble_cdrom_after_switch(void)
-{
-	return g_enable_cdrom;	
-        /* int enable = 0; */
-	/* unsigned short temp, i=0; */
-	
-        /* if (NULL == product_id) { */
-        /*         printk(KERN_ERR"usb: error %s %d\n", __FUNCTION__, __LINE__); */
-        /*         return 0; */
-        /* } */
- 
-	/* temp=g_enable_cdrom;	 */
-	/* if(0xFFFF==temp) { */
-	/* 	enable = 1; */
-	/* }else{ */
-	/* 	while(temp){ */
-	/* 		i = 31 - __builtin_clz(temp); */
-	/* 		if(zte_usb_pid[i]==product_id){ */
-	/* 			enable=1; */
-	/* 			break; */
-	/* 		} */
-	/* 		temp&=~(1<<i); */
-	/* 	} */
-	/* } */
-        /* printk("usb: %s: pid: 0x%x cdrom: %s\n",__FUNCTION__, */
-	/*        product_id,enable ?"enable":"disable"); */
-
-        /* return enable; */
-}
-EXPORT_SYMBOL(enble_cdrom_after_switch);
-
-int os_switch_is_enable(void)
-{
-	struct usb_ex_work *p = &global_usbwork;
-	
-	return usb_cdrom_is_enable()?(p->enable_linux_switch) : 0;
-}
-EXPORT_SYMBOL(os_switch_is_enable);
-//end
-
 

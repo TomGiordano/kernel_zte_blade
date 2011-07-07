@@ -188,7 +188,6 @@ static struct platform_device mass_storage_device = {
 #define PRODUCT_ID_DIAG_NMEA_MODEM   0x0111
 #define PRODUCT_ID_MODEM_MS_ADB         0x1354
 #define PRODUCT_ID_MODEM_MS                 0x1355
-#define PRODUCT_ID_MS_CDROM                 0x0083
 #define PRODUCT_ID_RNDIS_MS                 0x1364
 #define PRODUCT_ID_RNDIS_MS_ADB             0x1364
 #define PRODUCT_ID_RNDIS             0x1365
@@ -256,13 +255,6 @@ static struct usb_composition usb_func_composition[] = {
 		.functions	    = 0x26,
 		.adb_product_id     = PRODUCT_ID_MODEM_MS_ADB,
 		.adb_functions	    = 0x126
-	},
-	{
-		/* ms + CDROM */
-		.product_id         = PRODUCT_ID_MS_CDROM,
-		.functions	    = 0x2,
-		.adb_product_id     = PRODUCT_ID_MS_CDROM,
-		.adb_functions	    = 0x2
 	},
 	{
 		/* rndis + ms + adb */
