@@ -79,6 +79,7 @@ struct msm_ts {
 	struct input_dev		*input_dev;
 	void __iomem			*tssc_base;
 	uint32_t			ts_down:1;
+	uint32_t			zoomhack;
 	struct ts_virt_key		*vkey_down;
 	//struct marimba_tsadc_client	*ts_client;
 
@@ -220,12 +221,44 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 	*/
-	
+
 
 	if (down) {
-		input_report_abs(ts->input_dev, ABS_X, x);
-		input_report_abs(ts->input_dev, ABS_Y, y);
-			input_report_abs(ts->input_dev, ABS_PRESSURE, z);
+		if(z>1100 && z<1200) { 		// blind spot (1101-1199)
+			down = 0;
+			ts->zoomhack = 1;
+		} else if(z>=1200) {		// Pinch zoom emulation
+			if(!ts->zoomhack) {	// Flush real position to avoid jumpiness
+				down = 0;
+				ts->zoomhack = 1;
+			}
+			else {
+				if(y>894) y=894;
+				// Finger1
+                	        input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+                      		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 516);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 447 - y/2);
+                        	input_mt_sync(ts->input_dev);
+				// Finger2
+                        	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+                        	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 516);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 447 + y/2);
+                        	input_mt_sync(ts->input_dev);
+			}
+		} else {
+			if(ts->zoomhack) {	// Flush faked positions to avoid jumpiness
+				down = 0;
+				ts->zoomhack = 0;
+			} else {
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, (z+1)/2);
+                	        input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                       		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
+                       		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
+                        	input_mt_sync(ts->input_dev);
+			}
+		}
 	}
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
@@ -463,12 +496,14 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	input_set_capability(ts->input_dev, EV_KEY, BTN_TOUCH);
 	set_bit(EV_ABS, ts->input_dev->evbit);
 
-	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x,
-			     0, 0);
-	input_set_abs_params(ts->input_dev, ABS_Y, pdata->min_y, pdata->max_y,
-			     0, 0);
-	input_set_abs_params(ts->input_dev, ABS_PRESSURE, pdata->min_press,
-			     pdata->max_press, 0, 0);
+//	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x, 0, 0);
+//	input_set_abs_params(ts->input_dev, ABS_Y, pdata->min_y, pdata->max_y, 0, 0);
+//	input_set_abs_params(ts->input_dev, ABS_PRESSURE, pdata->min_press, pdata->max_press, 0, 0);
+
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, pdata->min_x, pdata->max_x, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->min_y, pdata->max_y, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, pdata->min_press, pdata->max_press, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
 
 /*
 	for (i = 0; pdata->vkeys_x && (i < pdata->vkeys_x->num_keys); ++i)
