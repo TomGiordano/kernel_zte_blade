@@ -404,25 +404,44 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 
 		isr &= mask;
 
-		if (unlikely(isr == 0))
-			break;
-
-		panel = mdp4_overlay_panel_list();
-		if (isr & INTR_PRIMARY_VSYNC) {
-			if (panel & MDP4_PANEL_LCDC)
-				mdp4_primary_vsync_lcdc();
-		}
-		if (isr & INTR_DMA_P_DONE) {
-			mdp4_stat.intr_dma_p++;
-			dma = &dma2_data;
-			if (panel & MDP4_PANEL_LCDC) {
-				/* disable LCDC interrupt */
-				spin_lock(&mdp_spin_lock);
-				mdp_intr_mask &= ~INTR_DMA_P_DONE;
-				outp32(MDP_INTR_ENABLE, mdp_intr_mask);
-				dma->waiting = FALSE;
-				spin_unlock(&mdp_spin_lock);
-			} else { /* MDDI */
+	panel = mdp4_overlay_panel_list();
+	if (isr & INTR_PRIMARY_VSYNC) {
+		dma = &dma2_data;
+		spin_lock(&mdp_spin_lock);
+		mdp_intr_mask &= ~INTR_PRIMARY_VSYNC;
+		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+		dma->waiting = FALSE;
+		if (panel & MDP4_PANEL_LCDC)
+			mdp4_primary_vsync_lcdc();
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+		else if (panel & MDP4_PANEL_DSI_VIDEO)
+			mdp4_primary_vsync_dsi_video();
+#endif
+		spin_unlock(&mdp_spin_lock);
+	}
+#ifdef CONFIG_FB_MSM_DTV
+	if (isr & INTR_EXTERNAL_VSYNC) {
+		dma = &dma_e_data;
+		spin_lock(&mdp_spin_lock);
+		mdp_intr_mask &= ~INTR_EXTERNAL_VSYNC;
+		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+		dma->waiting = FALSE;
+		if (panel & MDP4_PANEL_DTV)
+			mdp4_external_vsync_dtv();
+		spin_unlock(&mdp_spin_lock);
+	}
+#endif
+	if (isr & INTR_DMA_P_DONE) {
+		mdp4_stat.intr_dma_p++;
+		dma = &dma2_data;
+		if (panel & MDP4_PANEL_LCDC) {
+			/* disable LCDC interrupt */
+			spin_lock(&mdp_spin_lock);
+			mdp_intr_mask &= ~INTR_DMA_P_DONE;
+			outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+			dma->waiting = FALSE;
+			spin_unlock(&mdp_spin_lock);
+		} else { /* MDDI */
 #ifdef CONFIG_FB_MSM_OVERLAY
 #ifdef CONFIG_FB_MSM_MDDI
 				mdp4_dma_p_done_mddi();
