@@ -130,6 +130,7 @@ u32 res_trk_enable_clocks(void)
 				VCDRES_MSG_ERROR("vidc core clk Enable fail\n");
 				goto vidc_disable_pclk;
 			}
+
 			VCDRES_MSG_LOW("%s(): Clocks enabled!\n", __func__);
 		} else {
 		   VCDRES_MSG_ERROR("%s(): Clocks enable failed!\n",
