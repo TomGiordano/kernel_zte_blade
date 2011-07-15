@@ -23,7 +23,7 @@
 #include <linux/pm_runtime.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
-#include <mach/msm_reqs.h>
+#include <mach/msm_memtypes.h>
 #include <linux/interrupt.h>
 #include "vidc.h"
 #include "vcd_res_tracker.h"
