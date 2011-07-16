@@ -507,6 +507,11 @@ config FB_MSM_LCDC_HIMAX_QVGA_725A_PANEL
 	bool "725A QVGA Panel"
 	select FB_MSM_LCDC_HIMAX_QVGA725A
 
+config FB_MSM_HDMI_AS_PRIMARY
+	bool "Use HDMI as primary panel"
+	---help---
+	Support for using HDMI as primary
+
 config FB_MSM_PANEL_NONE
 	bool "NONE"
 	---help---
