@@ -70,6 +70,7 @@ static int spi_sdi;
 static int spi_sdo;
 static int panel_reset;
 static bool onewiremode = true;
+static int truly_id;
 
 static struct msm_panel_common_pdata * lcdc_tft_pdata;
 static unsigned int array[12][42] = {	{0x40,0x05,0x41,0x3f,0x42,0x39,0x43,0x23,0x44,0x22,0x45,0x22,0x46,0x20,0x50,0x05,0x51,0x00,0x52,0x00,0x53,0x2c,0x54,0x21,0x55,0x22,0x56,0x21,0x60,0x05,0x61,0x3f,0x62,0x35,0x63,0x21,0x64,0x21,0x65,0x20,0x66,0x2b},
@@ -1039,904 +1040,329 @@ static void lcdc_lead_init(void)
 }
 void lcdc_truly_init(void)
 {
-//intial code for HX8369-A+hydis 7-5
-#if 1 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB9); // SET password
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x83);
-	gpio_lcd_truly_emuspi_write_one_data(0x69);
-	SPI_Stop(); 
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0x36);   
-	gpio_lcd_truly_emuspi_write_one_data(0x00);   //  GBR MODE
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB2); // SET Display 480x800
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x23);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x70);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB4); // SET Display waveform cycles
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x18);
-	gpio_lcd_truly_emuspi_write_one_data(0x80);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);
-	gpio_lcd_truly_emuspi_write_one_data(0x02);
-	SPI_Stop(); 
- 	 SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB6); // SET VCOM
-	gpio_lcd_truly_emuspi_write_one_data(0x42);
-	gpio_lcd_truly_emuspi_write_one_data(0x42);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xD5); // SET GIP
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x04);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0x05);
-	gpio_lcd_truly_emuspi_write_one_data(0x28);
-	gpio_lcd_truly_emuspi_write_one_data(0x70);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x40);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);
-	gpio_lcd_truly_emuspi_write_one_data(0x51);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x41);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);
-	gpio_lcd_truly_emuspi_write_one_data(0x50);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x04);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB1); //Set Power
-	gpio_lcd_truly_emuspi_write_one_data(0x85);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x34);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x2A);
-	gpio_lcd_truly_emuspi_write_one_data(0x32);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0x3A);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	SPI_Stop(); 
- 	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xE0); //SET GAMMA 2.2
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x28);
-	gpio_lcd_truly_emuspi_write_one_data(0x46);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x14);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x17);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x28);
-	gpio_lcd_truly_emuspi_write_one_data(0x46);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x14);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x17);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xC1); //SET DGC
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0x04);
-	gpio_lcd_truly_emuspi_write_one_data(0x0A);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x1A);
-	gpio_lcd_truly_emuspi_write_one_data(0x21);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0x31);
-	gpio_lcd_truly_emuspi_write_one_data(0x37);
-	gpio_lcd_truly_emuspi_write_one_data(0x3E);
-	gpio_lcd_truly_emuspi_write_one_data(0x47);
-	gpio_lcd_truly_emuspi_write_one_data(0x4F);
-	gpio_lcd_truly_emuspi_write_one_data(0x56);
-	gpio_lcd_truly_emuspi_write_one_data(0x5E);
-	gpio_lcd_truly_emuspi_write_one_data(0x65);
-	gpio_lcd_truly_emuspi_write_one_data(0x6E);
-	gpio_lcd_truly_emuspi_write_one_data(0x78);
-	gpio_lcd_truly_emuspi_write_one_data(0x80);
-	gpio_lcd_truly_emuspi_write_one_data(0x88);
-	gpio_lcd_truly_emuspi_write_one_data(0x8F);
-	gpio_lcd_truly_emuspi_write_one_data(0x98);
-	gpio_lcd_truly_emuspi_write_one_data(0xA0);
-	gpio_lcd_truly_emuspi_write_one_data(0xA8);
-	gpio_lcd_truly_emuspi_write_one_data(0xB1);
-	gpio_lcd_truly_emuspi_write_one_data(0xBA);
-	gpio_lcd_truly_emuspi_write_one_data(0xC3);
-	gpio_lcd_truly_emuspi_write_one_data(0xCB);
-	gpio_lcd_truly_emuspi_write_one_data(0xD3);
-	gpio_lcd_truly_emuspi_write_one_data(0xDB);
-	gpio_lcd_truly_emuspi_write_one_data(0xE4);
-	gpio_lcd_truly_emuspi_write_one_data(0xEB);
-	gpio_lcd_truly_emuspi_write_one_data(0xF3);
-	gpio_lcd_truly_emuspi_write_one_data(0xFA);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x20);
-	gpio_lcd_truly_emuspi_write_one_data(0x35);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0x2D);
-	gpio_lcd_truly_emuspi_write_one_data(0x8C);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0xE3);
-	gpio_lcd_truly_emuspi_write_one_data(0x2F);
-	gpio_lcd_truly_emuspi_write_one_data(0xC0);
-	gpio_lcd_truly_emuspi_write_one_data(0x04);
-	gpio_lcd_truly_emuspi_write_one_data(0x0A);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x1A);
-	gpio_lcd_truly_emuspi_write_one_data(0x21);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0x31);
-	gpio_lcd_truly_emuspi_write_one_data(0x37);
-	gpio_lcd_truly_emuspi_write_one_data(0x3E);
-	gpio_lcd_truly_emuspi_write_one_data(0x47);
-	gpio_lcd_truly_emuspi_write_one_data(0x4F);
-	gpio_lcd_truly_emuspi_write_one_data(0x56);
-	gpio_lcd_truly_emuspi_write_one_data(0x5E);
-	gpio_lcd_truly_emuspi_write_one_data(0x65);
-	gpio_lcd_truly_emuspi_write_one_data(0x6E);
-	gpio_lcd_truly_emuspi_write_one_data(0x78);
-	gpio_lcd_truly_emuspi_write_one_data(0x80);
-	gpio_lcd_truly_emuspi_write_one_data(0x88);
-	gpio_lcd_truly_emuspi_write_one_data(0x8F);
-	gpio_lcd_truly_emuspi_write_one_data(0x98);
-	gpio_lcd_truly_emuspi_write_one_data(0xA0);
-	gpio_lcd_truly_emuspi_write_one_data(0xA8);
-	gpio_lcd_truly_emuspi_write_one_data(0xB1);
-	gpio_lcd_truly_emuspi_write_one_data(0xBA);
-	gpio_lcd_truly_emuspi_write_one_data(0xC3);
-	gpio_lcd_truly_emuspi_write_one_data(0xCB);
-	gpio_lcd_truly_emuspi_write_one_data(0xD3);
-	gpio_lcd_truly_emuspi_write_one_data(0xDB);
-	gpio_lcd_truly_emuspi_write_one_data(0xE4);
-	gpio_lcd_truly_emuspi_write_one_data(0xEB);
-	gpio_lcd_truly_emuspi_write_one_data(0xF3);
-	gpio_lcd_truly_emuspi_write_one_data(0xFA);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x20);
-	gpio_lcd_truly_emuspi_write_one_data(0x35);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0x2D);
-	gpio_lcd_truly_emuspi_write_one_data(0x8C);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0xE3);
-	gpio_lcd_truly_emuspi_write_one_data(0x2F);
-	gpio_lcd_truly_emuspi_write_one_data(0xC0);
-	gpio_lcd_truly_emuspi_write_one_data(0x04);
-	gpio_lcd_truly_emuspi_write_one_data(0x0A);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x1A);
-	gpio_lcd_truly_emuspi_write_one_data(0x21);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0x31);
-	gpio_lcd_truly_emuspi_write_one_data(0x37);
-	gpio_lcd_truly_emuspi_write_one_data(0x3E);
-	gpio_lcd_truly_emuspi_write_one_data(0x47);
-	gpio_lcd_truly_emuspi_write_one_data(0x4F);
-	gpio_lcd_truly_emuspi_write_one_data(0x56);
-	gpio_lcd_truly_emuspi_write_one_data(0x5E);
-	gpio_lcd_truly_emuspi_write_one_data(0x65);
-	gpio_lcd_truly_emuspi_write_one_data(0x6E);
-	gpio_lcd_truly_emuspi_write_one_data(0x78);
-	gpio_lcd_truly_emuspi_write_one_data(0x80);
-	gpio_lcd_truly_emuspi_write_one_data(0x88);
-	gpio_lcd_truly_emuspi_write_one_data(0x8F);
-	gpio_lcd_truly_emuspi_write_one_data(0x98);
-	gpio_lcd_truly_emuspi_write_one_data(0xA0);
-	gpio_lcd_truly_emuspi_write_one_data(0xA8);
-	gpio_lcd_truly_emuspi_write_one_data(0xB1);
-	gpio_lcd_truly_emuspi_write_one_data(0xBA);
-	gpio_lcd_truly_emuspi_write_one_data(0xC3);
-	gpio_lcd_truly_emuspi_write_one_data(0xCB);
-	gpio_lcd_truly_emuspi_write_one_data(0xD3);
-	gpio_lcd_truly_emuspi_write_one_data(0xDB);
-	gpio_lcd_truly_emuspi_write_one_data(0xE4);
-	gpio_lcd_truly_emuspi_write_one_data(0xEB);
-	gpio_lcd_truly_emuspi_write_one_data(0xF3);
-	gpio_lcd_truly_emuspi_write_one_data(0xFA);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x20);
-	gpio_lcd_truly_emuspi_write_one_data(0x35);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0x2D);
-	gpio_lcd_truly_emuspi_write_one_data(0x8C);
-	gpio_lcd_truly_emuspi_write_one_data(0x29);
-	gpio_lcd_truly_emuspi_write_one_data(0xE3);
-	gpio_lcd_truly_emuspi_write_one_data(0x2F);
-	gpio_lcd_truly_emuspi_write_one_data(0xC0);
-	SPI_Stop(); 
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0xB3);  // SET Display  480x800 
-	gpio_lcd_truly_emuspi_write_one_data(0x0f); 
-	SPI_Stop();  
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x3A); //SET pixel format 24-bit
-	gpio_lcd_truly_emuspi_write_one_data(0x66);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x11); // sleep out command
-	msleep(120);
-	SPI_Stop(); 
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x29); // display on command
-	SPI_Stop(); 
-	#endif 
+   printk("%s: truly_id=0x%x\n",__func__,truly_id);
 
-#if 0   //7.27
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB9);  // SET password
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);  
-	gpio_lcd_truly_emuspi_write_one_data(0x83);  
-	gpio_lcd_truly_emuspi_write_one_data(0x69);   
-  	SPI_Stop();  
-  	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0x36);   
-	gpio_lcd_truly_emuspi_write_one_data(0x08);   //  GBR MODE
-	SPI_Stop();
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB2);  // SET Display  480x800
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x23);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x70);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-  	SPI_Stop();      
-  
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB4);  // SET Display  480x800
-	gpio_lcd_truly_emuspi_write_one_data(0x11);    // 00 to 11
-	gpio_lcd_truly_emuspi_write_one_data(0x18);  
-	gpio_lcd_truly_emuspi_write_one_data(0x80);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);  
-	gpio_lcd_truly_emuspi_write_one_data(0x02);  
-  	SPI_Stop();
-    
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xD5);  // SII OK SET GIP
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x04);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x01);  
-	gpio_lcd_truly_emuspi_write_one_data(0x05);  
-	gpio_lcd_truly_emuspi_write_one_data(0x28);  
-	gpio_lcd_truly_emuspi_write_one_data(0x70);  
-	gpio_lcd_truly_emuspi_write_one_data(0x01);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x40);  
-	gpio_lcd_truly_emuspi_write_one_data(0x06);  
-	gpio_lcd_truly_emuspi_write_one_data(0x51);  
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x41);  
-	gpio_lcd_truly_emuspi_write_one_data(0x06);  
-	gpio_lcd_truly_emuspi_write_one_data(0x50);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);  
-	gpio_lcd_truly_emuspi_write_one_data(0x04);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  	
-  	SPI_Stop();      
-	mdelay(10); 
-	
-	SPI_Start();     
-  	gpio_lcd_truly_emuspi_write_one_index(0xB1);  //Set Power 
-  	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x34);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x24);
-	gpio_lcd_truly_emuspi_write_one_data(0x2C);
-	gpio_lcd_truly_emuspi_write_one_data(0x1A);
-	gpio_lcd_truly_emuspi_write_one_data(0x1A);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x3A);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-  	SPI_Stop();
-  	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0xB3);  // SET Display  480x800 
-	gpio_lcd_truly_emuspi_write_one_data(0x0f); 
-	SPI_Stop();  
-  	mdelay(10);
-  	        
-  	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x11); 
-	SPI_Stop();	
-	mdelay(120);  
+   // Truly 6902 + 6903
+   //intial code for HX8369-A+hydis 7-5
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB9); // SET password
+   gpio_lcd_truly_emuspi_write_one_data(0xFF);
+   gpio_lcd_truly_emuspi_write_one_data(0x83);
+   gpio_lcd_truly_emuspi_write_one_data(0x69);
+   SPI_Stop();
 
-	SPI_Start();  //gamma 1  -----SEÌá¹©gamma
-	gpio_lcd_truly_emuspi_write_one_index(0xE0);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x28);
-	gpio_lcd_truly_emuspi_write_one_data(0x46);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x14);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x17);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x28);
-	gpio_lcd_truly_emuspi_write_one_data(0x46);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x12);
-	gpio_lcd_truly_emuspi_write_one_data(0x14);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x17);
-  	SPI_Stop();	
-	
-	mdelay(10);
-  	    
-  	SPI_Start();
-  	gpio_lcd_truly_emuspi_write_one_index(0x3A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x66);   
-	SPI_Stop();	 	
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0x36);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);   //  GBR MODE
+   SPI_Stop();
 
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x29);  
-	SPI_Stop();
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB2); // SET Display 480x800
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x23);
+   gpio_lcd_truly_emuspi_write_one_data(0x03);
+   gpio_lcd_truly_emuspi_write_one_data(0x03);
+   gpio_lcd_truly_emuspi_write_one_data(0x70);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0xFF);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x03);
+   gpio_lcd_truly_emuspi_write_one_data(0x03);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x01);
+   SPI_Stop();
 
-//DGC ON
-  	SPI_Start();     
-  	gpio_lcd_truly_emuspi_write_one_index(0xC1);  //Set Power 
-  	gpio_lcd_truly_emuspi_write_one_data(0x01);
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB4); // SET Display waveform cycles
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x18);
+   gpio_lcd_truly_emuspi_write_one_data(0x80);
+   gpio_lcd_truly_emuspi_write_one_data(0x06);
+   gpio_lcd_truly_emuspi_write_one_data(0x02);
+   SPI_Stop();
 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); //------R gamma 2.2
-	gpio_lcd_truly_emuspi_write_one_data(0x01); 
-	gpio_lcd_truly_emuspi_write_one_data(0x05); 
-	gpio_lcd_truly_emuspi_write_one_data(0x09); 
-	gpio_lcd_truly_emuspi_write_one_data(0x0C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x12); 
-	gpio_lcd_truly_emuspi_write_one_data(0x17); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1B); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x24); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x30); 
-	gpio_lcd_truly_emuspi_write_one_data(0x34); 
-	gpio_lcd_truly_emuspi_write_one_data(0x38); 
-	gpio_lcd_truly_emuspi_write_one_data(0x41); 
-	gpio_lcd_truly_emuspi_write_one_data(0x49); 
-	gpio_lcd_truly_emuspi_write_one_data(0x52); 
-	gpio_lcd_truly_emuspi_write_one_data(0x5A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x62); 
-	gpio_lcd_truly_emuspi_write_one_data(0x6D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x78); 
-	gpio_lcd_truly_emuspi_write_one_data(0x83); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x97); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA1); 
-	gpio_lcd_truly_emuspi_write_one_data(0xAC); 
-	gpio_lcd_truly_emuspi_write_one_data(0xB9); 
-	gpio_lcd_truly_emuspi_write_one_data(0xC7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xCF); 
-	gpio_lcd_truly_emuspi_write_one_data(0xDB); 
-	gpio_lcd_truly_emuspi_write_one_data(0xE7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xF4); 
-	gpio_lcd_truly_emuspi_write_one_data(0xFF); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0xD0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x45); 
-	gpio_lcd_truly_emuspi_write_one_data(0x73); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1E); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x20); 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); 
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB6); // SET VCOM
+   gpio_lcd_truly_emuspi_write_one_data(0x42);
+   gpio_lcd_truly_emuspi_write_one_data(0x42);
+   SPI_Stop();
 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); //------G gamma 2.2
-	gpio_lcd_truly_emuspi_write_one_data(0x01); 
-	gpio_lcd_truly_emuspi_write_one_data(0x05); 
-	gpio_lcd_truly_emuspi_write_one_data(0x09); 
-	gpio_lcd_truly_emuspi_write_one_data(0x0C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x12); 
-	gpio_lcd_truly_emuspi_write_one_data(0x17); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1B); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x24); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x30); 
-	gpio_lcd_truly_emuspi_write_one_data(0x34); 
-	gpio_lcd_truly_emuspi_write_one_data(0x38); 
-	gpio_lcd_truly_emuspi_write_one_data(0x41); 
-	gpio_lcd_truly_emuspi_write_one_data(0x49); 
-	gpio_lcd_truly_emuspi_write_one_data(0x52); 
-	gpio_lcd_truly_emuspi_write_one_data(0x5A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x62); 
-	gpio_lcd_truly_emuspi_write_one_data(0x6D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x78); 
-	gpio_lcd_truly_emuspi_write_one_data(0x83); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x97); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA1); 
-	gpio_lcd_truly_emuspi_write_one_data(0xAC); 
-	gpio_lcd_truly_emuspi_write_one_data(0xB9); 
-	gpio_lcd_truly_emuspi_write_one_data(0xC7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xCF); 
-	gpio_lcd_truly_emuspi_write_one_data(0xDB); 
-	gpio_lcd_truly_emuspi_write_one_data(0xE7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xF4); 
-	gpio_lcd_truly_emuspi_write_one_data(0xFF); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0xD0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x45); 
-	gpio_lcd_truly_emuspi_write_one_data(0x73); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1E); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x20); 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); 
+   // SET GIP
+   SPI_Start();
+   if (truly_id == 0x6903){
+      gpio_lcd_truly_emuspi_write_one_index(0xD5);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x07);
+      gpio_lcd_truly_emuspi_write_one_data(0x03);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x09);
+      gpio_lcd_truly_emuspi_write_one_data(0x10);
+      gpio_lcd_truly_emuspi_write_one_data(0x80);
+      gpio_lcd_truly_emuspi_write_one_data(0x11);
+      gpio_lcd_truly_emuspi_write_one_data(0x13);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x75);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x64);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x46);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x57);
+      gpio_lcd_truly_emuspi_write_one_data(0x07);
+      gpio_lcd_truly_emuspi_write_one_data(0x0F);
+      gpio_lcd_truly_emuspi_write_one_data(0x02);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+   } else {
+      gpio_lcd_truly_emuspi_write_one_index(0xD5);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x04);
+      gpio_lcd_truly_emuspi_write_one_data(0x03);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x05);
+      gpio_lcd_truly_emuspi_write_one_data(0x28);
+      gpio_lcd_truly_emuspi_write_one_data(0x70);
+      gpio_lcd_truly_emuspi_write_one_data(0x01);
+      gpio_lcd_truly_emuspi_write_one_data(0x03);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x40);
+      gpio_lcd_truly_emuspi_write_one_data(0x06);
+      gpio_lcd_truly_emuspi_write_one_data(0x51);
+      gpio_lcd_truly_emuspi_write_one_data(0x07);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+      gpio_lcd_truly_emuspi_write_one_data(0x41);
+      gpio_lcd_truly_emuspi_write_one_data(0x06);
+      gpio_lcd_truly_emuspi_write_one_data(0x50);
+      gpio_lcd_truly_emuspi_write_one_data(0x07);
+      gpio_lcd_truly_emuspi_write_one_data(0x07);
+      gpio_lcd_truly_emuspi_write_one_data(0x0F);
+      gpio_lcd_truly_emuspi_write_one_data(0x04);
+      gpio_lcd_truly_emuspi_write_one_data(0x00);
+   }
+   SPI_Stop();
 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); //------B gamma 2.2
-	gpio_lcd_truly_emuspi_write_one_data(0x01); 
-	gpio_lcd_truly_emuspi_write_one_data(0x05); 
-	gpio_lcd_truly_emuspi_write_one_data(0x09); 
-	gpio_lcd_truly_emuspi_write_one_data(0x0C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x12); 
-	gpio_lcd_truly_emuspi_write_one_data(0x17); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1B); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x24); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x30); 
-	gpio_lcd_truly_emuspi_write_one_data(0x34); 
-	gpio_lcd_truly_emuspi_write_one_data(0x38); 
-	gpio_lcd_truly_emuspi_write_one_data(0x41); 
-	gpio_lcd_truly_emuspi_write_one_data(0x49); 
-	gpio_lcd_truly_emuspi_write_one_data(0x52); 
-	gpio_lcd_truly_emuspi_write_one_data(0x5A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x62); 
-	gpio_lcd_truly_emuspi_write_one_data(0x6D); 
-	gpio_lcd_truly_emuspi_write_one_data(0x78); 
-	gpio_lcd_truly_emuspi_write_one_data(0x83); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0x97); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA1); 
-	gpio_lcd_truly_emuspi_write_one_data(0xAC); 
-	gpio_lcd_truly_emuspi_write_one_data(0xB9); 
-	gpio_lcd_truly_emuspi_write_one_data(0xC7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xCF); 
-	gpio_lcd_truly_emuspi_write_one_data(0xDB); 
-	gpio_lcd_truly_emuspi_write_one_data(0xE7); 
-	gpio_lcd_truly_emuspi_write_one_data(0xF4); 
-	gpio_lcd_truly_emuspi_write_one_data(0xFF); 
-	gpio_lcd_truly_emuspi_write_one_data(0x2A); 
-	gpio_lcd_truly_emuspi_write_one_data(0xD0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x45); 
-	gpio_lcd_truly_emuspi_write_one_data(0x73); 
-	gpio_lcd_truly_emuspi_write_one_data(0x1E); 
-	gpio_lcd_truly_emuspi_write_one_data(0x8C); 
-	gpio_lcd_truly_emuspi_write_one_data(0xA0); 
-	gpio_lcd_truly_emuspi_write_one_data(0x20); 
-	gpio_lcd_truly_emuspi_write_one_data(0x00); 
-	SPI_Stop();	
-#endif
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB1); //Set Power
+   gpio_lcd_truly_emuspi_write_one_data(0x85);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x34);
+   gpio_lcd_truly_emuspi_write_one_data(0x07);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x0F);
+   gpio_lcd_truly_emuspi_write_one_data(0x0F);
+   gpio_lcd_truly_emuspi_write_one_data(0x2A);
+   gpio_lcd_truly_emuspi_write_one_data(0x32);
+   gpio_lcd_truly_emuspi_write_one_data(0x3F);
+   gpio_lcd_truly_emuspi_write_one_data(0x3F);
+   gpio_lcd_truly_emuspi_write_one_data(0x01);
+   gpio_lcd_truly_emuspi_write_one_data(0x3A);
+   gpio_lcd_truly_emuspi_write_one_data(0x01);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   SPI_Stop();
 
-#if 0   //truly 0719
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xE0); //SET GAMMA 2.2
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x13);
+   gpio_lcd_truly_emuspi_write_one_data(0x19);
+   gpio_lcd_truly_emuspi_write_one_data(0x38);
+   gpio_lcd_truly_emuspi_write_one_data(0x3D);
+   gpio_lcd_truly_emuspi_write_one_data(0x3F);
+   gpio_lcd_truly_emuspi_write_one_data(0x28);
+   gpio_lcd_truly_emuspi_write_one_data(0x46);
+   gpio_lcd_truly_emuspi_write_one_data(0x07);
+   gpio_lcd_truly_emuspi_write_one_data(0x0D);
+   gpio_lcd_truly_emuspi_write_one_data(0x0E);
+   gpio_lcd_truly_emuspi_write_one_data(0x12);
+   gpio_lcd_truly_emuspi_write_one_data(0x15);
+   gpio_lcd_truly_emuspi_write_one_data(0x12);
+   gpio_lcd_truly_emuspi_write_one_data(0x14);
+   gpio_lcd_truly_emuspi_write_one_data(0x0F);
+   gpio_lcd_truly_emuspi_write_one_data(0x17);
+   gpio_lcd_truly_emuspi_write_one_data(0x00);
+   gpio_lcd_truly_emuspi_write_one_data(0x13);
+   gpio_lcd_truly_emuspi_write_one_data(0x19);
+   gpio_lcd_truly_emuspi_write_one_data(0x38);
+   gpio_lcd_truly_emuspi_write_one_data(0x3D);
+   gpio_lcd_truly_emuspi_write_one_data(0x3F);
+   gpio_lcd_truly_emuspi_write_one_data(0x28);
+   gpio_lcd_truly_emuspi_write_one_data(0x46);
+   gpio_lcd_truly_emuspi_write_one_data(0x07);
+   gpio_lcd_truly_emuspi_write_one_data(0x0D);
+   gpio_lcd_truly_emuspi_write_one_data(0x0E);
+   gpio_lcd_truly_emuspi_write_one_data(0x12);
+   gpio_lcd_truly_emuspi_write_one_data(0x15);
+   gpio_lcd_truly_emuspi_write_one_data(0x12);
+   gpio_lcd_truly_emuspi_write_one_data(0x14);
+   gpio_lcd_truly_emuspi_write_one_data(0x0F);
+   gpio_lcd_truly_emuspi_write_one_data(0x17);
+   SPI_Stop();
 
-	mdelay(120);    
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB9);  // SET password
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);  
-	gpio_lcd_truly_emuspi_write_one_data(0x83);  
-	gpio_lcd_truly_emuspi_write_one_data(0x69);   
-	SPI_Stop(); 
-	SPI_Start();   
-	gpio_lcd_truly_emuspi_write_one_index(0xCC);  // SET VCOM
-	gpio_lcd_truly_emuspi_write_one_data(0x02);    
-	SPI_Stop();
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB2);  // SET Display  480x800
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x23);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x70);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0xFF);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);   
-	SPI_Stop();
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0xB3);  // SET Display  480x800 
-	gpio_lcd_truly_emuspi_write_one_data(0x07); 
-	SPI_Stop();  
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB4);  // SET Display  480x800
-	gpio_lcd_truly_emuspi_write_one_data(0x11);   //00
-	gpio_lcd_truly_emuspi_write_one_data(0x1D);  
-	gpio_lcd_truly_emuspi_write_one_data(0x5F);
-	gpio_lcd_truly_emuspi_write_one_data(0x0E);  
-	gpio_lcd_truly_emuspi_write_one_data(0x06);   
-	SPI_Stop();
-	SPI_Start();  
-	gpio_lcd_truly_emuspi_write_one_index(0xB6);  // SET VCOM
-	gpio_lcd_truly_emuspi_write_one_data(0x5f);  //56
-	gpio_lcd_truly_emuspi_write_one_data(0x5f);    //56
-	SPI_Stop();
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0xD5);  // SET GIP
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x04);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x01);  
-	gpio_lcd_truly_emuspi_write_one_data(0x05);  
-	gpio_lcd_truly_emuspi_write_one_data(0x1C);  
-	gpio_lcd_truly_emuspi_write_one_data(0x70);  
-	gpio_lcd_truly_emuspi_write_one_data(0x01);  
-	gpio_lcd_truly_emuspi_write_one_data(0x03);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x40);  
-	gpio_lcd_truly_emuspi_write_one_data(0x06);  
-	gpio_lcd_truly_emuspi_write_one_data(0x51);  
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);  
-	gpio_lcd_truly_emuspi_write_one_data(0x41);  
-	gpio_lcd_truly_emuspi_write_one_data(0x06);  
-	gpio_lcd_truly_emuspi_write_one_data(0x50);  
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x07);  
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);  
-	gpio_lcd_truly_emuspi_write_one_data(0x04);  
-	gpio_lcd_truly_emuspi_write_one_data(0x00);   
-	SPI_Stop();  
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xB1);  //Set Power 
-	gpio_lcd_truly_emuspi_write_one_data(0x85);  //Enable VBIAS and LVGL
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x34);
-	gpio_lcd_truly_emuspi_write_one_data(0x06); 
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x2A);
-	gpio_lcd_truly_emuspi_write_one_data(0x32);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x07);
-	gpio_lcd_truly_emuspi_write_one_data(0x3A);
-	gpio_lcd_truly_emuspi_write_one_data(0x01);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);
-	gpio_lcd_truly_emuspi_write_one_data(0xE6);   
-	SPI_Stop();
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x11);   
-	SPI_Stop();     
-	mdelay(120);  
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0xE0);  //SET GAMMA
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x1D);
-	gpio_lcd_truly_emuspi_write_one_data(0x22);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x2E);
-	gpio_lcd_truly_emuspi_write_one_data(0x4A);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x16);
-	gpio_lcd_truly_emuspi_write_one_data(0x10);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);
-	gpio_lcd_truly_emuspi_write_one_data(0x00);
-	gpio_lcd_truly_emuspi_write_one_data(0x1D);
-	gpio_lcd_truly_emuspi_write_one_data(0x22);
-	gpio_lcd_truly_emuspi_write_one_data(0x38);
-	gpio_lcd_truly_emuspi_write_one_data(0x3D);
-	gpio_lcd_truly_emuspi_write_one_data(0x3F);
-	gpio_lcd_truly_emuspi_write_one_data(0x2E);
-	gpio_lcd_truly_emuspi_write_one_data(0x4A);
-	gpio_lcd_truly_emuspi_write_one_data(0x06);
-	gpio_lcd_truly_emuspi_write_one_data(0x0D);
-	gpio_lcd_truly_emuspi_write_one_data(0x0F);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x15);
-	gpio_lcd_truly_emuspi_write_one_data(0x13);
-	gpio_lcd_truly_emuspi_write_one_data(0x16);
-	gpio_lcd_truly_emuspi_write_one_data(0x10);
-	gpio_lcd_truly_emuspi_write_one_data(0x19);  
-	SPI_Stop(); 
-	SPI_Start();
-	gpio_lcd_truly_emuspi_write_one_index(0x3A); 
-	gpio_lcd_truly_emuspi_write_one_data(0x66); 
-	SPI_Stop();    
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0x36);   
-	gpio_lcd_truly_emuspi_write_one_data(0x81);   //  GBR MODE
-	SPI_Stop(); 
-	SPI_Start(); 
-	gpio_lcd_truly_emuspi_write_one_index(0x29);  //Display On
-	SPI_Stop(); 
-	#endif
-	#if 0   //ok  
-	//HX8369 
-	//msleep(200);  
-	//SPI_Start(); 
- //       gpio_lcd_truly_emuspi_write_one_index(0xB9);  // SET password 
- //       gpio_lcd_truly_emuspi_write_one_data(0xFF);   
- //       gpio_lcd_truly_emuspi_write_one_data(0x83);   
- //       gpio_lcd_truly_emuspi_write_one_data(0x69);   
- // SPI_Stop();   
-//Read from RF4H=R69H 
-mdelay(200); 
-//SPI_Start();
-//gpio_lcd_truly_emuspi_write_one_index(0xf4);
-//gpio_lcd_truly_emuspi_read_one_para(0xF4,&id);
-//SPI_Stop();
-//dprintf(1,"id is 0x%x\n!",id);
-SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0xB9);  // SET password 
-        gpio_lcd_truly_emuspi_write_one_data(0xFF);   
-        gpio_lcd_truly_emuspi_write_one_data(0x83);   
-        gpio_lcd_truly_emuspi_write_one_data(0x69);   
-  SPI_Stop();   
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xC1); //SET DGC
+   gpio_lcd_truly_emuspi_write_one_data(0x01);
+   gpio_lcd_truly_emuspi_write_one_data(0x04);
+   gpio_lcd_truly_emuspi_write_one_data(0x0A);
+   gpio_lcd_truly_emuspi_write_one_data(0x13);
+   gpio_lcd_truly_emuspi_write_one_data(0x1A);
+   gpio_lcd_truly_emuspi_write_one_data(0x21);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0x31);
+   gpio_lcd_truly_emuspi_write_one_data(0x37);
+   gpio_lcd_truly_emuspi_write_one_data(0x3E);
+   gpio_lcd_truly_emuspi_write_one_data(0x47);
+   gpio_lcd_truly_emuspi_write_one_data(0x4F);
+   gpio_lcd_truly_emuspi_write_one_data(0x56);
+   gpio_lcd_truly_emuspi_write_one_data(0x5E);
+   gpio_lcd_truly_emuspi_write_one_data(0x65);
+   gpio_lcd_truly_emuspi_write_one_data(0x6E);
+   gpio_lcd_truly_emuspi_write_one_data(0x78);
+   gpio_lcd_truly_emuspi_write_one_data(0x80);
+   gpio_lcd_truly_emuspi_write_one_data(0x88);
+   gpio_lcd_truly_emuspi_write_one_data(0x8F);
+   gpio_lcd_truly_emuspi_write_one_data(0x98);
+   gpio_lcd_truly_emuspi_write_one_data(0xA0);
+   gpio_lcd_truly_emuspi_write_one_data(0xA8);
+   gpio_lcd_truly_emuspi_write_one_data(0xB1);
+   gpio_lcd_truly_emuspi_write_one_data(0xBA);
+   gpio_lcd_truly_emuspi_write_one_data(0xC3);
+   gpio_lcd_truly_emuspi_write_one_data(0xCB);
+   gpio_lcd_truly_emuspi_write_one_data(0xD3);
+   gpio_lcd_truly_emuspi_write_one_data(0xDB);
+   gpio_lcd_truly_emuspi_write_one_data(0xE4);
+   gpio_lcd_truly_emuspi_write_one_data(0xEB);
+   gpio_lcd_truly_emuspi_write_one_data(0xF3);
+   gpio_lcd_truly_emuspi_write_one_data(0xFA);
+   gpio_lcd_truly_emuspi_write_one_data(0xFF);
+   gpio_lcd_truly_emuspi_write_one_data(0x20);
+   gpio_lcd_truly_emuspi_write_one_data(0x35);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0x2D);
+   gpio_lcd_truly_emuspi_write_one_data(0x8C);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0xE3);
+   gpio_lcd_truly_emuspi_write_one_data(0x2F);
+   gpio_lcd_truly_emuspi_write_one_data(0xC0);
+   gpio_lcd_truly_emuspi_write_one_data(0x04);
+   gpio_lcd_truly_emuspi_write_one_data(0x0A);
+   gpio_lcd_truly_emuspi_write_one_data(0x13);
+   gpio_lcd_truly_emuspi_write_one_data(0x1A);
+   gpio_lcd_truly_emuspi_write_one_data(0x21);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0x31);
+   gpio_lcd_truly_emuspi_write_one_data(0x37);
+   gpio_lcd_truly_emuspi_write_one_data(0x3E);
+   gpio_lcd_truly_emuspi_write_one_data(0x47);
+   gpio_lcd_truly_emuspi_write_one_data(0x4F);
+   gpio_lcd_truly_emuspi_write_one_data(0x56);
+   gpio_lcd_truly_emuspi_write_one_data(0x5E);
+   gpio_lcd_truly_emuspi_write_one_data(0x65);
+   gpio_lcd_truly_emuspi_write_one_data(0x6E);
+   gpio_lcd_truly_emuspi_write_one_data(0x78);
+   gpio_lcd_truly_emuspi_write_one_data(0x80);
+   gpio_lcd_truly_emuspi_write_one_data(0x88);
+   gpio_lcd_truly_emuspi_write_one_data(0x8F);
+   gpio_lcd_truly_emuspi_write_one_data(0x98);
+   gpio_lcd_truly_emuspi_write_one_data(0xA0);
+   gpio_lcd_truly_emuspi_write_one_data(0xA8);
+   gpio_lcd_truly_emuspi_write_one_data(0xB1);
+   gpio_lcd_truly_emuspi_write_one_data(0xBA);
+   gpio_lcd_truly_emuspi_write_one_data(0xC3);
+   gpio_lcd_truly_emuspi_write_one_data(0xCB);
+   gpio_lcd_truly_emuspi_write_one_data(0xD3);
+   gpio_lcd_truly_emuspi_write_one_data(0xDB);
+   gpio_lcd_truly_emuspi_write_one_data(0xE4);
+   gpio_lcd_truly_emuspi_write_one_data(0xEB);
+   gpio_lcd_truly_emuspi_write_one_data(0xF3);
+   gpio_lcd_truly_emuspi_write_one_data(0xFA);
+   gpio_lcd_truly_emuspi_write_one_data(0xFF);
+   gpio_lcd_truly_emuspi_write_one_data(0x20);
+   gpio_lcd_truly_emuspi_write_one_data(0x35);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0x2D);
+   gpio_lcd_truly_emuspi_write_one_data(0x8C);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0xE3);
+   gpio_lcd_truly_emuspi_write_one_data(0x2F);
+   gpio_lcd_truly_emuspi_write_one_data(0xC0);
+   gpio_lcd_truly_emuspi_write_one_data(0x04);
+   gpio_lcd_truly_emuspi_write_one_data(0x0A);
+   gpio_lcd_truly_emuspi_write_one_data(0x13);
+   gpio_lcd_truly_emuspi_write_one_data(0x1A);
+   gpio_lcd_truly_emuspi_write_one_data(0x21);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0x31);
+   gpio_lcd_truly_emuspi_write_one_data(0x37);
+   gpio_lcd_truly_emuspi_write_one_data(0x3E);
+   gpio_lcd_truly_emuspi_write_one_data(0x47);
+   gpio_lcd_truly_emuspi_write_one_data(0x4F);
+   gpio_lcd_truly_emuspi_write_one_data(0x56);
+   gpio_lcd_truly_emuspi_write_one_data(0x5E);
+   gpio_lcd_truly_emuspi_write_one_data(0x65);
+   gpio_lcd_truly_emuspi_write_one_data(0x6E);
+   gpio_lcd_truly_emuspi_write_one_data(0x78);
+   gpio_lcd_truly_emuspi_write_one_data(0x80);
+   gpio_lcd_truly_emuspi_write_one_data(0x88);
+   gpio_lcd_truly_emuspi_write_one_data(0x8F);
+   gpio_lcd_truly_emuspi_write_one_data(0x98);
+   gpio_lcd_truly_emuspi_write_one_data(0xA0);
+   gpio_lcd_truly_emuspi_write_one_data(0xA8);
+   gpio_lcd_truly_emuspi_write_one_data(0xB1);
+   gpio_lcd_truly_emuspi_write_one_data(0xBA);
+   gpio_lcd_truly_emuspi_write_one_data(0xC3);
+   gpio_lcd_truly_emuspi_write_one_data(0xCB);
+   gpio_lcd_truly_emuspi_write_one_data(0xD3);
+   gpio_lcd_truly_emuspi_write_one_data(0xDB);
+   gpio_lcd_truly_emuspi_write_one_data(0xE4);
+   gpio_lcd_truly_emuspi_write_one_data(0xEB);
+   gpio_lcd_truly_emuspi_write_one_data(0xF3);
+   gpio_lcd_truly_emuspi_write_one_data(0xFA);
+   gpio_lcd_truly_emuspi_write_one_data(0xFF);
+   gpio_lcd_truly_emuspi_write_one_data(0x20);
+   gpio_lcd_truly_emuspi_write_one_data(0x35);
+   gpio_lcd_truly_emuspi_write_one_data(0xE6);
+   gpio_lcd_truly_emuspi_write_one_data(0x2D);
+   gpio_lcd_truly_emuspi_write_one_data(0x8C);
+   gpio_lcd_truly_emuspi_write_one_data(0x29);
+   gpio_lcd_truly_emuspi_write_one_data(0xE3);
+   gpio_lcd_truly_emuspi_write_one_data(0x2F);
+   gpio_lcd_truly_emuspi_write_one_data(0xC0);
+   SPI_Stop();
 
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0x36);  // SET password 
-        //gpio_lcd_truly_emuspi_write_one_data(0xFF);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        //gpio_lcd_truly_emuspi_write_one_data(0x69);   
-  SPI_Stop(); 
-  
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0xB2);  // SET Display  480x800 
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x23);   
-        gpio_lcd_truly_emuspi_write_one_data(0x03); 
-        gpio_lcd_truly_emuspi_write_one_data(0x03);   
-        gpio_lcd_truly_emuspi_write_one_data(0x70);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0xFF); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x03);   
-        gpio_lcd_truly_emuspi_write_one_data(0x03); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x01); 
-  SPI_Stop();       
-    
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0xB3);  // SET Display  480x800 
-        gpio_lcd_truly_emuspi_write_one_data(0x07); 
-  SPI_Stop();   
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0xB3);  // SET Display  480x800
+   gpio_lcd_truly_emuspi_write_one_data(0x0f);
+   SPI_Stop();
 
-  
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0xB4);  // SET Display  480x800 
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x18);
-		gpio_lcd_truly_emuspi_write_one_data(0x80); 
-        gpio_lcd_truly_emuspi_write_one_data(0x06);   
-        gpio_lcd_truly_emuspi_write_one_data(0x02);   
-  SPI_Stop(); 
-    
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0xD5);  // SII OK SET GIP 
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x04);   
-        gpio_lcd_truly_emuspi_write_one_data(0x03);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x01);   
-        gpio_lcd_truly_emuspi_write_one_data(0x05);   
-        gpio_lcd_truly_emuspi_write_one_data(0x28);
-  		gpio_lcd_truly_emuspi_write_one_data(0x70);   
-        gpio_lcd_truly_emuspi_write_one_data(0x01);   
-        gpio_lcd_truly_emuspi_write_one_data(0x03);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x40);   
-        gpio_lcd_truly_emuspi_write_one_data(0x06);   
-        gpio_lcd_truly_emuspi_write_one_data(0x51);   
-        gpio_lcd_truly_emuspi_write_one_data(0x07);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-    gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        gpio_lcd_truly_emuspi_write_one_data(0x41);   
-        gpio_lcd_truly_emuspi_write_one_data(0x06);   
-        gpio_lcd_truly_emuspi_write_one_data(0x50); 
-        gpio_lcd_truly_emuspi_write_one_data(0x07);   
-        gpio_lcd_truly_emuspi_write_one_data(0x07);   
-        gpio_lcd_truly_emuspi_write_one_data(0x0F);   
-        gpio_lcd_truly_emuspi_write_one_data(0x04);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);           
-  SPI_Stop();       
-        mdelay(10); 
-        
-        SPI_Start();     
-  gpio_lcd_truly_emuspi_write_one_index(0xB1);  //Set Power 
-  gpio_lcd_truly_emuspi_write_one_data(0x01); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x34); 
-        gpio_lcd_truly_emuspi_write_one_data(0x07); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0E); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0E); 
-        gpio_lcd_truly_emuspi_write_one_data(0x24); 
-        gpio_lcd_truly_emuspi_write_one_data(0x2C); 
-        gpio_lcd_truly_emuspi_write_one_data(0x1A); 
-        gpio_lcd_truly_emuspi_write_one_data(0x1A); 
-        gpio_lcd_truly_emuspi_write_one_data(0x07); 
-        gpio_lcd_truly_emuspi_write_one_data(0x3A); 
-        gpio_lcd_truly_emuspi_write_one_data(0x01); 
-        gpio_lcd_truly_emuspi_write_one_data(0xE6); 
-        gpio_lcd_truly_emuspi_write_one_data(0xE6); 
-        gpio_lcd_truly_emuspi_write_one_data(0xE6); 
-        gpio_lcd_truly_emuspi_write_one_data(0xE6); 
-        gpio_lcd_truly_emuspi_write_one_data(0xE6); 
-  SPI_Stop();         
-  mdelay(10); 
-                  
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0x11); 
-        SPI_Stop();         
-        mdelay(150);   
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0x3A); //SET pixel format 24-bit
+   gpio_lcd_truly_emuspi_write_one_data(0x66);
+   SPI_Stop();
 
-SPI_Start();  //gamma 1 
-        gpio_lcd_truly_emuspi_write_one_index(0xE0); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x13); 
-        gpio_lcd_truly_emuspi_write_one_data(0x19); 
-        gpio_lcd_truly_emuspi_write_one_data(0x38); 
-        gpio_lcd_truly_emuspi_write_one_data(0x3D); 
-        gpio_lcd_truly_emuspi_write_one_data(0x3F); 
-        gpio_lcd_truly_emuspi_write_one_data(0x28); 
-        gpio_lcd_truly_emuspi_write_one_data(0x46); 
-        gpio_lcd_truly_emuspi_write_one_data(0x07); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0D); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0E); 
-        gpio_lcd_truly_emuspi_write_one_data(0x12); 
-        gpio_lcd_truly_emuspi_write_one_data(0x15); 
-        gpio_lcd_truly_emuspi_write_one_data(0x12); 
-        gpio_lcd_truly_emuspi_write_one_data(0x14); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0F); 
-        gpio_lcd_truly_emuspi_write_one_data(0x17); 
-        gpio_lcd_truly_emuspi_write_one_data(0x00); 
-        gpio_lcd_truly_emuspi_write_one_data(0x13); 
-        gpio_lcd_truly_emuspi_write_one_data(0x19); 
-        gpio_lcd_truly_emuspi_write_one_data(0x38); 
-        gpio_lcd_truly_emuspi_write_one_data(0x3D); 
-        gpio_lcd_truly_emuspi_write_one_data(0x3F); 
-        gpio_lcd_truly_emuspi_write_one_data(0x28); 
-        gpio_lcd_truly_emuspi_write_one_data(0x46); 
-        gpio_lcd_truly_emuspi_write_one_data(0x07); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0D); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0E); 
-        gpio_lcd_truly_emuspi_write_one_data(0x12); 
-        gpio_lcd_truly_emuspi_write_one_data(0x15); 
-        gpio_lcd_truly_emuspi_write_one_data(0x12); 
-        gpio_lcd_truly_emuspi_write_one_data(0x14); 
-        gpio_lcd_truly_emuspi_write_one_data(0x0F); 
-        gpio_lcd_truly_emuspi_write_one_data(0x17); 
-  SPI_Stop();         
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0x11); // sleep out command
+   msleep(120);
+   SPI_Stop();
 
-         mdelay(10); 
-              
-  SPI_Start(); 
-  gpio_lcd_truly_emuspi_write_one_index(0x3A); 
-        gpio_lcd_truly_emuspi_write_one_data(0x55);   
-        SPI_Stop();                 
-  SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0x36);  // SET password 
-        //gpio_lcd_truly_emuspi_write_one_data(0xFF);   
-        gpio_lcd_truly_emuspi_write_one_data(0x00);   
-        //gpio_lcd_truly_emuspi_write_one_data(0x69);   
-  SPI_Stop(); 
-        SPI_Start(); 
-        gpio_lcd_truly_emuspi_write_one_index(0x29);   
-        SPI_Stop(); 
-#endif
-printk("lcd module TFT TRULY init finish\n!");
+   SPI_Start();
+   gpio_lcd_truly_emuspi_write_one_index(0x29); // display on command
+   SPI_Stop();
 
+   printk("lcd module TFT TRULY init finish\n!");
 }
 
 static void spi_init(void)
@@ -2017,7 +1443,7 @@ static int lcdc_panel_oled_off(struct platform_device *pdev)
 }
 static LCD_PANEL_TYPE lcd_panel_detect(void)
 {
-	unsigned int id_h,id_l,id;
+	unsigned int id_h,id_l,id,mask;
 	LCD_PANEL_TYPE panel_type;
 	boolean read_truly_id=true;
 	spi_init();
@@ -2039,6 +1465,15 @@ static LCD_PANEL_TYPE lcd_panel_detect(void)
 		SPI_Start();
 		gpio_lcd_truly_emuspi_read_one_para(0xFF,&id);
 		SPI_Stop();
+		SPI_Start();
+		gpio_lcd_truly_emuspi_read_one_para(0xDB,&mask);
+		SPI_Stop();
+
+		mask = mask & 0xFF00;
+
+		if(mask == 0x8800)
+		  id++;
+
 		printk("truly id is 0x%x\n",id);
 	}
 	else
@@ -2060,8 +1495,9 @@ static LCD_PANEL_TYPE lcd_panel_detect(void)
 		return LCD_PANEL_TRULY_WVGA;
 	}
 	*/
-	if(id==0x6902)
+	if(id==0x6902 || id==0x6903)
 	{
+		truly_id=id;
 		panel_type=LCD_PANEL_TRULY_WVGA;
 		return panel_type;
 	}
@@ -2147,7 +1583,10 @@ static int __init lcdc_panel_probe(struct platform_device *pdev)
 			pinfo->lcdc.h_back_porch = 5;
 			pinfo->lcdc.h_front_porch = 5;
 			pinfo->lcdc.h_pulse_width = 1;
-			pinfo->lcdc.v_back_porch = 5;
+			if(truly_id == 0x6903)
+			   pinfo->lcdc.v_back_porch = 10;
+			else
+			   pinfo->lcdc.v_back_porch = 5;
 			pinfo->lcdc.v_front_porch = 5;
 			pinfo->lcdc.v_pulse_width = 1;
 			pinfo->lcdc.border_clr = 0;	/* blk */
