@@ -622,7 +622,7 @@ static boolean hdmi_msm_is_dvi_mode(void)
 }
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_DVI_SUPPORT */
 
-static void hdmi_msm_set_mode(boolean power_on)
+void hdmi_msm_set_mode(boolean power_on)
 {
 	uint32 reg_val = 0;
 
@@ -2555,7 +2555,7 @@ static void hdmi_msm_switch_3d(boolean on)
 }
 #endif
 
-static int hdmi_msm_clk(int on)
+int hdmi_msm_clk(int on)
 {
 	int rc;
 
@@ -2588,22 +2588,6 @@ static int hdmi_msm_clk(int on)
 	}
 
 	return 0;
-}
-
-static void hdmi_msm_reset_core(void)
-{
-	hdmi_msm_set_mode(FALSE);
-	hdmi_msm_clk(0);
-	udelay(5);
-	hdmi_msm_clk(1);
-
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_ASSERT);
-	clk_reset(hdmi_msm_state->hdmi_m_pclk, CLK_RESET_ASSERT);
-	clk_reset(hdmi_msm_state->hdmi_s_pclk, CLK_RESET_ASSERT);
-	udelay(20);
-	clk_reset(hdmi_msm_state->hdmi_app_clk, CLK_RESET_DEASSERT);
-	clk_reset(hdmi_msm_state->hdmi_m_pclk, CLK_RESET_DEASSERT);
-	clk_reset(hdmi_msm_state->hdmi_s_pclk, CLK_RESET_DEASSERT);
 }
 
 static void hdmi_msm_turn_on(void)
