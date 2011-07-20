@@ -2378,14 +2378,27 @@ struct msm_ts_platform_data msm_tssc_pdata ={
 	.pressure_max =255,
 };
 #elif defined( CONFIG_TOUCHSCREEN_MSM)
+struct ts_virt_key virt_key[3] = {
+  {KEY_HOME,0,300, },
+  {KEY_MENU,350,600, },
+  {KEY_BACK,650,800, },
+};
+
+struct msm_ts_virtual_keys vkeys = {
+  .keys = &virt_key,
+  .num_keys = 3,
+};
+
 struct msm_ts_platform_data msm_tssc_pdata = {
-	.min_x = 0,
-	.max_x = 480,
-	.min_y = 0,
-	.max_y = 800,
+	.min_x = 45,
+	.max_x = 935,
+	.min_y = 10,
+	.max_y = 910,
 	.min_press =0,
 	.max_press =255,
 	.inv_y = 1000,
+	.vkeys_y = &vkeys,
+	.virt_y_start = 920,
 };
 #endif
 

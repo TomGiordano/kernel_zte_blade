@@ -111,7 +111,6 @@ static void setup_next_sample(struct msm_ts *ts)
 }
 
 
-/*
 static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 					 struct msm_ts_virtual_keys *vkeys,
 					 uint32_t val)
@@ -126,7 +125,6 @@ static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 			return &vkeys->keys[i];
 	return NULL;
 }
-*/
 
 
 static void ts_timer(unsigned long arg)
@@ -145,8 +143,6 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	int x, y, z1, z2;
 	int was_down;
 	int down;
-  int z=0;  //wly
-  del_timer_sync(&ts->timer);
 	tssc_ctl = tssc_readl(ts, TSSC_CTL);
 	tssc_status = tssc_readl(ts, TSSC_STATUS);
 	tssc_avg12 = tssc_readl(ts, TSSC_AVG_12);
@@ -159,6 +155,13 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	z1 = tssc_avg34 & 0xffff;
 	z2 = tssc_avg34 >> 16;
 	
+
+        /* invert the inputs if necessary */
+        if (pdata->inv_x) x = pdata->inv_x - x;
+        if (pdata->inv_y) y = pdata->inv_y - y;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+
 	down = !(tssc_ctl & TSSC_CTL_PENUP_IRQ);
 	was_down = ts->ts_down;
 	ts->ts_down = down;
@@ -170,27 +173,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	if (msm_tsdebug & 2)
 		printk("%s: down=%d, x=%d, y=%d, z1=%d, z2=%d, status %x\n",
 		       __func__, down, x, y, z1, z2, tssc_status);
-	if (down) 
-		{
-		//if ( 0 == z1 ) return IRQ_HANDLED;
-			//z = ( ( 2 * z2 - 2 * z1 - 3) * x) / ( 2 * z1 + 3);
-			z = ( ( z2 - z1 - 2)*x) / ( z1 + 2 );
-			z = ( 2500 - z ) * 1000 / ( 2500 - 900 );
-			//printk("wly: msm_ts_irq,z=%d,z1=%d,z2=%d,x=%d\n",z,z1,z2,x);
-			if( z<=0 ) z = 255;
-		}
-	
-	/* invert the inputs if necessary */
 
-	if (pdata->inv_x) x = pdata->inv_x - x;
-	if (pdata->inv_y) y = pdata->inv_y - y;
-
-	
-	if (x < 0) x = 0;
-	if (y < 0) y = 0;
-
-
-/*
 	if (!was_down && down) {
 		struct ts_virt_key *vkey = NULL;
 
@@ -220,20 +203,20 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		}
 		return IRQ_HANDLED;
 	}
-	*/
+
 
 
 	if (down) {
-		if(z>1100 && z<1200) { 		// blind spot (1101-1199)
+		if(z1>1100 && z1<1200) { 		// blind spot (1101-1199)
 			down = 0;
 			ts->zoomhack = 1;
-		} else if(z>=1200) {		// Pinch zoom emulation
+		} else if(z1>=1200) {		// Pinch zoom emulation
 			if(!ts->zoomhack) {	// Flush real position to avoid jumpiness
 				down = 0;
 				ts->zoomhack = 1;
 			}
 			else {
-				if(y>894) y=894;
+				if(y>pdata->max_y) y=pdata->max_y;
 				// Finger1
                 	        input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
                       		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
@@ -252,7 +235,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 				down = 0;
 				ts->zoomhack = 0;
 			} else {
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, (z+1)/2);
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, (z1+1)/2);
                 	        input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
                        		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
                        		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
@@ -263,11 +246,10 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
 
-	if (30 == irq)mod_timer(&ts->timer,jiffies + msecs_to_jiffies(TS_PENUP_TIMEOUT_MS));
+	//if (30 == irq)mod_timer(&ts->timer,jiffies + msecs_to_jiffies(TS_PENUP_TIMEOUT_MS));
 	return IRQ_HANDLED;
 }
 
-/*
 static void dump_tssc_regs(struct msm_ts *ts)
 {
 #define __dump_tssc_reg(r) \
@@ -282,12 +264,10 @@ static void dump_tssc_regs(struct msm_ts *ts)
 	__dump_tssc_reg(TSSC_TEST_1);
 #undef __dump_tssc_reg
 }
-*/
 
 static int __devinit msm_ts_hw_init(struct msm_ts *ts)
 {
 
-#if 0 //wly
 	uint32_t tmp;
 
 	/* Enable the register clock to tssc so we can configure it. */
@@ -313,26 +293,39 @@ static int __devinit msm_ts_hw_init(struct msm_ts *ts)
 	/* Enable gating logic to fix the timing delays caused because of
 	 * enabling debounce logic */
 	tssc_writel(ts, TSSC_TEST_1_EN_GATE_DEBOUNCE, TSSC_TEST_1);
-#endif
 
 	setup_next_sample(ts);
 
 	return 0;
 }
 
+static void msm_ts_enable(struct msm_ts *ts, bool enable)
+{
+       uint32_t val;
+
+       if (enable == true)
+               msm_ts_hw_init(ts);
+       else {
+               val = tssc_readl(ts, TSSC_CTL);
+               val &= ~TSSC_CTL_ENABLE;
+               tssc_writel(ts, val, TSSC_CTL);
+       }
+}
+
 #ifdef CONFIG_PM
 static int
 msm_ts_suspend(struct device *dev)
 {
-	struct msm_ts *ts =  dev_get_drvdata(dev);
-	uint32_t val;
+        struct msm_ts *ts =  dev_get_drvdata(dev);
 
-	disable_irq(ts->sample_irq);
-	disable_irq(ts->pen_up_irq);
-
-	val = tssc_readl(ts, TSSC_CTL);
-	val &= ~TSSC_CTL_ENABLE;
-	tssc_writel(ts, val, TSSC_CTL);
+        if (device_may_wakeup(dev) &&
+                        device_may_wakeup(dev->parent))
+                enable_irq_wake(ts->sample_irq);
+        else {
+                disable_irq(ts->sample_irq);
+                disable_irq(ts->pen_up_irq);
+                msm_ts_enable(ts, false);
+        }
 
 	return 0;
 }
@@ -342,10 +335,14 @@ msm_ts_resume(struct device *dev)
 {
 	struct msm_ts *ts =  dev_get_drvdata(dev);
 
-	msm_ts_hw_init(ts);
-
-	enable_irq(ts->sample_irq);
-	enable_irq(ts->pen_up_irq);
+        if (device_may_wakeup(dev) &&
+                        device_may_wakeup(dev->parent))
+                disable_irq_wake(ts->sample_irq);
+        else {
+                msm_ts_enable(ts, true);
+                enable_irq(ts->sample_irq);
+                enable_irq(ts->pen_up_irq);
+        }
 
 	return 0;
 }
@@ -413,13 +410,13 @@ static int ts_key_report_init(void)
 	return 0;
 }
 
-/*static void ts_key_report_init_deinit(void)
+static void ts_key_report_init_deinit(void)
 {
 	sysfs_remove_file(virtual_key_kobj, &dev_attr_virtualkeys.attr);
 	kobject_del(virtual_key_kobj);
-}*/
+}
 
-#endif	//xiayc
+#endif
 
 static int __devinit msm_ts_probe(struct platform_device *pdev)
 {
@@ -430,7 +427,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	struct resource *irq2_res;
 	int err = 0;
 	
-	/*int i;*/
+	int i;
 	/*struct marimba_tsadc_client *ts_client;*/
     
 
@@ -505,14 +502,12 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, pdata->min_press, pdata->max_press, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
 
-/*
 	for (i = 0; pdata->vkeys_x && (i < pdata->vkeys_x->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_x->keys[i].key);
 	for (i = 0; pdata->vkeys_y && (i < pdata->vkeys_y->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_y->keys[i].key);
-*/
 
 	err = input_register_device(ts->input_dev);
 	if (err != 0) {
@@ -549,6 +544,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	register_early_suspend(&ts->early_suspend);
 #endif
 
+	//        device_init_wakeup(&pdev->dev, pdata->can_wakeup);
 	pr_info("%s: tssc_base=%p irq1=%d irq2=%d\n", __func__,
 		ts->tssc_base, (int)ts->sample_irq, (int)ts->pen_up_irq);
 
@@ -556,7 +552,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 #if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
 	ts_key_report_init();
 #endif
-//	dump_tssc_regs(ts);
+	dump_tssc_regs(ts);
 	return 0;
 
 err_request_irq2:
@@ -583,12 +579,13 @@ err_ioremap_tssc:
 	kfree(ts);
 	return err;
 }
-#if 0
+
 static int __devexit msm_ts_remove(struct platform_device *pdev)
 {
 	struct msm_ts *ts = platform_get_drvdata(pdev);
 
-	marimba_tsadc_unregister(ts->ts_client);
+	device_init_wakeup(&pdev->dev, 0);
+	//	marimba_tsadc_unregister(ts->ts_client);
 	free_irq(ts->sample_irq, ts);
 	free_irq(ts->pen_up_irq, ts);
 	input_unregister_device(ts->input_dev);
@@ -601,7 +598,7 @@ static int __devexit msm_ts_remove(struct platform_device *pdev)
 
 	return 0;
 }
-#endif
+
 static struct platform_driver msm_touchscreen_driver = {
 	.driver = {
 		.name = "msm_touchscreen",
@@ -611,7 +608,7 @@ static struct platform_driver msm_touchscreen_driver = {
 #endif
 	},
 	.probe		= msm_ts_probe,
-	//.remove = __devexit_p(msm_ts_remove),
+	.remove = __devexit_p(msm_ts_remove),
 };
 
 static int __init msm_ts_init(void)
