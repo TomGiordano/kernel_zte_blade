@@ -540,6 +540,25 @@ config MACH_MSM8X60_CHARM_FFA
 
 endmenu
 
+choice
+	prompt "Kernel Offset"
+	default ZTE_GEN2
+
+config ZTE_GEN1
+       bool "ZTE Generation 1"
+       help
+         This option is used to indicate if the kernel is to be compiled
+         for ZTE Generation 1 bootloader (devices sold with Android 2.1
+         and have not updated the bootloader. Loads the kernel to 0x02A00000).
+
+config ZTE_GEN2
+       bool "ZTE Generation 2"
+       help
+         This option is used to indicate if the kernel is to be compiled
+         for ZTE Generation 2 bootloader (devices sold with Android 2.2+
+         or have installed the newer bootloader. Loads the kernel to 0x02600000).
+endchoice
+
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
 	default y
@@ -551,7 +570,8 @@ config MSM_STACKED_MEMORY
 #ZTE_BOOT_HUANGYANJUN_20100903_01 0x2A00000 ->0x02600000
 config PHYS_OFFSET
 	hex
-	default "0x02600000" if !MSM_STACKED_MEMORY
+	default "0x02A00000" if !MSM_STACKED_MEMORY && ZTE_GEN1
+	default "0x02600000" if !MSM_STACKED_MEMORY && ZTE_GEN2
 	default "0x00000000" if ARCH_QSD8X50 && MSM_SOC_REV_A
 	default "0x20000000" if ARCH_QSD8X50
 	default "0x40200000" if ARCH_MSM8X60
