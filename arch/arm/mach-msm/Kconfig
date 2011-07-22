@@ -445,15 +445,15 @@ config ZTE_GEN1
        bool "ZTE Generation 1"
        help
          This option is used to indicate if the kernel is to be compiled
-         for a ZTE Blade Generation 1 (phone that is sold with Android 2.1
-         and loads the kernel to 0x02A00000.)
+         for ZTE Generation 1 bootloader (devices sold with Android 2.1
+         and have not updated the bootloader. Loads the kernel to 0x02A00000).
 
 config ZTE_GEN2
        bool "ZTE Generation 2"
        help
          This option is used to indicate if the kernel is to be compiled
-         for a ZTE Blade Generation 1 (phone that is sold with Android 2.1
-         and loads the kernel to 0x02600000.)
+         for ZTE Generation 2 bootloader (devices sold with Android 2.2+
+         or have installed the newer bootloader. Loads the kernel to 0x02600000).
 endchoice
 
 config MSM_STACKED_MEMORY
