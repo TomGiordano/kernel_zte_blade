@@ -131,7 +131,7 @@ when         who        what, where, why                             comment tag
 #endif
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
-#define MSM_RAM_CONSOLE_PHYS  0x02500000 
+#define MSM_RAM_CONSOLE_PHYS  (PHYS_OFFSET - 0x100000)
 #define MSM_RAM_CONSOLE_SIZE  SZ_1M
 #endif
 
