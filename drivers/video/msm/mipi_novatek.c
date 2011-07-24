@@ -21,7 +21,7 @@
 #include "mipi_novatek.h"
 
 
-static struct msm_panel_common_pdata *mipi_novatek_pdata;
+static struct mipi_dsi_panel_platform_data *mipi_novatek_pdata;
 
 static struct dsi_buf novatek_tx_buf;
 static struct dsi_buf novatek_rx_buf;
