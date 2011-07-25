@@ -1032,7 +1032,7 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 			off = pipe->src_height * pipe->src_width * bpp;
 			outpdw(overlay_base + 0x001c, pipe->blt_addr + off);
 			/* LCDC - FRAME BUFFER + vsync rate */
-			outpdw(overlay_base + 0x0004, 0x02);
+			outpdw(overlay_base + 0x0004, 0x04);/* 30 refresh */
 		} else {	/* MDDI */
 			off = 0;
 			if (pipe->blt_cnt & 0x01)
@@ -1876,6 +1876,26 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		return -EINTR;
 	}
 
+	perf_level = mdp4_overlay_get_perf_level(req);
+
+	if ((mfd->panel_info.type == LCDC_PANEL) &&
+	    (req->src_rect.h >
+		req->dst_rect.h || req->src_rect.w > req->dst_rect.w)) {
+		if (mdp4_overlay_validate_downscale(req, mfd,
+			perf_level, mfd->panel_info.clk_rate)) {
+			mutex_unlock(&mfd->dma->ov_mutex);
+			return -ERANGE;
+		}
+	}
+
+	if ((mfd->panel_info.type == MIPI_VIDEO_PANEL) &&
+	    (req->src_rect.h >
+		req->dst_rect.h || req->src_rect.w > req->dst_rect.w)) {
+		if (mdp4_overlay_validate_downscale(req, mfd,
+			perf_level, (&mfd->panel_info.mipi)->dsi_pclk_rate))
+			mdp4_dsi_video_blt_start(mfd);
+	}
+
 	mixer = mfd->panel_info.pdest;	/* DISPLAY_1 or DISPLAY_2 */
 
 	ret = mdp4_overlay_req2pipe(req, mixer, &pipe, mfd);
@@ -1883,6 +1903,17 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		mutex_unlock(&mfd->dma->ov_mutex);
 		pr_err("%s: mdp4_overlay_req2pipe, ret=%d\n", __func__, ret);
 		return ret;
+	}
+
+	/*
+	 * writeback (blt) mode to provide work around for
+	 * dsi cmd mode interface hardware bug.
+	 */
+	if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
+		if (mixer == MDP4_MIXER0 && req->dst_rect.x != 0) {
+			mdp4_dsi_blt_dmap_busy_wait(mfd);
+			mdp4_dsi_overlay_blt_start(mfd);
+		}
 	}
 
 	/* return id back to user */
@@ -1987,6 +2018,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 			mdp4_overlay_reg_flush(pipe, 1);
 			mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
 			pipe->flags = flags;
+			mdp4_dsi_video_blt_stop(mfd);
 		}
 #else
 		if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
