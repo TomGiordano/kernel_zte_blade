@@ -108,6 +108,22 @@
 #define PM8901_IRQ_BASE				(PM8058_IRQ_BASE + \
 						NR_PMIC8058_IRQS)
 
+#define MDM2AP_SYNC 129
+
+#define GPIO_ETHERNET_RESET_N_DRAGON	30
+#define LCDC_SPI_GPIO_CLK				73
+#define LCDC_SPI_GPIO_CS				72
+#define LCDC_SPI_GPIO_MOSI				70
+#define LCDC_AUO_PANEL_NAME				"lcdc_auo_wvga"
+#define LCDC_SAMSUNG_OLED_PANEL_NAME	"lcdc_samsung_oled"
+#define LCDC_SAMSUNG_WSVGA_PANEL_NAME	"lcdc_samsung_wsvga"
+#define LCDC_SAMSUNG_SPI_DEVICE_NAME	"lcdc_samsung_ams367pe02"
+#define LCDC_AUO_SPI_DEVICE_NAME		"lcdc_auo_nt35582"
+#define LCDC_NT35582_PANEL_NAME			"lcdc_nt35582_wvga"
+
+#define DSPS_PIL_GENERIC_NAME		"dsps"
+#define DSPS_PIL_FLUID_NAME		"dsps_fluid"
+
 enum {
 	GPIO_EXPANDER_IRQ_BASE  = PM8901_IRQ_BASE + NR_PMIC8901_IRQS,
 	GPIO_EXPANDER_GPIO_BASE = PM8901_GPIO_BASE + PM8901_MPPS,
@@ -1562,8 +1578,38 @@ static struct resource msm_fb_resources[] = {
 
 static int msm_fb_detect_panel(const char *name)
 {
-	if (!strcmp(name, "lcdc_samsung_wsvga"))
-		return 0;
+	if (machine_is_msm8x60_fluid()) {
+		uint32_t soc_platform_version = socinfo_get_platform_version();
+		if (SOCINFO_VERSION_MAJOR(soc_platform_version) < 3) {
+#ifdef CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT
+			if (!strncmp(name, LCDC_SAMSUNG_OLED_PANEL_NAME,
+					strlen(LCDC_SAMSUNG_OLED_PANEL_NAME)))
+				return 0;
+#endif
+		} else { /*P3 and up use AUO panel */
+#ifdef CONFIG_FB_MSM_LCDC_AUO_WVGA
+			if (!strncmp(name, LCDC_AUO_PANEL_NAME,
+					strlen(LCDC_AUO_PANEL_NAME)))
+				return 0;
+#endif
+		}
+		if (!strncmp(name, LCDC_SAMSUNG_WSVGA_PANEL_NAME,
+				strlen(LCDC_SAMSUNG_WSVGA_PANEL_NAME)))
+			return -ENODEV;
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+	} else if machine_is_msm8x60_dragon() {
+	    if (!strncmp(name, LCDC_NT35582_PANEL_NAME,
+				sizeof(LCDC_NT35582_PANEL_NAME) - 1))
+			return 0;
+#endif
+	} else {
+		if (!strncmp(name, LCDC_SAMSUNG_WSVGA_PANEL_NAME,
+				strlen(LCDC_SAMSUNG_WSVGA_PANEL_NAME)))
+			return 0;
+		if (!strncmp(name, LCDC_SAMSUNG_OLED_PANEL_NAME,
+				strlen(LCDC_SAMSUNG_OLED_PANEL_NAME)))
+			return -ENODEV;
+	}
 	pr_warning("%s: not supported '%s'", __func__, name);
 	return -ENODEV;
 }
@@ -1689,6 +1735,38 @@ static struct platform_device lcdc_samsung_panel_device = {
 		.platform_data = &lcdc_samsung_panel_data,
 	}
 };
+
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+
+#define GPIO_NT35582_RESET			94
+#define GPIO_NT35582_BL_EN_HW_PIN	24
+#define GPIO_NT35582_BL_EN	\
+	PM8058_GPIO_PM_TO_SYS(GPIO_NT35582_BL_EN_HW_PIN - 1)
+
+static int lcdc_nt35582_pmic_gpio[] = {GPIO_NT35582_BL_EN };
+
+static struct msm_panel_common_pdata lcdc_nt35582_panel_data = {
+	.gpio_num = lcdc_nt35582_pmic_gpio,
+};
+
+static struct platform_device lcdc_nt35582_panel_device = {
+	.name = LCDC_NT35582_PANEL_NAME,
+	.id = 0,
+	.dev = {
+		.platform_data = &lcdc_nt35582_panel_data,
+	}
+};
+
+static struct spi_board_info lcdc_nt35582_spi_board_info[] __initdata = {
+	{
+		.modalias     = "lcdc_nt35582_spi",
+		.mode         = SPI_MODE_0,
+		.bus_num      = 0,
+		.chip_select  = 0,
+		.max_speed_hz = 1100000,
+	}
+};
+#endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static struct resource hdmi_msm_resources[] = {
@@ -2977,6 +3055,15 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_fb_device,
 	&msm_device_kgsl,
 	&lcdc_samsung_panel_device,
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+	&lcdc_nt35582_panel_device,
+#endif
+#ifdef CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT
+	&lcdc_samsung_oled_panel_device,
+#endif
+#ifdef CONFIG_FB_MSM_LCDC_AUO_WVGA
+	&lcdc_auo_wvga_panel_device,
+#endif
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	&hdmi_msm_device,
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
@@ -3446,8 +3533,40 @@ static int pm8058_gpios_init(void)
 				.output_value   = 0,
 			}
 
+#if defined(CONFIG_QS_S5K4E1)
+		{
+			struct pm8058_gpio_cfg qs_hc37_cam_pd_gpio_cfg = {
+			26,
+			{
+				.direction		= PM_GPIO_DIR_OUT,
+				.output_value	= 0,
+				.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+				.pull			= PM_GPIO_PULL_DN,
+				.out_strength	= PM_GPIO_STRENGTH_HIGH,
+				.function		= PM_GPIO_FUNC_NORMAL,
+				.vin_sel		= 2,
+				.inv_int_pol	= 0,
+			}
+		};
+#endif
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+	struct pm8058_gpio_cfg pmic_lcdc_nt35582_gpio_cfg = {
+		GPIO_NT35582_BL_EN_HW_PIN - 1,
+		{
+			.direction		= PM_GPIO_DIR_OUT,
+			.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+			.output_value	= 1,
+			.pull			= PM_GPIO_PULL_UP_30,
+			/* 2.9V  PM_GPIO_VIN_L2, which gives 2.6V */
+			.vin_sel		= PM_GPIO_VIN_L5,
+			.out_strength	= PM_GPIO_STRENGTH_HIGH,
+			.function		= PM_GPIO_FUNC_NORMAL,
+			.inv_int_pol	= 0,
+		}
 	};
-
+#endif
+#if defined(CONFIG_HAPTIC_ISA1200) || \
+			defined(CONFIG_HAPTIC_ISA1200_MODULE)
 	if (machine_is_msm8x60_fluid()) {
 		rc = pm8058_gpio_config(en_hap_gpio_cfg.gpio,
 				&en_hap_gpio_cfg.cfg);
@@ -3478,6 +3597,31 @@ static int pm8058_gpios_init(void)
 			pr_err("%s pmic line_in gpio config failed\n",
 							__func__);
 			return rc;
+		}
+	}
+#endif
+
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+	if (machine_is_msm8x60_dragon()) {
+		rc = pm8058_gpio_config(pmic_lcdc_nt35582_gpio_cfg.gpio,
+				&pmic_lcdc_nt35582_gpio_cfg.cfg);
+		if (rc < 0) {
+			pr_err("%s pmic gpio config failed\n", __func__);
+			return rc;
+		}
+	}
+#endif
+
+#if defined(CONFIG_QS_S5K4E1)
+		/* qs_cam_hc37_cam_pd only for 8660 fluid qs camera*/
+		if (machine_is_msm8x60_fluid()) {
+			rc = pm8058_gpio_config(qs_hc37_cam_pd_gpio_cfg.gpio,
+					&qs_hc37_cam_pd_gpio_cfg.cfg);
+			if (rc < 0) {
+				pr_err("%s pmic qs_hc37_cam_pd gpio config failed\n",
+								__func__);
+				return rc;
+			}
 		}
 	}
 #endif
@@ -5813,6 +5957,133 @@ static void display_common_power(int on)
 			}
 		}
 	}
+#if defined(CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT) || \
+	defined(CONFIG_FB_MSM_LCDC_AUO_WVGA)
+	else if (machine_is_msm8x60_fluid()) {
+		static struct regulator *fluid_reg;
+		static struct regulator *fluid_reg2;
+
+		if (on) {
+			_GET_REGULATOR(fluid_reg, "8901_l2");
+			if (!fluid_reg)
+				return;
+			_GET_REGULATOR(fluid_reg2, "8058_s3");
+			if (!fluid_reg2) {
+				regulator_put(fluid_reg);
+				return;
+			}
+			rc = gpio_request(GPIO_RESX_N, "RESX_N");
+			if (rc) {
+				regulator_put(fluid_reg2);
+				regulator_put(fluid_reg);
+				return;
+			}
+			regulator_set_voltage(fluid_reg, 2850000, 2850000);
+			regulator_set_voltage(fluid_reg2, 1800000, 1800000);
+			regulator_enable(fluid_reg);
+			regulator_enable(fluid_reg2);
+			msleep(20);
+			gpio_direction_output(GPIO_RESX_N, 0);
+			udelay(10);
+			gpio_set_value_cansleep(GPIO_RESX_N, 1);
+			display_power_on = 1;
+			setup_display_power();
+		} else {
+			gpio_set_value_cansleep(GPIO_RESX_N, 0);
+			gpio_free(GPIO_RESX_N);
+			msleep(20);
+			regulator_disable(fluid_reg2);
+			regulator_disable(fluid_reg);
+			regulator_put(fluid_reg2);
+			regulator_put(fluid_reg);
+			display_power_on = 0;
+			setup_display_power();
+			fluid_reg = NULL;
+			fluid_reg2 = NULL;
+		}
+	}
+#endif
+#if defined(CONFIG_FB_MSM_LCDC_NT35582_WVGA)
+	else if (machine_is_msm8x60_dragon()) {
+		static struct regulator *dragon_reg;
+		static struct regulator *dragon_reg2;
+
+		if (on) {
+			_GET_REGULATOR(dragon_reg, "8901_l2");
+			if (!dragon_reg)
+				return;
+			_GET_REGULATOR(dragon_reg2, "8058_l16");
+			if (!dragon_reg2) {
+				regulator_put(dragon_reg);
+				dragon_reg = NULL;
+				return;
+			}
+
+			rc = gpio_request(GPIO_NT35582_BL_EN, "lcdc_bl_en");
+			if (rc) {
+				pr_err("%s: gpio %d request failed with rc=%d\n",
+					__func__, GPIO_NT35582_BL_EN, rc);
+				regulator_put(dragon_reg);
+				regulator_put(dragon_reg2);
+				dragon_reg = NULL;
+				dragon_reg2 = NULL;
+				return;
+			}
+
+			if (gpio_tlmm_config(GPIO_CFG(GPIO_NT35582_RESET, 0,
+				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_16MA), GPIO_CFG_ENABLE)) {
+				pr_err("%s: config gpio '%d' failed!\n",
+					__func__, GPIO_NT35582_RESET);
+				gpio_free(GPIO_NT35582_BL_EN);
+				regulator_put(dragon_reg);
+				regulator_put(dragon_reg2);
+				dragon_reg = NULL;
+				dragon_reg2 = NULL;
+				return;
+			}
+
+			rc = gpio_request(GPIO_NT35582_RESET, "lcdc_reset");
+			if (rc) {
+				pr_err("%s: unable to request gpio %d (rc=%d)\n",
+					__func__, GPIO_NT35582_RESET, rc);
+				gpio_free(GPIO_NT35582_BL_EN);
+				regulator_put(dragon_reg);
+				regulator_put(dragon_reg2);
+				dragon_reg = NULL;
+				dragon_reg2 = NULL;
+				return;
+			}
+
+			regulator_set_voltage(dragon_reg, 3300000, 3300000);
+			regulator_set_voltage(dragon_reg2, 1800000, 1800000);
+			regulator_enable(dragon_reg);
+			regulator_enable(dragon_reg2);
+			msleep(20);
+
+			gpio_set_value_cansleep(GPIO_NT35582_RESET, 1);
+			msleep(20);
+			gpio_set_value_cansleep(GPIO_NT35582_RESET, 0);
+			msleep(20);
+			gpio_set_value_cansleep(GPIO_NT35582_RESET, 1);
+			msleep(50);
+
+			gpio_set_value_cansleep(GPIO_NT35582_BL_EN, 1);
+
+			display_power_on = 1;
+		} else if ((dragon_reg != NULL) && (dragon_reg2 != NULL)) {
+			gpio_free(GPIO_NT35582_RESET);
+			gpio_free(GPIO_NT35582_BL_EN);
+			regulator_disable(dragon_reg2);
+			regulator_disable(dragon_reg);
+			regulator_put(dragon_reg2);
+			regulator_put(dragon_reg);
+			display_power_on = 0;
+			dragon_reg = NULL;
+			dragon_reg2 = NULL;
+		}
+	}
+#endif
 	return;
 
 out4:
@@ -7063,6 +7334,38 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 		msm_fb_add_devices();
 	fixup_i2c_configs();
 	register_i2c_devices();
+
+	if (machine_is_msm8x60_dragon())
+		smsc911x_config.reset_gpio
+			= GPIO_ETHERNET_RESET_N_DRAGON;
+
+	platform_device_register(&smsc911x_device);
+
+#if (defined(CONFIG_SPI_QUP)) && \
+	(defined(CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT) || \
+	defined(CONFIG_FB_MSM_LCDC_AUO_WVGA) || \
+	defined(CONFIG_FB_MSM_LCDC_NT35582_WVGA))
+
+	if (machine_is_msm8x60_fluid()) {
+#ifdef CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT
+		if (SOCINFO_VERSION_MAJOR(soc_platform_version) < 3) {
+			spi_register_board_info(lcdc_samsung_spi_board_info,
+				ARRAY_SIZE(lcdc_samsung_spi_board_info));
+		} else
+#endif
+		{
+#ifdef CONFIG_FB_MSM_LCDC_AUO_WVGA
+			spi_register_board_info(lcdc_auo_spi_board_info,
+				ARRAY_SIZE(lcdc_auo_spi_board_info));
+#endif
+		}
+#ifdef CONFIG_FB_MSM_LCDC_NT35582_WVGA
+	} else if (machine_is_msm8x60_dragon()) {
+		spi_register_board_info(lcdc_nt35582_spi_board_info,
+			ARRAY_SIZE(lcdc_nt35582_spi_board_info));
+#endif
+	}
+#endif
 
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
