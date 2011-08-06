@@ -21,6 +21,9 @@
 #include <linux/adv7520.h>
 #include <linux/time.h>
 #include <linux/completion.h>
+#include <linux/wakelock.h>
+#include <linux/clk.h>
+#include <asm/atomic.h>
 #include "msm_fb.h"
 
 #include "external_common.h"
@@ -30,6 +33,7 @@
 static struct external_common_state_type hdmi_common;
 
 static struct i2c_client *hclient;
+static struct clk *tv_enc_clk;
 
 static bool chip_power_on = FALSE;	/* For chip power on/off */
 static bool gpio_power_on = FALSE;	/* For dtv power on/off (I2C) */
@@ -299,6 +303,7 @@ static int adv7520_power_on(struct platform_device *pdev)
 	static bool init_done;
 	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
 
+	clk_enable(tv_enc_clk);
 	external_common_state->dev = &pdev->dev;
 	if (mfd != NULL) {
 		DEV_INFO("adv7520_power: ON (%dx%d %d)\n",
@@ -332,8 +337,9 @@ static int adv7520_power_off(struct platform_device *pdev)
 	DEV_INFO("%s: 'disable_irq', chip off, I2C off\n", __func__);
 	free_irq(dd->pd->irq, dd);
 	adv7520_chip_off();
-
-	gpio_power_on = FALSE;
+	wake_unlock(&wlock);
+	adv7520_comm_power(0, 1);
+	clk_disable(tv_enc_clk);
 	return 0;
 }
 
@@ -685,9 +691,19 @@ static int __init adv7520_init(void)
 
 	external_common_state = &hdmi_common;
 	external_common_state->video_resolution = HDMI_VFRMT_1280x720p60_16_9;
-	HDMI_SETUP_LUT(640x480p60_4_3);
-	HDMI_SETUP_LUT(720x480p60_16_9);
-	HDMI_SETUP_LUT(1280x720p60_16_9);
+
+	tv_enc_clk = clk_get(NULL, "tv_enc_clk");
+	if (IS_ERR(tv_enc_clk)) {
+		printk(KERN_ERR "error: can't get tv_enc_clk!\n");
+		return IS_ERR(tv_enc_clk);
+	}
+
+	HDMI_SETUP_LUT(640x480p60_4_3);		/* 25.20MHz */
+	HDMI_SETUP_LUT(720x480p60_16_9);	/* 27.03MHz */
+	HDMI_SETUP_LUT(1280x720p60_16_9);	/* 74.25MHz */
+
+	HDMI_SETUP_LUT(720x576p50_16_9);	/* 27.00MHz */
+	HDMI_SETUP_LUT(1280x720p50_16_9);	/* 74.25MHz */
 
 	hdmi_common_init_panel_info(&hdmi_panel_data.panel_info);
 
@@ -706,6 +722,8 @@ static int __init adv7520_init(void)
 	return 0;
 
 init_exit:
+	if (tv_enc_clk)
+		clk_put(tv_enc_clk);
 	return rc;
 }
 
