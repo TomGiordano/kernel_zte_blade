@@ -26,6 +26,8 @@
 #include <linux/clk.h>
 #include <linux/mutex.h>
 #include <mach/clk.h>
+#include <mach/msm_iomap.h>
+#include <mach/socinfo.h>
 
 #include "msm_fb.h"
 #include "external_common.h"
@@ -2849,6 +2851,9 @@ static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 {
 	int rc;
 	struct platform_device *fb_dev;
+
+	if (cpu_is_apq8064())
+		return -ENODEV;
 
 	if (!hdmi_msm_state) {
 		pr_err("%s: hdmi_msm_state is NULL\n", __func__);
