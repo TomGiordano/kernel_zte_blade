@@ -2248,6 +2248,7 @@ static void hdmi_msm_en_gc_packet(boolean av_mute_is_requested)
 	hdmi_msm_rmw32or(0x0028, 3 << 4);
 }
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_ISRC_ACP_SUPPORT
 static void hdmi_msm_en_isrc_packet(boolean isrc_is_continued)
 {
 	static char isrc_psuedo_data[] = "ISRC1:0123456789isrc2=ABCDEFGHIJ";
@@ -2279,7 +2280,16 @@ static void hdmi_msm_en_isrc_packet(boolean isrc_is_continued)
 	/* ISRC Send + Continuous */
 	hdmi_msm_rmw32or(0x0028, 3 << 8);
 }
+#else
+static void hdmi_msm_en_isrc_packet(boolean isrc_is_continued)
+{
+	/*
+	 * Until end-to-end support for various audio packets
+	 */
+}
+#endif
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_ISRC_ACP_SUPPORT
 static void hdmi_msm_en_acp_packet(uint32 byte1)
 {
 	/* HDMI_ACP[0x003C] */
@@ -2289,6 +2299,14 @@ static void hdmi_msm_en_acp_packet(uint32 byte1)
 	/* ACP send, s/w source */
 	hdmi_msm_rmw32or(0x0028, 3 << 12);
 }
+#else
+static void hdmi_msm_en_acp_packet(uint32 byte1)
+{
+	/*
+	 * Until end-to-end support for various audio packets
+	 */
+}
+#endif
 
 static void hdmi_msm_audio_setup(void)
 {
@@ -2300,7 +2318,7 @@ static void hdmi_msm_audio_setup(void)
 	hdmi_msm_en_isrc_packet(1);
 	/* arbitrary bit pattern for byte1 */
 	hdmi_msm_en_acp_packet(0x5a);
-
+	DEV_DBG("Not setting ACP, ISRC1, ISRC2 packets\n");
 	hdmi_msm_audio_acr_setup(TRUE,
 		external_common_state->video_resolution,
 		MSM_HDMI_SAMPLE_RATE_48KHZ, channels);
