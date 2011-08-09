@@ -1492,7 +1492,14 @@ static struct i2c_board_info i2c_devices[] = {
 		.irq          = MSM_GPIO_TO_INT(29),
 	},
 	#endif
-	
+	#ifdef CONFIG_TOUCHSCREEN_FOCALTECH
+	{
+		.type         = "ft5x0x_ts",
+		/*.flags        = ,*/
+		.addr         = 0x3E, 
+		.irq          = MSM_GPIO_TO_INT(29),
+	},
+	#endif	
 };
 
 
