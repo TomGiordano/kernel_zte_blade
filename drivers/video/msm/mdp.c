@@ -46,6 +46,9 @@
 uint32 mdp4_extn_disp;
 static struct clk *mdp_clk;
 static struct clk *mdp_pclk;
+static struct clk *mdp_lut_clk;
+int mdp_rev;
+
 struct regulator *footswitch;
 
 struct completion mdp_ppp_comp;
@@ -608,6 +611,8 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 					clk_disable(mdp_pclk);
 					MSM_FB_DEBUG("MDP PCLK OFF\n");
 				}
+				if (mdp_lut_clk != NULL)
+					clk_disable(mdp_lut_clk);
 			} else {
 				/* send workqueue to turn off mdp power */
 				queue_delayed_work(mdp_pipe_ctrl_wq,
@@ -631,6 +636,8 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 				clk_enable(mdp_pclk);
 				MSM_FB_DEBUG("MDP PCLK ON\n");
 			}
+			if (mdp_lut_clk != NULL)
+				clk_enable(mdp_lut_clk);
 			mdp_vsync_clk_enable();
 			if (footswitch != NULL)
 				regulator_enable(footswitch);
@@ -1053,6 +1060,19 @@ static int mdp_irq_clk_setup(void)
 	mdp_pclk = clk_get(NULL, "mdp_pclk");
 	if (IS_ERR(mdp_pclk))
 		mdp_pclk = NULL;
+
+	if (mdp_rev == MDP_REV_42) {
+		mdp_lut_clk = clk_get(NULL, "lut_mdp");
+		if (IS_ERR(mdp_lut_clk)) {
+			ret = PTR_ERR(mdp_lut_clk);
+			pr_err("can't get mdp_clk error:%d!\n", ret);
+			clk_put(mdp_clk);
+			free_irq(mdp_irq, 0);
+			return ret;
+		}
+	} else {
+		mdp_lut_clk = NULL;
+	}
 
 #ifdef CONFIG_FB_MSM_MDP40
 	/*
