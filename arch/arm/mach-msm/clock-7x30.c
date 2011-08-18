@@ -969,109 +969,171 @@ static void __init print_ownership(void)
 		ownership_regs[SH2_OWN_ROW2]);
 }
 
-/*
- * This is a many-to-one mapping since we don't know how the remote clock code
- * has decided to handle the dependencies between clocks for a particular
- * hardware block. We determine the ownership for all the clocks on a block by
- * checking the ownership bit of one register (usually the ns register).
- */
-#define O(x) &ownership_regs[x]
-static const struct clk_local_ownership {
-	const uint32_t *reg;
-	const uint32_t bit;
-} ownership_map[] __initconst = {
-	[C(GRP_2D)]			= { O(SH2_OWN_APPS1), B(6) },
-	[C(GRP_2D_P)]			= { O(SH2_OWN_APPS1), B(6) },
-	[C(HDMI)]			= { O(SH2_OWN_APPS1), B(31) },
-	[C(JPEG)]			= { O(SH2_OWN_APPS1), B(0) },
-	[C(JPEG_P)]			= { O(SH2_OWN_APPS1), B(0) },
-	[C(LPA_CODEC)]			= { O(SH2_OWN_APPS1), B(23) },
-	[C(LPA_CORE)]			= { O(SH2_OWN_APPS1), B(23) },
-	[C(LPA_P)]			= { O(SH2_OWN_APPS1), B(23) },
-	[C(MI2S_M)]			= { O(SH2_OWN_APPS1), B(28) },
-	[C(MI2S_S)]			= { O(SH2_OWN_APPS1), B(28) },
-	[C(MI2S_CODEC_RX_M)]		= { O(SH2_OWN_APPS1), B(12) },
-	[C(MI2S_CODEC_RX_S)]		= { O(SH2_OWN_APPS1), B(12) },
-	[C(MI2S_CODEC_TX_M)]		= { O(SH2_OWN_APPS1), B(14) },
-	[C(MI2S_CODEC_TX_S)]		= { O(SH2_OWN_APPS1), B(14) },
-	[C(MIDI)]			= { O(SH2_OWN_APPS1), B(22) },
-	[C(SDAC)]			= { O(SH2_OWN_APPS1), B(26) },
-	[C(SDAC_M)]			= { O(SH2_OWN_APPS1), B(26) },
-	[C(VFE)]			= { O(SH2_OWN_APPS1), B(8) },
-	[C(VFE_CAMIF)]			= { O(SH2_OWN_APPS1), B(8) },
-	[C(VFE_MDC)]			= { O(SH2_OWN_APPS1), B(8) },
-	[C(VFE_P)]			= { O(SH2_OWN_APPS1), B(8) },
+#define O(x) (&ownership_regs[(SH2_OWN_##x)])
+#define OWN(r, b, name, clk, dev) \
+	{ \
+		.lk = CLK_LOOKUP(name, clk.c, dev), \
+		.remote = &p_##clk.c, \
+		.reg = O(r), \
+		.bit = BIT(b), \
+	}
 
-	[C(GRP_3D)]			= { O(SH2_OWN_APPS2), B(0) },
-	[C(GRP_3D_P)]			= { O(SH2_OWN_APPS2), B(0) },
-	[C(GRP_3D_SRC)]			= { O(SH2_OWN_APPS2), B(0) },
-	[C(IMEM)]			= { O(SH2_OWN_APPS2), B(0) },
-	[C(MDP_LCDC_PAD_PCLK)]		= { O(SH2_OWN_APPS2), B(4) },
-	[C(MDP_LCDC_PCLK)]		= { O(SH2_OWN_APPS2), B(4) },
-	[C(MDP_P)]			= { O(SH2_OWN_APPS2), B(4) },
-	[C(MDP_VSYNC)]			= { O(SH2_OWN_APPS2), B(28) },
-	[C(TSIF_REF)]			= { O(SH2_OWN_APPS2), B(5) },
-	[C(TSIF_P)]			= { O(SH2_OWN_APPS2), B(5) },
-	[C(TV)]				= { O(SH2_OWN_APPS2), B(2) },
-	[C(TV_DAC)]			= { O(SH2_OWN_APPS2), B(2) },
-	[C(TV_ENC)]			= { O(SH2_OWN_APPS2), B(2) },
+static struct clk_local_ownership {
+	struct clk_lookup lk;
+	const u32 *reg;
+	const u32 bit;
+	struct clk *remote;
+} ownership_map[] __initdata = {
+	/* Sources */
+	{ CLK_LOOKUP("pll1_clk",	pll1_clk.c,	"acpu") },
+	{ CLK_LOOKUP("pll2_clk",	pll2_clk.c,	"acpu") },
+	{ CLK_LOOKUP("pll3_clk",	pll3_clk.c,	"acpu") },
+	{ CLK_LOOKUP("measure",		measure_clk,	"debug") },
 
-	[C(EMDH)]			= { O(SH2_OWN_ROW1), B(7) },
-	[C(EMDH_P)]			= { O(SH2_OWN_ROW1), B(7) },
-	[C(I2C)]			= { O(SH2_OWN_ROW1), B(11) },
-	[C(I2C_2)]			= { O(SH2_OWN_ROW1), B(12) },
-	[C(MDC)]			= { O(SH2_OWN_ROW1), B(17) },
-	[C(PMDH)]			= { O(SH2_OWN_ROW1), B(19) },
-	[C(PMDH_P)]			= { O(SH2_OWN_ROW1), B(19) },
-	[C(SDC1)]			= { O(SH2_OWN_ROW1), B(23) },
-	[C(SDC1_P)]			= { O(SH2_OWN_ROW1), B(23) },
-	[C(SDC2)]			= { O(SH2_OWN_ROW1), B(25) },
-	[C(SDC2_P)]			= { O(SH2_OWN_ROW1), B(25) },
-	[C(SDC3)]			= { O(SH2_OWN_ROW1), B(27) },
-	[C(SDC3_P)]			= { O(SH2_OWN_ROW1), B(27) },
-	[C(SDC4)]			= { O(SH2_OWN_ROW1), B(29) },
-	[C(SDC4_P)]			= { O(SH2_OWN_ROW1), B(29) },
-	[C(UART2)]			= { O(SH2_OWN_ROW1), B(0) },
-	[C(USB_HS2)]			= { O(SH2_OWN_ROW1), B(2) },
-	[C(USB_HS2_CORE)]		= { O(SH2_OWN_ROW1), B(2) },
-	[C(USB_HS2_P)]			= { O(SH2_OWN_ROW1), B(2) },
-	[C(USB_HS3)]			= { O(SH2_OWN_ROW1), B(4) },
-	[C(USB_HS3_CORE)]		= { O(SH2_OWN_ROW1), B(4) },
-	[C(USB_HS3_P)]			= { O(SH2_OWN_ROW1), B(4) },
+	/* PCOM */
+	{ CLK_LOOKUP("adsp_clk",	adsp_clk.c,	NULL) },
+	{ CLK_LOOKUP("codec_ssbi_clk",	codec_ssbi_clk.c,	NULL) },
+	{ CLK_LOOKUP("ebi1_clk",	ebi1_clk.c,	NULL) },
+	{ CLK_LOOKUP("ebi1_fixed_clk",	ebi1_fixed_clk.c,	NULL) },
+	{ CLK_LOOKUP("ecodec_clk",	ecodec_clk.c,	NULL) },
+	{ CLK_LOOKUP("gp_clk",		gp_clk.c,	NULL) },
+	{ CLK_LOOKUP("core_clk",	uart3_clk.c,	"msm_serial.2") },
+	{ CLK_LOOKUP("usb_phy_clk",	usb_phy_clk.c,	NULL) },
 
-	[C(QUP_I2C)]			= { O(SH2_OWN_ROW2), B(3) },
-	[C(SPI)]			= { O(SH2_OWN_ROW2), B(1) },
-	[C(SPI_P)]			= { O(SH2_OWN_ROW2), B(1) },
-	[C(UART1)]			= { O(SH2_OWN_ROW2), B(9) },
-	[C(UART1DM)]			= { O(SH2_OWN_ROW2), B(6) },
-	[C(UART1DM_P)]			= { O(SH2_OWN_ROW2), B(6) },
-	[C(UART2DM)]			= { O(SH2_OWN_ROW2), B(8) },
-	[C(UART2DM_P)]			= { O(SH2_OWN_ROW2), B(8) },
-	[C(USB_HS)]			= { O(SH2_OWN_ROW2), B(11) },
-	[C(USB_HS_CORE)]		= { O(SH2_OWN_ROW2), B(11) },
-	[C(USB_HS_SRC)]			= { O(SH2_OWN_ROW2), B(11) },
-	[C(USB_HS_P)]			= { O(SH2_OWN_ROW2), B(11) },
+	/* Voters */
+	{ CLK_LOOKUP("ebi1_dtv_clk",	ebi_dtv_clk.c,	NULL) },
+	{ CLK_LOOKUP("bus_clk",		ebi_grp_2d_clk.c, "kgsl-2d0.0") },
+	{ CLK_LOOKUP("bus_clk",		ebi_grp_3d_clk.c, "kgsl-3d0.0") },
+	{ CLK_LOOKUP("ebi1_lcdc_clk",	ebi_lcdc_clk.c,	NULL) },
+	{ CLK_LOOKUP("ebi1_mddi_clk",	ebi_mddi_clk.c,	NULL) },
+	{ CLK_LOOKUP("ebi1_tv_clk",	ebi_tv_clk.c,	NULL) },
+	{ CLK_LOOKUP("mem_clk",		ebi_vcd_clk.c,	"msm_vidc.0") },
+	{ CLK_LOOKUP("ebi1_vfe_clk",	ebi_vfe_clk.c,	NULL) },
+	{ CLK_LOOKUP("mem_clk",		ebi_adm_clk.c,	"msm_dmov") },
 
-	[C(CAM_M)]			= { O(SH2_OWN_APPS3), B(6) },
-	[C(CAMIF_PAD_P)]		= { O(SH2_OWN_APPS3), B(6) },
-	[C(CSI0)]			= { O(SH2_OWN_APPS3), B(11) },
-	[C(CSI0_VFE)]			= { O(SH2_OWN_APPS3), B(11) },
-	[C(CSI0_P)]			= { O(SH2_OWN_APPS3), B(11) },
-	[C(MDP)]			= { O(SH2_OWN_APPS3), B(0) },
-	[C(MFC)]			= { O(SH2_OWN_APPS3), B(2) },
-	[C(MFC_DIV2)]			= { O(SH2_OWN_APPS3), B(2) },
-	[C(MFC_P)]			= { O(SH2_OWN_APPS3), B(2) },
-	[C(VPE)]			= { O(SH2_OWN_APPS3), B(4) },
+	/*
+	 * This is a many-to-one mapping because we don't know how the remote
+	 * clock code has decided to handle the dependencies between clocks for
+	 * a particular hardware block. We determine the ownership for all the
+	 * clocks going into a block by checking the ownership bit of one
+	 * register (usually the ns register).
+	 */
+	OWN(APPS1,  6, "core_clk",	grp_2d_clk,	"kgsl-2d0.0"),
+	OWN(APPS1,  6, "core_clk",	grp_2d_clk,	"footswitch-pcom.0"),
+	OWN(APPS1,  6, "iface_clk",	grp_2d_p_clk,	"kgsl-2d0.0"),
+	OWN(APPS1,  6, "iface_clk",	grp_2d_p_clk,	"footswitch-pcom.0"),
+	OWN(APPS1, 31, "hdmi_clk",	hdmi_clk,	NULL),
+	OWN(APPS1,  0, "jpeg_clk",	jpeg_clk,	NULL),
+	OWN(APPS1,  0, "jpeg_pclk",	jpeg_p_clk,	NULL),
+	OWN(APPS1, 23, "lpa_codec_clk", lpa_codec_clk,	NULL),
+	OWN(APPS1, 23, "lpa_core_clk",	lpa_core_clk,	NULL),
+	OWN(APPS1, 23, "lpa_pclk",	lpa_p_clk,	NULL),
+	OWN(APPS1, 28, "mi2s_m_clk",	mi2s_m_clk,	NULL),
+	OWN(APPS1, 28, "mi2s_s_clk",	mi2s_s_clk,	NULL),
+	OWN(APPS1, 12, "mi2s_codec_rx_m_clk", mi2s_codec_rx_m_clk, NULL),
+	OWN(APPS1, 12, "mi2s_codec_rx_s_clk", mi2s_codec_rx_s_clk, NULL),
+	OWN(APPS1, 14, "mi2s_codec_tx_m_clk", mi2s_codec_tx_m_clk, NULL),
+	OWN(APPS1, 14, "mi2s_codec_tx_s_clk", mi2s_codec_tx_s_clk, NULL),
+	{ CLK_LOOKUP("midi_clk",        midi_clk.c,     NULL),
+		O(APPS1), BIT(22) },
+	OWN(APPS1, 26, "sdac_clk",	sdac_clk,	NULL),
+	OWN(APPS1, 26, "sdac_m_clk",	sdac_m_clk,	NULL),
+	OWN(APPS1,  8, "vfe_clk",	vfe_clk,	NULL),
+	OWN(APPS1,  8, "core_clk",	vfe_clk,	"footswitch-pcom.8"),
+	OWN(APPS1,  8, "vfe_camif_clk", vfe_camif_clk,	NULL),
+	OWN(APPS1,  8, "vfe_mdc_clk",	vfe_mdc_clk,	NULL),
+	OWN(APPS1,  8, "vfe_pclk",	vfe_p_clk,	NULL),
+	OWN(APPS1,  8, "iface_clk",	vfe_p_clk,	"footswitch-pcom.8"),
 
-	[C(ADM)]			= { O(SH2_OWN_GLBL), B(8) },
-	[C(ADM_P)]			= { O(SH2_OWN_GLBL), B(13) },
-	[C(CE)]				= { O(SH2_OWN_GLBL), B(8) },
-	[C(AXI_ROTATOR)]		= { O(SH2_OWN_GLBL), B(13) },
-	[C(ROTATOR_IMEM)]		= { O(SH2_OWN_GLBL), B(13) },
-	[C(ROTATOR_P)]			= { O(SH2_OWN_GLBL), B(13) },
+	OWN(APPS2,  0, "core_clk",	grp_3d_clk,	"kgsl-3d0.0"),
+	OWN(APPS2,  0, "core_clk",	grp_3d_clk,	"footswitch-pcom.2"),
+	OWN(APPS2,  0, "iface_clk",	grp_3d_p_clk,	"kgsl-3d0.0"),
+	OWN(APPS2,  0, "iface_clk",	grp_3d_p_clk,	"footswitch-pcom.2"),
+	{ CLK_LOOKUP("src_clk",     grp_3d_src_clk.c, "kgsl-3d0.0"),
+		O(APPS2), BIT(0), &p_grp_3d_clk.c },
+	{ CLK_LOOKUP("src_clk",     grp_3d_src_clk.c, "footswitch-pcom.2"),
+		O(APPS2), BIT(0), &p_grp_3d_clk.c },
+	OWN(APPS2,  0, "mem_clk",	imem_clk,	"kgsl-3d0.0"),
+	OWN(APPS2,  4, "mdp_lcdc_pad_pclk_clk", mdp_lcdc_pad_pclk_clk, NULL),
+	OWN(APPS2,  4, "mdp_lcdc_pclk_clk", mdp_lcdc_pclk_clk, NULL),
+	OWN(APPS2,  4, "mdp_pclk",	mdp_p_clk,	NULL),
+	OWN(APPS2,  4, "iface_clk",	mdp_p_clk,	"footswitch-pcom.4"),
+	OWN(APPS2, 28, "mdp_vsync_clk", mdp_vsync_clk,	NULL),
+	OWN(APPS2,  5, "ref_clk",	tsif_ref_clk,	"msm_tsif.0"),
+	OWN(APPS2,  5, "iface_clk",	tsif_p_clk,	"msm_tsif.0"),
+	{ CLK_LOOKUP("tv_src_clk",      tv_clk.c,       NULL),
+		O(APPS2), BIT(2), &p_tv_enc_clk.c },
+	OWN(APPS2,  2, "tv_dac_clk",	tv_dac_clk,	NULL),
+	OWN(APPS2,  2, "tv_enc_clk",	tv_enc_clk,	NULL),
+
+	OWN(ROW1,  7, "emdh_clk",	emdh_clk,	"msm_mddi.1"),
+	OWN(ROW1,  7, "emdh_pclk",	emdh_p_clk,	"msm_mddi.1"),
+	OWN(ROW1, 11, "core_clk",	i2c_clk,	"msm_i2c.0"),
+	OWN(ROW1, 12, "core_clk",	i2c_2_clk,	"msm_i2c.2"),
+	OWN(ROW1, 17, "mdc_clk",	mdc_clk,	NULL),
+	OWN(ROW1, 19, "mddi_clk",	pmdh_clk,	NULL),
+	OWN(ROW1, 19, "mddi_pclk",	pmdh_p_clk,	NULL),
+	OWN(ROW1, 23, "core_clk",	sdc1_clk,	"msm_sdcc.1"),
+	OWN(ROW1, 23, "iface_clk",	sdc1_p_clk,	"msm_sdcc.1"),
+	OWN(ROW1, 25, "core_clk",	sdc2_clk,	"msm_sdcc.2"),
+	OWN(ROW1, 25, "iface_clk",	sdc2_p_clk,	"msm_sdcc.2"),
+	OWN(ROW1, 27, "core_clk",	sdc3_clk,	"msm_sdcc.3"),
+	OWN(ROW1, 27, "iface_clk",	sdc3_p_clk,	"msm_sdcc.3"),
+	OWN(ROW1, 29, "core_clk",	sdc4_clk,	"msm_sdcc.4"),
+	OWN(ROW1, 29, "iface_clk",	sdc4_p_clk,	"msm_sdcc.4"),
+	OWN(ROW1,  0, "core_clk",	uart2_clk,	"msm_serial.1"),
+	OWN(ROW1,  2, "usb_hs2_clk",	usb_hs2_clk,	NULL),
+	OWN(ROW1,  2, "usb_hs2_core_clk", usb_hs2_core_clk, NULL),
+	OWN(ROW1,  2, "usb_hs2_pclk",	usb_hs2_p_clk,	NULL),
+	OWN(ROW1,  4, "usb_hs3_clk",	usb_hs3_clk,	NULL),
+	OWN(ROW1,  4, "usb_hs3_core_clk", usb_hs3_core_clk, NULL),
+	OWN(ROW1,  4, "usb_hs3_pclk",	usb_hs3_p_clk,	NULL),
+
+	OWN(ROW2,  3, "core_clk",	qup_i2c_clk,	"qup_i2c.4"),
+	OWN(ROW2,  1, "core_clk",	spi_clk,	"spi_qsd.0"),
+	OWN(ROW2,  1, "iface_clk",	spi_p_clk,	"spi_qsd.0"),
+	OWN(ROW2,  9, "core_clk",	uart1_clk,	"msm_serial.0"),
+	OWN(ROW2,  6, "core_clk",	uart1dm_clk,	"msm_serial_hs.0"),
+	OWN(ROW2,  8, "core_clk",	uart2dm_clk,	"msm_serial_hs.1"),
+	OWN(ROW2, 11, "usb_hs_clk",	usb_hs_clk,	NULL),
+	OWN(ROW2, 11, "usb_hs_core_clk", usb_hs_core_clk, NULL),
+	OWN(ROW2, 11, "usb_hs_pclk",	usb_hs_p_clk,	NULL),
+
+	OWN(APPS3,  6, "cam_m_clk",	cam_m_clk,	NULL),
+	OWN(APPS3,  6, "camif_pad_pclk", camif_pad_p_clk, NULL),
+	OWN(APPS3,  6, "iface_clk",	camif_pad_p_clk, "qup_i2c.4"),
+	OWN(APPS3, 11, "csi_clk",	csi0_clk,	NULL),
+	OWN(APPS3, 11, "csi_vfe_clk",	csi0_vfe_clk,	NULL),
+	OWN(APPS3, 11, "csi_pclk",	csi0_p_clk,	NULL),
+	OWN(APPS3,  0, "mdp_clk",	mdp_clk,	NULL),
+	OWN(APPS3,  0, "core_clk",	mdp_clk,	"footswitch-pcom.4"),
+	OWN(APPS3,  2, "core_clk",	mfc_clk,	"msm_vidc.0"),
+	OWN(APPS3,  2, "core_clk",	mfc_clk,	"footswitch-pcom.5"),
+	OWN(APPS3,  2, "core_div2_clk",	mfc_div2_clk,	"msm_vidc.0"),
+	OWN(APPS3,  2, "iface_clk",	mfc_p_clk,	"msm_vidc.0"),
+	OWN(APPS3,  2, "iface_clk",	mfc_p_clk,	"footswitch-pcom.5"),
+	OWN(APPS3,  4, "vpe_clk",	vpe_clk,	NULL),
+	OWN(APPS3,  4, "core_clk",	vpe_clk,	"footswitch-pcom.9"),
+
+	OWN(GLBL,  8, "core_clk",	adm_clk,	"msm_dmov"),
+	{ CLK_LOOKUP("iface_clk",		adm_p_clk.c,	"msm_dmov"),
+		O(GLBL), BIT(13), &dummy_clk },
+	OWN(GLBL,  8, "core_clk",	ce_clk,		"qce.0"),
+	OWN(GLBL,  8, "core_clk",	ce_clk,		"crypto.0"),
+	OWN(GLBL, 13, "rotator_clk",	axi_rotator_clk, NULL),
+	OWN(GLBL, 13, "core_clk",	axi_rotator_clk, "footswitch-pcom.6"),
+	OWN(GLBL, 13, "rotator_imem_clk", rotator_imem_clk, NULL),
+	OWN(GLBL, 13, "rotator_pclk",	rotator_p_clk,	NULL),
+	OWN(GLBL, 13, "iface_clk",	rotator_p_clk,	"footswitch-pcom.6"),
+	{ CLK_LOOKUP("iface_clk",     uart1dm_p_clk.c, "msm_serial_hs.0"),
+		O(GLBL), BIT(8), &dummy_clk },
+	{ CLK_LOOKUP("iface_clk",     uart2dm_p_clk.c, "msm_serial_hs.1"),
+		O(GLBL), BIT(8), &dummy_clk },
 };
 
-static struct clk_ops * __init clk_is_local(uint32_t id)
+static struct clk_lookup msm_clocks_7x30[ARRAY_SIZE(ownership_map)];
+
+static void __init set_clock_ownership(void)
 {
 	uint32_t local, bit = ownership_map[id].bit;
 	const uint32_t *reg = ownership_map[id].reg;
