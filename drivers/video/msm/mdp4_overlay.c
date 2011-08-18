@@ -828,20 +828,7 @@ int mdp4_overlay_format2pipe(struct mdp4_overlay_pipe *pipe)
 		pipe->b_bit = 3;	/* B, 8 bits */
 		pipe->g_bit = 3;	/* G, 8 bits */
 		pipe->alpha_enable = 0;
-		pipe->unpack_tight = 1;
-		pipe->unpack_align_msb = 0;
-		pipe->unpack_count = 1;		/* 2 */
-		pipe->element3 = C0_G_Y;	/* not used */
-		pipe->element2 = C0_G_Y;	/* not used */
-		if (pipe->src_format == MDP_Y_CR_CB_H2V2) {
-			pipe->element1 = C2_R_Cr;	/* R */
-			pipe->element0 = C1_B_Cb;	/* B */
-			pipe->chroma_sample = MDP4_CHROMA_420;
-		} else if (pipe->src_format == MDP_Y_CB_CR_H2V2) {
-			pipe->element1 = C1_B_Cb;	/* B */
-			pipe->element0 = C2_R_Cr;	/* R */
-			pipe->chroma_sample = MDP4_CHROMA_420;
-		}
+		pipe->chroma_sample = MDP4_CHROMA_420;
 		pipe->bpp = 2;	/* 2 bpp */
 		break;
 	default:
@@ -2157,10 +2144,36 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req,
 		pipe->srcp0_ystride = pipe->src_width;
 		pipe->srcp1_ystride = pipe->src_width;
 	} else if (pipe->fetch_plane == OVERLAY_PLANE_PLANAR) {
-		addr += pipe->src_width * pipe->src_height;
-		pipe->srcp1_addr = addr;
-		addr += ((pipe->src_width / 2) * (pipe->src_height / 2));
-		pipe->srcp2_addr = addr;
+		if (overlay_version > 0) {
+			img = &req->plane1_data;
+			get_img(img, info, &start, &len, &p_src_plane1_file);
+			if (len == 0) {
+				mutex_unlock(&mfd->dma->ov_mutex);
+				pr_err("%s: Error to get plane1\n", __func__);
+				return -EINVAL;
+			}
+			pipe->srcp1_addr = start + img->offset;
+			*pp_src_plane1_file = p_src_plane1_file;
+
+			img = &req->plane2_data;
+			get_img(img, info, &start, &len, &p_src_plane2_file);
+			if (len == 0) {
+				mutex_unlock(&mfd->dma->ov_mutex);
+				pr_err("%s: Error to get plane2\n", __func__);
+				return -EINVAL;
+			}
+			pipe->srcp2_addr = start + img->offset;
+			*pp_src_plane2_file = p_src_plane2_file;
+		} else {
+			addr += (pipe->src_width * pipe->src_height);
+			pipe->srcp1_addr = addr;
+			addr += ((pipe->src_width / 2) *
+					(pipe->src_height / 2));
+			pipe->srcp2_addr = addr;
+		}
+		/* mdp planar format expects Cb in srcp1 and Cr in p2 */
+		if (pipe->src_format == MDP_Y_CR_CB_H2V2)
+			swap(pipe->srcp1_addr, pipe->srcp2_addr);
 		pipe->srcp0_ystride = pipe->src_width;
 		pipe->srcp1_ystride = pipe->src_width / 2;
 		pipe->srcp2_ystride = pipe->src_width / 2;
