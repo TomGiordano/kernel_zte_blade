@@ -497,23 +497,11 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 				complete(&dma->comp);
 			}
 			spin_unlock(&mdp_spin_lock);
-		}
-#ifdef CONFIG_FB_MSM_OVERLAY
-		if (isr & INTR_OVERLAY0_DONE) {
-			mdp4_stat.intr_overlay0++;
-			dma = &dma2_data;
-			if (panel & (MDP4_PANEL_LCDC | MDP4_PANEL_DSI_VIDEO)) {
-				/* disable LCDC interrupt */
-				spin_lock(&mdp_spin_lock);
-				mdp_intr_mask &= ~INTR_OVERLAY0_DONE;
-				outp32(MDP_INTR_ENABLE, mdp_intr_mask);
-				dma->waiting = FALSE;
-				spin_unlock(&mdp_spin_lock);
-				if (panel & MDP4_PANEL_LCDC)
-					mdp4_overlay0_done_lcdc();
+			if (panel & MDP4_PANEL_LCDC)
+				mdp4_overlay0_done_lcdc(dma);
 #ifdef CONFIG_FB_MSM_MIPI_DSI
-				else if (panel & MDP4_PANEL_DSI_VIDEO)
-					mdp4_overlay0_done_dsi_video();
+			else if (panel & MDP4_PANEL_DSI_VIDEO)
+				mdp4_overlay0_done_dsi_video(dma);
 #endif
 			} else {	/* MDDI, DSI_CMD  */
 				dma->busy = FALSE;
