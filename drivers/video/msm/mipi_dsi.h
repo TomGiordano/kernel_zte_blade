@@ -60,6 +60,31 @@ enum {		/* mipi dsi panel */
 	DSI_CMD_MODE,
 };
 
+enum {
+	ST_DSI_CLK_OFF,
+	ST_DSI_SUSPEND,
+	ST_DSI_RESUME,
+	ST_DSI_PLAYING,
+	ST_DSI_NUM
+};
+
+enum {
+	EV_DSI_UPDATE,
+	EV_DSI_DONE,
+	EV_DSI_TOUT,
+	EV_DSI_NUM
+};
+
+enum {
+	LANDSCAPE = 1,
+	PORTRAIT = 2,
+};
+
+enum dsi_trigger_type {
+	DSI_CMD_MODE_DMA,
+	DSI_CMD_MODE_MDP,
+};
+
 #define DSI_NON_BURST_SYNCH_PULSE	0
 #define DSI_NON_BURST_SYNCH_EVENT	1
 #define DSI_BURST_MODE			2
