@@ -102,6 +102,7 @@ struct mdp4_overlay_ctrl {
 
 static struct mdp4_overlay_ctrl *ctrl = &mdp4_overlay_db;
 static int new_perf_level;
+
 /* static array with index 0 for unset status and 1 for set status */
 static bool overlay_status[MDP4_OVERLAY_TYPE_MAX];
 
@@ -1785,10 +1786,7 @@ int mdp4_overlay_get(struct fb_info *info, struct mdp_overlay *req)
 #define OVERLAY_VGA_SIZE	0x04B000
 #define OVERLAY_720P_SIZE	0x0E1000
 #define OVERLAY_720P_TILE_SIZE  0x0E6000
-#define OVERLAY_PERF_LEVEL1	1
-#define OVERLAY_PERF_LEVEL2	2
-#define OVERLAY_PERF_LEVEL3	3
-#define OVERLAY_PERF_LEVEL4	4
+#define OVERLAY_WSVGA_SIZE 0x98000 /* 1024x608, align 600 to 32bit */
 
 #ifdef CONFIG_MSM_BUS_SCALING
 #define OVERLAY_BUS_SCALE_TABLE_BASE	6
@@ -1813,6 +1811,20 @@ static uint32 mdp4_overlay_get_perf_level(uint32 width, uint32 height,
 		else
 			return OVERLAY_PERF_LEVEL1;
 	}
+}
+
+static uint32 mdp4_overlay_get_perf_level(struct mdp_overlay *req)
+{
+	int is_fg;
+
+	if (req->is_fg && ((req->alpha & 0x0ff) == 0xff))
+		is_fg = 1;
+
+	if (mdp4_extn_disp)
+		return OVERLAY_PERF_LEVEL1;
+
+	if (req->flags & MDP_DEINTERLACE)
+		return OVERLAY_PERF_LEVEL1;
 
 	if (format == MDP_Y_CRCB_H2V2_TILE ||
 		format == MDP_Y_CBCR_H2V2_TILE)
@@ -1825,13 +1837,24 @@ static uint32 mdp4_overlay_get_perf_level(uint32 width, uint32 height,
 		return OVERLAY_PERF_LEVEL1;
 }
 
+void mdp4_update_perf_level(u32 perf_level)
+{
+	new_perf_level = perf_level;
+}
+
 void mdp4_set_perf_level(void)
 {
 	static int old_perf_level;
+	int cur_perf_level;
 
-	if (old_perf_level != new_perf_level) {
-		mdp_set_core_clk(new_perf_level);
-		old_perf_level = new_perf_level;
+	if (mdp4_extn_disp)
+		cur_perf_level = OVERLAY_PERF_LEVEL1;
+	else
+		cur_perf_level = new_perf_level;
+
+	if (old_perf_level != cur_perf_level) {
+		mdp_set_core_clk(cur_perf_level);
+		old_perf_level = cur_perf_level;
 	}
 }
 
@@ -1907,9 +1930,8 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 			mdp4_overlay_status_write(MDP4_OVERLAY_TYPE_SET, true);
 	}
 
-
 	if (new_perf_level != perf_level) {
-		new_perf_level = perf_level;
+		mdp4_update_perf_level(perf_level);
 
 		/* change clck base on perf level */
 		flags = pipe->flags;
@@ -2031,7 +2053,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 
 	if (!(ctrl->ov_pipe[OVERLAY_PIPE_VG1].ref_cnt +
 		ctrl->ov_pipe[OVERLAY_PIPE_VG2].ref_cnt))
-		new_perf_level = OVERLAY_PERF_LEVEL4;
+			mdp4_update_perf_level(OVERLAY_PERF_LEVEL4);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
 
