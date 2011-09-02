@@ -1,0 +1,98 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# NOTE! Please use 'git-ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+.*
+*.o
+*.o.*
+*.a
+*.s
+*.ko
+*.so
+*.so.dbg
+*.mod.c
+*.i
+*.lst
+*.symtypes
+*.order
+*.elf
+*.bin
+*.gz
+
+#
+# Top-level generic files
+#
+tags
+TAGS
+vmlinux
+vmlinux.lds
+zImage
+Image
+System.map
+Module.markers
+Module.symvers
+!.gitignore
+!.mailmap
+
+#
+# Generated include files
+#
+include/asm
+include/asm-*/asm-offsets.h
+include/config
+include/linux/autoconf.h
+include/linux/compile.h
+include/linux/version.h
+include/linux/utsrelease.h
+include/linux/bounds.h
+
+
+arch/arm/mach-msm/smd_rpc_sym.c
+drivers/char/consolemap_deftbl.c
+drivers/char/defkeymap.c
+include/asm-arm/
+kernel/config_data.h
+kernel/timeconst.h
+lib/crc32table.h
+lib/gen_crc32table
+scripts/basic/docproc
+scripts/kconfig/mconf
+scripts/basic/fixdep
+scripts/basic/hash
+scripts/bin2c
+scripts/conmakehash
+scripts/kallsyms
+scripts/kconfig/conf
+scripts/kconfig/lex.zconf.c
+scripts/kconfig/zconf.hash.c
+scripts/kconfig/zconf.tab.c
+scripts/mod/elfconfig.h
+scripts/mod/mk_elfconfig
+scripts/mod/modpost
+usr/gen_init_cpio
+usr/initramfs_data.cpio
+
+
+
+
+# stgit generated dirs
+patches-*
+
+# quilt's files
+patches
+series
+
+# cscope files
+cscope.*
+ncscope.*
+
+*.orig
+*~
+\#*#

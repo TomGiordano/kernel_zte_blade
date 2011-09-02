@@ -1,0 +1,134 @@
+#
+# Miscellaneous I2C chip drivers configuration
+#
+# *** DEPRECATED! Do not add new entries! See Makefile ***
+#
+
+menu "Miscellaneous I2C Chip support"
+
+config DS1682
+	tristate "Dallas DS1682 Total Elapsed Time Recorder with Alarm"
+	depends on EXPERIMENTAL
+	help
+	  If you say yes here you get support for Dallas Semiconductor
+	  DS1682 Total Elapsed Time Recorder.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called ds1682.
+
+config MSENSORS_FROM_AUXI2C_TO_I2C
+	tristate "Add this feature to change msensors from aux-i2c to i2c"
+	depends on I2C
+	default n
+	help
+	  Here is one feature to match hardware ,used by fya.
+
+config GSENSORS_FROM_AUXI2C_TO_I2C
+	tristate "Add this feature to to change gsensors from aux-i2c to i2c"
+	depends on I2C
+	default n
+	help
+	  Here is one feature to match hardware ,used by fya.
+
+config SENSORS_TSL2550
+	tristate "Taos TSL2550 ambient light sensor"
+	depends on EXPERIMENTAL
+	help
+	  If you say yes here you get support for the Taos TSL2550
+	  ambient light sensor.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called tsl2550.
+
+config SENSORS_TSL2771
+	tristate "Taos TSL2771 ambient light and prox sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the Taos TSL2771
+	  ambient light and prox sensor.
+	  
+config SENSORS_BH1721
+	tristate "BH1721 ambient light sensor"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for the BH1721
+	  ambient light sensor.	   
+
+config SENSORS_AKM8962
+	tristate "AK8962 Compass Driver"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Asahi Kasei's 
+	  orientation sensor AK8962.	
+	  
+config SENSORS_AK8973
+	tristate "AKM8973 Compass Driver"
+	depends on I2C
+	default n
+	help
+	  If you say yes here you get support for Asahi Kasei's 
+	  orientation sensor AK8973.
+	  
+config SENSORS_AKM8976
+	tristate "AKM8976 Compass Driver"
+	depends on I2C
+	help
+	 AKM8976 Compass Driver implemented by HTC.
+
+config SENSOR_LIS302DL
+        tristate "ST LIS302DL acceleration sensor support"
+	depends on I2C
+	default n
+	help 
+	  if your say yes here your get support for LIS302
+	  acceleration sensor support 
+	  
+config SENSOR_ADXL34X
+  tristate "ADI ADXL34X acceleration sensor support"
+	depends on I2C
+	default n
+	help 
+	  if your say yes here your get support for ADXL34X
+	  acceleration sensor support 
+	  
+config SENSOR_ACCELERATOR
+  tristate "To support ST&ADI acceleration sensor support"
+	depends on I2C
+	default n
+	help 
+	  if your say yes here your get support for both ST and ADI 
+	  acceleration sensor support 
+
+config SENSORS_PCA963X
+	tristate "Philips PCA963X 4-bit I2C-bus LED"
+	depends on I2C && EXPERIMENTAL
+	help
+	 If you say yes here you get support for the Philips PCA963X
+	 4-bit I2C-bus LED.
+
+	 This driver can also be built as a module.  If so, the module
+	 will be called pca963X.
+
+config SENSORS_MT9T013
+	tristate "MT9T013 Camera Driver"
+	depends on I2C
+	default y
+	help
+	 MT9T013 Camera Driver implemented by HTC.
+config NFC_PN544
+	tristate "NXP PN544 Driver"
+	depends on I2C
+	default n
+	help
+	 ZTE NFC driver.
+
+config VP_A1026
+	tristate "A1026 Voice Processor Driver"
+	depends on I2C
+	help
+	  A1026 Voice Processor Driver implemented by HTC.
+
+endmenu

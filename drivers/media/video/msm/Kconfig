@@ -1,0 +1,314 @@
+comment "Camera Sensor Selection"
+config MT9T013
+	bool "Sensor mt9t013 (BAYER 3M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  MICRON 3M Bayer Sensor with AutoFocus
+
+config MT9D112
+	bool "Sensor mt9d112 (YUV 2M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  MICRON 2M YUV Sensor
+config IMX074
+	bool "Sensor IMX074 (BAYER 13.5M)"
+	depends on MSM_CAMERA && ARCH_MSM8X60
+	default y
+	---help---
+	SONY 13.5 MP Bayer Sensor
+config WEBCAM_OV7692
+	bool "Sensor OV7692 (VGA YUV)"
+	depends on MSM_CAMERA && ARCH_MSM8X60
+	default y
+	---help---
+	  Omni Vision VGA YUV Sensor.
+#	This Senosr is used as a webcam.
+#	This uses the CSI interface.
+#	Need to enable CSI1 clks for this sensor.
+config VX6953
+	bool "Sensor VX6953 (BAYER 5M)"
+	depends on MSM_CAMERA && ARCH_MSM7X30
+	default y
+	---help---
+	STM 5M Bayer Sensor with EDOF
+config SN12M0PZ
+	bool "Sensor sn12m0pz (Bayer 12 MP)"
+	depends on MSM_CAMERA && ARCH_MSM7X30
+	default y
+	---help---
+	  Sony 12 MP Bayer Sensor
+config MT9P012
+	bool "Sensor mt9p012 (BAYER 5M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  MICRON 5M Bayer Sensor with Autofocus
+
+config MT9V113
+	bool "Sensor mt9v113 (YUV 0.3M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  APTINA 0.3M YUV Sensor
+
+config MT9P111
+	bool "Sensor mt9p111 (YUV 5.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  APTINA 5.0M YUV Sensor
+
+if MT9P111
+config MT9P111_MCNEX
+	bool "Sensor mt9p111 (YUV 5.0M), Module MCNEX"
+	depends on MSM_CAMERA && MT9P111
+	default n
+	---help---
+	  APTINA 5.0M YUV Sensor, Module MCNEX
+
+config MT9P111_SAMSUNG_FPC
+	bool "Sensor mt9p111 (YUV 5.0M) of FPC, Module SAMSUNG"
+	depends on MSM_CAMERA && MT9P111
+	default n
+	---help---
+	  APTINA 5.0M YUV Sensor, Module SAMSUNG
+
+config MT9P111_SAMSUNG_SOCKET
+	bool "Sensor mt9p111 (YUV 5.0M) of socket, Module SAMSUNG"
+	depends on MSM_CAMERA && MT9P111
+	default y
+	---help---
+	  APTINA 5.0M YUV Sensor, Module SAMSUNG
+endif # MT9P111
+	  
+config MT9T11X
+	bool "Sensor mt9t111 or mt9t112 (YUV 3.1M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default y
+	---help---
+	  APTINA 3.1M YUV Sensor
+
+if MT9T11X
+config MT9T11X_QTECH_MCNEX_FPC
+	bool "Sensor mt9t111 or mt9t112 (YUV 3.1M) of FPC, Module QTECHGLOBAL or MCNEX"
+	depends on MSM_CAMERA
+	depends on MACH_BLADE || MACH_SMOOTH || MACH_RAISE || MACH_V9 || MACH_ROAMER || MACH_NOVA || MACH_SAILBOAT
+	default y
+	---help---
+	  APTINA 3.1M YUV Sensor
+
+config MT9T11X_QTECH_MCNEX_SOCKET
+	bool "Sensor mt9t111 or mt9t112 (YUV 3.1M) of socket, Module QTECHGLOBAL or MCNEX"
+	depends on MSM_CAMERA
+	depends on MACH_MOONCAKE || MACH_JOE || MACH_R750 || MACH_AMIGO
+	default y
+	---help---
+	  APTINA 3.1M YUV Sensor
+endif # MT9T11X
+
+config OV5642
+	bool "Sensor ov5642 (YUV 5.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  OmniVision 5.0M YUV Sensor
+
+if OV5642
+config OV5642_GLOBALOPTICS
+	bool "Sensor ov5642 (YUV 5.0M), Module GLOBALOPTICS"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  OmniVision 5.0M YUV Sensor, Module GLOBALOPTICS
+endif # OV5642
+
+config OV5640
+	bool "Sensor ov5640 (YUV 5.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  OmniVision 5.0M YUV Sensor
+
+if OV5640
+config OV5640_GLOBALOPTICS
+	bool "Sensor ov5640 (YUV 5.0M), Module GLOBALOPTICS"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  OmniVision 5.0M YUV Sensor, Module GLOBALOPTICS
+endif # OV5640
+config HI704	
+  bool "Sensor hi704(YUV 0.3M)"	
+  depends on MSM_CAMERA	
+  default n	
+  ---help---	  
+    Hynix 0.3M YUV Sensor
+if HI704
+config HI704_KERR	
+  bool "Sensor hi704 (YUV 0.3M), Module KERR"	
+  depends on MSM_CAMERA	
+  default y	
+  ---help---	  
+    Hynix 0.3M YUV Sensor, Module KERR
+endif # HI704
+
+config MT9D115
+	bool "Sensor mt9d115(YUV 2.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  APTINA 2.0M YUV sensor
+
+if MT9D115
+config MT9D115_QTECH_SUNNY_SOCKET
+	bool "Sensor mt9d115 (YUV 2.0M) of socket, Module QTECH or SUNNYOPTICAL"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  APTINA 2.0M YUV Sensor, Module QTECH or SUNNYOPTICAL
+
+config MT9D115_QTECH_SUNNY_FPC
+	bool "Sensor mt9d115 (YUV 2.0M) of FPC, Module QTECH or SUNNYOPTICAL"
+	depends on MSM_CAMERA
+	default n
+	---help---
+	  APTINA 2.0M YUV Sensor, Module QTECH or SUNNYOPTICAL
+endif # MT9D115
+
+config MT9D113
+	bool "Sensor mt9d113(YUV 2.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  APTINA 2.0M YUV sensor
+
+if MT9D113
+config MT9D113_QTECH_SUNNY_SOCKET
+	bool "Sensor mt9d113 (YUV 2.0M) of socket, Module QTECH or SUNNYOPTICAL"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  APTINA 2.0M YUV Sensor, Module QTECH or SUNNYOPTICAL
+endif # MT9D113
+
+config S5K5CAGX
+	bool "Sensor s5k5cagx(YUV 3.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  SAMSUNG 3.0M YUV sensor
+
+if S5K5CAGX
+config S5K5CAGX_SAMSUNG_FPC
+	bool "Sensor s5k5cagx (YUV 3.0M) of fpc, Module SAMSUNG"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  SAMSUNG 3.0M YUV Sensor, Module SAMSUNG
+endif # S5K5CAGX
+
+config S5K5CAGX_MCNEX_QTECH
+	bool "Sensor s5k5cagx_mcnex_qtech(YUV 3.0M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  SAMSUNG 3.0M YUV sensor
+
+if S5K5CAGX_MCNEX_QTECH
+config S5K5CAGX_MCNEX_QTECH_FPC
+	bool "Sensor s5k5cagx_mcnex_qtech (YUV 3.0M) of fpc, Module MCNEX or QTECH"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  SAMSUNG 3.0M YUV Sensor, Module MCNEX or QTECH
+endif # S5K5CAGX_MCNEX_QTECH
+
+choice
+	prompt "AF module"
+	depends on MT9P012 && !ARCH_MSM8X60
+	default MSM_CAMERA_AF_FOXCONN
+
+config MSM_CAMERA_AF_FOXCONN
+	bool "FOXCONN Module"
+	help
+	  This driver supports FOXCONN AF module for 5M Bayer sensor
+
+config MSM_CAMERA_AF_BAM
+	bool "BAM Module"
+	help
+	  This driver supports BAM AF module for 5M Bayer sensor
+endchoice
+
+config MT9P012_KM
+	bool "Sensor mt9p012 KM module (BAYER 5M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  MICRON 5M Bayer Sensor KM modules with Autofocus
+
+config S5K3E2FX
+	bool "Sensor s5k3e2fx (Samsung 5M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  Samsung 5M with Autofocus
+
+config VB6801
+	bool "Sensor vb6801"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	---help---
+	  5M with flash
+
+config SENSOR_ADAPTER
+	bool "Adapter for different sensors"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  Adapter for ov5642 and mt9t11x
+
+config SENSOR_INFO
+	bool "Get sensor info through EM"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default y
+	---help---
+	  Get sensor id and name through EM (Engineering Mode)
+config MSM_CAMERA_FLASH
+	bool "Qualcomm MSM camera flash support"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  Enable support for LED flash for msm camera
+
+config MSM_GEMINI
+	tristate "Qualcomm MSM Gemini Jpeg Engine support"
+	depends on MSM_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60)
+	default M
+	---help---
+	  Enable support for Gemini Jpeg Engine
+
+config MSM_VPE
+	tristate "Qualcomm MSM Video Pre-processing Engine support"
+	depends on MSM_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60)
+	default y
+	---help---
+	  Enable support for Video Pre-processing Engine
+
+config QUP_EXCLUSIVE_TO_CAMERA
+	bool "QUP exclusive to camera"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  This flag enabled states that QUP
+	  is exclusive to camera. In case this
+	  is disabled, the lvs1 voltage is enabled
+	  by QUP in the board file as QUP is used by
+	  applications other than camera.
+
+config CAMERA_N880
+	bool "for blade_n880 camera"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  it add motor power supply  different from other balde project 
