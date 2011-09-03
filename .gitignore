@@ -22,9 +22,15 @@
 *.lst
 *.symtypes
 *.order
+modules.builtin
 *.elf
 *.bin
 *.gz
+*.bz2
+*.lzma
+*.lzo
+*.patch
+*.gcno
 
 #
 # Top-level generic files
@@ -52,7 +58,7 @@ include/linux/compile.h
 include/linux/version.h
 include/linux/utsrelease.h
 include/linux/bounds.h
-
+include/generated
 
 arch/arm/mach-msm/smd_rpc_sym.c
 drivers/char/consolemap_deftbl.c
@@ -96,3 +102,8 @@ ncscope.*
 *.orig
 *~
 \#*#
+
+# compressed boot files
+arch/arm/boot/compressed/lib1funcs.S
+arch/arm/boot/compressed/piggy.gzip
+
