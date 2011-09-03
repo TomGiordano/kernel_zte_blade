@@ -74,7 +74,7 @@ static struct gpio_event_info *v9_keypad_info[] = {
 };
 
 static struct gpio_event_platform_data v9_keypad_data = {
-	.name		= "v9_keypad",
+	.name		= "v9-keypad",
 	.info		= v9_keypad_info,
 	.info_count	= ARRAY_SIZE(v9_keypad_info)
 };
