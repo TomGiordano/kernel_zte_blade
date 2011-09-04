@@ -216,14 +216,9 @@ static const uint32_t hs_key_map[] = {
 };
 #else
 static const uint32_t hs_key_map[] = {
-#ifdef CONFIG_MACH_V9
-	KEY(HS_PWR_K, KEY_POWER),
-	KEY(HS_END_K, KEY_SLEEP),
-#else
 	//let app to diff the long/short power key ZTE_PM_ZHENGCHAO_20110317
 	//KEY(HS_PWR_K, KEY_POWER),
 	KEY(HS_END_K, KEY_POWER),
-#endif
 	KEY(HS_STEREO_HEADSET_K, SW_HEADPHONE_INSERT),
 	KEY(HS_HEADSET_SWITCH_K, KEY_MEDIA),
 	KEY(HS_HEADSET_SWITCH_2_K, KEY_VOLUMEUP),
