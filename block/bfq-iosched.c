@@ -404,7 +404,7 @@ add_bfqq_busy:
 	if(old_raising_coeff == 1 ||
 	   (bfqd->bfq_raising_max_softrt_rate > 0 &&
 		bfqq->soft_rt_next_start < jiffies))
-
+		bfqq->last_rais_start_finish = jiffies;
 }
 
 static void bfq_reposition_rq_rb(struct bfq_queue *bfqq, struct request *rq)
