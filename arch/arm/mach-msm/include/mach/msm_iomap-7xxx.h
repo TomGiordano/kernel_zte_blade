@@ -77,7 +77,7 @@ when                who               what, where, why                comment ta
 
 #if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
 /* ZTE_F3LOG_YYM_0804 begin */
-#define MSM_RAM_LOG_BASE      IOMEM(0xE0200000)
+#define MSM_RAM_LOG_BASE      IOMEM(0xFA200000)
 #define MSM_RAM_LOG_SIZE   	  SZ_1M
 /* ZTE_F3LOG_YYM_0804 end */
 #endif
