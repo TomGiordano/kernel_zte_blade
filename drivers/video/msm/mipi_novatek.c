@@ -390,7 +390,35 @@ static int mipi_novatek_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
-static int __init mipi_novatek_lcd_probe(struct platform_device *pdev)
+
+
+static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
+{
+	struct mipi_panel_info *mipi;
+	static int bl_level_old;
+
+	mipi  = &mfd->panel_info.mipi;
+	if (bl_level_old == mfd->bl_level)
+		return;
+
+	mutex_lock(&mfd->dma->ov_mutex);
+	/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
+	mdp4_dsi_cmd_dma_busy_wait(mfd);
+	mdp4_dsi_blt_dmap_busy_wait(mfd);
+	mipi_dsi_mdp_busy_wait(mfd);
+
+	led_pwm1[1] = (unsigned char)(mfd->bl_level);
+	mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_cmd_backlight_cmds,
+			ARRAY_SIZE(novatek_cmd_backlight_cmds));
+	bl_level_old = mfd->bl_level;
+	mutex_unlock(&mfd->dma->ov_mutex);
+	return;
+}
+
+static int mipi_dsi_3d_barrier_sysfs_register(struct device *dev);
+static int barrier_mode;
+
+static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;

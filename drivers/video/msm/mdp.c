@@ -525,6 +525,15 @@ void mdp_pipe_kickoff(uint32 term, struct msm_fb_data_type *mfd)
 		outpdw(MDP_BASE + 0x000c, 0x0);	/* start DMA */
 #else
 		outpdw(MDP_BASE + 0x0044, 0x0);	/* start DMA */
+
+#ifdef CONFIG_FB_MSM_MDP303
+
+#ifdef CONFIG_FB_MSM_MIPI_DSI
+		mipi_dsi_cmd_mdp_start();
+#endif
+
+#endif
+
 #endif
 #endif
 #ifdef CONFIG_FB_MSM_MDP40
