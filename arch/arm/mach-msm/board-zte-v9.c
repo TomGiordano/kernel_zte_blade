@@ -103,7 +103,7 @@ when         who        what, where, why                             comment tag
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY)
 #include <mach/msm_touch.h>
 #elif defined( CONFIG_TOUCHSCREEN_MSM)
-#include <mach/msm_ts.h>
+#include <linux/input/msm_ts.h>
 #endif
 
 
@@ -2241,31 +2241,30 @@ struct msm_ts_platform_data msm_tssc_pdata ={
 	.pressure_max =255,
 };
 #elif defined( CONFIG_TOUCHSCREEN_MSM)
-/*
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 struct ts_virt_key virt_key[3] = {
-  {KEY_HOME,0,300, },
-  {KEY_MENU,350,600, },
-  {KEY_BACK,650,800, },
+  {KEY_HOME,0,150, },
+  {KEY_MENU,165,315, },
+  {KEY_BACK,330,480, },
 };
 
 struct msm_ts_virtual_keys vkeys = {
   .keys = &virt_key,
   .num_keys = 3,
 };
-*/
+#endif
 struct msm_ts_platform_data msm_tssc_pdata = {
-  //	.x_max = 935,
-  //	.y_max = 910,
-  //	.pressure_max =255,
-  	.min_x = 45,
-  	.max_x = 935,
-	.min_y = 10,
-	.max_y = 910,
+	.min_x = 0,
+	.max_x = 480,
+	.min_y = 0,
+	.max_y = 800,
 	.min_press =0,
 	.max_press =255,
 	.inv_y = 1000,
-	//      	.vkeys_y = &vkeys,
-	.virt_y_start = 920,
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
+	.vkeys_y = &vkeys,
+	.virt_y_start = 810,
+#endif
 };
 #endif
 

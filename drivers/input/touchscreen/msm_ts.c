@@ -79,6 +79,7 @@ struct msm_ts {
 	struct input_dev		*input_dev;
 	void __iomem			*tssc_base;
 	uint32_t			ts_down:1;
+	uint32_t			zoomhack;
 	struct ts_virt_key		*vkey_down;
 	//struct marimba_tsadc_client	*ts_client;//ZTE_TS_ZT_004 @2010-01-28
 
@@ -95,6 +96,21 @@ struct timer_list timer;  //wlyZTE_TS_ZT_005 @2010-03-05
 static uint32_t msm_tsdebug;
 module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 
+//static int32_t msm_tscal_scaler = 65536;
+static int32_t msm_tscal_xscale = 34875;
+static int32_t msm_tscal_xoffset = -26*65536;
+static int32_t msm_tscal_yscale = 58125;
+static int32_t msm_tscal_yoffset = 0;
+static int32_t msm_tscal_gesture_pressure = 1200;
+static int32_t msm_tscal_gesture_blindspot = 100;
+//module_param_named(tscal_scaler, msm_tscal_scaler, int, 0664);
+module_param_named(tscal_xscale, msm_tscal_xscale, int, 0664);
+module_param_named(tscal_xoffset, msm_tscal_xoffset, int, 0664);
+module_param_named(tscal_yscale, msm_tscal_yscale, int, 0664);
+module_param_named(tscal_yoffset, msm_tscal_yoffset, int, 0664);
+module_param_named(tscal_gesture_pressure, msm_tscal_gesture_pressure, int, 0664);
+module_param_named(tscal_gesture_blindspot, msm_tscal_gesture_blindspot, int, 0664);
+
 #define tssc_readl(t, a)	(readl(((t)->tssc_base) + (a)))
 #define tssc_writel(t, v, a)	do {writel(v, ((t)->tssc_base) + (a));} while(0)
 
@@ -109,8 +125,7 @@ static void setup_next_sample(struct msm_ts *ts)
 	tssc_writel(ts, tmp, TSSC_CTL);
 }
 
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-/*
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 					 struct msm_ts_virtual_keys *vkeys,
 					 uint32_t val)
@@ -125,8 +140,7 @@ static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 			return &vkeys->keys[i];
 	return NULL;
 }
-*/
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end */
+#endif
 /*ZTE_TS_ZT_005 @2010-03-05 begin*/
 static void ts_timer(unsigned long arg)
 {
@@ -191,17 +205,15 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	//ZTE_TS_CRDB00517999,END
 	if (x < 0) x = 0;
 	if (y < 0) y = 0;
-		
-#if defined(CONFIG_MACH_MOONCAKE)
-  //x = x*240/916;
-  //y = y*320/832;
-#elif defined(CONFIG_MACH_V9)
-  //x=x*480/13/73;
-  //y=y*800/6/149;
-#endif
-  
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-/*
+
+	// Calibrate
+//        x = (x*msm_tscal_xscale + msm_tscal_xoffset + msm_tscal_scaler/2)/msm_tscal_scaler;
+//        y = (y*msm_tscal_yscale + msm_tscal_yoffset + msm_tscal_scaler/2)/msm_tscal_scaler;
+        x = (x*msm_tscal_xscale + msm_tscal_xoffset + 32768)/65536;
+        y = (y*msm_tscal_yscale + msm_tscal_yoffset + 32768)/65536;
+
+
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 	if (!was_down && down) {
 		struct ts_virt_key *vkey = NULL;
 
@@ -231,14 +243,51 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		}
 		return IRQ_HANDLED;
 	}
-	*/
-	/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
+#endif
+
 
 	if (down) {
-		//printk("huangjinyu x= %d ,y= %d \n",x,y);
-		input_report_abs(ts->input_dev, ABS_X, x);
-		input_report_abs(ts->input_dev, ABS_Y, y);
-			input_report_abs(ts->input_dev, ABS_PRESSURE, z);
+		if(z>(msm_tscal_gesture_pressure-msm_tscal_gesture_blindspot) && z<msm_tscal_gesture_pressure) { 	// blind spot (1101-1199)
+			down = 0;
+			ts->zoomhack = 1;
+		} else if(z>=msm_tscal_gesture_pressure) {	// Pinch zoom emulation & pinch rotation emulation
+			if(!ts->zoomhack) {			// Flush real position to avoid jumpiness
+				down = 0;
+				ts->zoomhack = 1;
+			}
+			else {
+				int pinch_radius = (y+1)/2;			// Base pinch radius on y position
+				int pinch_x = x - 240;				// Get x offset
+
+				int pinch_y = int_sqrt(pinch_radius*pinch_radius - pinch_x*pinch_x);	// Make sure pinch distance is the same even
+													// if we move x around. Pythagoras is our friend.
+				if(pinch_y>1000) pinch_y = 0;
+
+				// Finger1
+                	        input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+                      		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 240 + pinch_x);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 400 - pinch_y);
+                        	input_mt_sync(ts->input_dev);
+				// Finger2
+                        	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+                        	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 240 - pinch_x);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 400 + pinch_y);
+                        	input_mt_sync(ts->input_dev);
+			}
+		} else {
+			if(ts->zoomhack) {	// Flush faked positions to avoid jumpiness
+				down = 0;
+				ts->zoomhack = 0;
+			} else {
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, (z+2)/4);
+                	        input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
+                       		input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
+                       		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
+                        	input_mt_sync(ts->input_dev);
+			}
+		}
 	}
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
@@ -429,11 +478,9 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	struct resource *irq1_res;
 	struct resource *irq2_res;
 	int err = 0;
-	/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-	/*int i;*/
-	/*struct marimba_tsadc_client *ts_client;*/
-    /* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
-
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
+	int i;
+#endif
 	tssc_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tssc");
 	irq1_res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "tssc1");
 	irq2_res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "tssc2");
@@ -503,22 +550,20 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	set_bit(KEY_BACK, ts->input_dev->keybit);
 #endif
 
-	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x,
-			     0, 0);
-	input_set_abs_params(ts->input_dev, ABS_Y, pdata->min_y, pdata->max_y,
-			     0, 0);
-	input_set_abs_params(ts->input_dev, ABS_PRESSURE, pdata->min_press,
-			     pdata->max_press, 0, 0);
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
-/*
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, pdata->min_x, pdata->max_x, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->min_y, pdata->max_y, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, pdata->min_press, pdata->max_press, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
+
+#ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 	for (i = 0; pdata->vkeys_x && (i < pdata->vkeys_x->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_x->keys[i].key);
 	for (i = 0; pdata->vkeys_y && (i < pdata->vkeys_y->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_y->keys[i].key);
-*/
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
+#endif
+
 	err = input_register_device(ts->input_dev);
 	if (err != 0) {
 		pr_err("%s: failed to register input device\n", __func__);
