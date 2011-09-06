@@ -2249,7 +2249,7 @@ struct ts_virt_key virt_key[3] = {
 };
 
 struct msm_ts_virtual_keys vkeys = {
-  .keys = &virt_key,
+  .keys = &virt_key[0],
   .num_keys = 3,
 };
 #endif
