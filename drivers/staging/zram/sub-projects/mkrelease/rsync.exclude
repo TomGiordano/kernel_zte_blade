@@ -1,0 +1,13 @@
+.*
+*.svn*
+*.hg*
+*.tmp*
+*.o
+*.ko
+*.symvers
+*.mod.*
+*.markers
+*~
+*.orig
+cscope.*
+modules.order

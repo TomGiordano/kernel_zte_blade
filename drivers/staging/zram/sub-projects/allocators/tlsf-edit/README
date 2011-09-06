@@ -1,0 +1,73 @@
+
+TLSF Memory Storage allocator implementation.
+Version 2.3 Jul 2007
+
+Authors: Miguel Masmano, Ismael Ripoll & Alfons Crespo.
+Copyright UPVLC, OCERA Consortium.
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License as
+    published by the Free Software Foundation; either version 2 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.         
+
+
+
+This component provides basic memory allocation functions:
+malloc and free, as defined in the standard "C" library.
+
+This allocator was designed to provide real-time performance, that is:
+1.- Bounded time malloc and free.
+2.- Fast response time.
+3.- Efficient memory management, that is low fragmentation.
+
+
+The worst response time for both malloc and free is O(1).
+
+
+
+How to use it:
+
+This code  is prepared to  be used as  a stand-alone code that  can be
+linked with a regular application or  it can be compiled to be a Linux
+module  (which  required the  BigPhysicalArea  patch).  Initially  the
+module was  designed to  work jointly with  RTLinux-GPL, but it  can be
+used as a stand alone Linux module.
+
+When compiled as a regular linux process the API is:
+
+/* INIT AND DESTROY */
+This function has to be called before the any malloc call:
+int init_memory_pool(mem_pool_size, mem_pool)
+	mem_pool_size  : size of the initial memory pool (in bytes).
+	mem_pool : initial heap (memory pool).
+	
+void destroy_memory_pool(ptr)
+	ptr  : Pointer to an initialised pool.
+
+/* Request and release */
+void *malloc_ex(size, memory_pool)
+	size :  This function  requests a block  of "size"  bytes, and
+                it  returns either a pointer  to the  start of  the allocated
+               block or NULL if not block can be allocated.
+        memory_pool : Since this version of TLSF can work with several heaps
+                      at  the same  time, it  is necessary  to specify
+                      which heap is being used in the call.
+
+void free_ex(ptr, memory_pool)
+	ptr  : Pointer to a valid, previously allocated block.
+        memory_pool : Since this version of TLSF can work with several heaps
+                      at  the same  time, it  is necessary  to specify
+                      which heap is being used in the call.
+
+This work has been supported by the followin projects:
+EUROPEAN: IST-2001-35102(OCERA) http://www.ocera.org.
+SPANISH: TIN2005-08665-C3-03 

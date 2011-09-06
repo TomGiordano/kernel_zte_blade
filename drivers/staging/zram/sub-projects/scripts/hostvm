@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Sourced by all scripts that need to run commands on VM
+
+SSH="ssh -p 2222 root@localhost"

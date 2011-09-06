@@ -1,0 +1,3 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH="../../alloc_stress/simprofile" ./ideal_qh_stress_bin "$@"

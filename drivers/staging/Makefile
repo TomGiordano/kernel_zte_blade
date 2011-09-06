@@ -57,3 +57,4 @@ obj-$(CONFIG_TOUCHSCREEN_MRSTOUCH)	+= mrst-touchscreen/
 obj-$(CONFIG_MSM_STAGING)	+= msm/
 obj-$(CONFIG_GOBI_USBNET)	+= gobi/QCUSBNet2k/
 obj-$(CONFIG_ATH6K_LEGACY)     += ath6kl/
+obj-$(CONFIG_ZRAM)		+= zram/

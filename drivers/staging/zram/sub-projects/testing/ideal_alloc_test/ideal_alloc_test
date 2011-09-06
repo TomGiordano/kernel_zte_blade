@@ -1,0 +1,4 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH="../../swap_replay/sr_parse" ./ideal_alloc_test_bin "$@"
+

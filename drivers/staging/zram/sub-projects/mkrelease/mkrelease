@@ -1,0 +1,31 @@
+#!/bin/bash
+
+SRC="$HOME/progc/compcache"
+DEST_BASE="$HOME/progc/compcache-release"
+
+[ ! -d "$SRC" ] && echo "Source dir [$SRC] not found." && exit 0
+[ ! -d "$DEST_BASE" ] && echo "Destination dir [$DEST_BASE] not found." && exit 0
+
+RELEASE="$1"
+# REMOVE_OLD="$2"
+
+[ -z "$RELEASE" ] && echo "release number missing!" && exit 0
+
+DEST="${DEST_BASE}/compcache-${RELEASE}"
+
+#if [ -d "$DEST" ]; then
+#	if [ "$REMOVE_OLD" = "-r" ]; then
+#		rm -rf $DEST
+#		mkdir $DEST
+#	else
+#		echo "Taget directory [$DEST] already exists."
+#		echo "Use -r to remove this."
+#		exit 0
+#	fi
+#fi
+
+rsync -avz --exclude-from=rsync.exclude \
+	   --files-from=rsync.files \
+	   --delete-excluded \
+	   ${SRC}/ ${DEST}/
+

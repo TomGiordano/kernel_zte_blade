@@ -1,0 +1,55 @@
+#!/bin/bash
+
+OPT="$1"
+J="$2"
+
+####
+# Used by kernel Makefile
+
+# store compiler output files here
+export KBUILD_OUTPUT="build/x64"
+
+# '*_install' targets requires ABSOLUTE paths
+D="${PWD}/${KBUILD_OUTPUT}/_install"
+
+# store kernel and system map image here
+export INSTALL_PATH="${D}/boot"
+
+# store kernel module (.ko files) here
+# ('install' target creates $D/lib/modules/<kernel-version>/...)
+export INSTALL_MOD_PATH="${D}"
+####
+
+[ -z "$J" ] && J=2
+
+makeKernel() {
+	make bzImage -j"$J"
+}
+
+makeModules() {
+	make modules -j"$J"
+}
+
+makeInstall() {
+	# modules_install targets requires "O=" parameter be
+	# specifed even if KBUILD_OUTPUT is set
+	make O="${KBUILD_OUTPUT}" modules_install
+	make O="${KBUILD_OUTPUT}" install
+}
+
+case "$OPT" in
+K)
+	makeKernel
+	;;
+M)
+	makeModules
+	;;
+KM)
+	makeKernel
+	makeModules
+	;;
+I)
+	echo "Using install path: $INSTALL_PATH"
+	makeInstall
+	;;
+esac

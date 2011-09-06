@@ -1,0 +1,37 @@
+global time_read
+global time_read_aggr
+
+global time_write
+global time_write_aggr
+
+probe begin {
+	print("swap probe begin\n")
+}
+
+probe end {
+	print("swap probe end\n")
+}
+
+/* swap read */
+probe kernel.function("swap_readpage") {
+	time_read[tid()] = gettimeofday_ns();
+}
+
+probe kernel.function("end_swap_bio_read") {
+	if (time_read[tid()]) {
+		time_read_aggr <<< (gettimeofday_ns() - time_read[tid()])
+		delete time_read[tid()]
+	}
+}
+
+/* swap write */
+probe kernel.function("swap_writepage") {
+	time_write[tid()] = gettimeofday_ns();
+}
+
+probe kernel.function("end_swap_bio_write") {
+	if (time_write[tid()]) {
+		time_write_aggr <<< (gettimeofday_ns() - time_write[tid()])
+		delete time_write[tid()]
+	}
+}

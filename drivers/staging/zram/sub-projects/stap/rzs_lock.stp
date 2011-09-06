@@ -1,0 +1,29 @@
+global wait_time, wait_stats
+
+probe begin
+{
+	printf("rzs lock probe begin\n")
+}
+
+probe end
+{
+	printf("rzs lock probe end\n")
+}
+
+probe kernel.mark("ramzswap_lock_wait")
+{
+	//printf("rzs lock wait\n")
+	t = gettimeofday_us()
+	wait_time[tid()] = t
+}
+
+probe kernel.mark("ramzswap_lock_acquired")
+{
+	//printf("rzs lock acquired\n")
+	t = gettimeofday_us()
+	s = wait_time[tid()]
+	//wait_stats[tid()] <<< t - s
+	if (s) {
+		wait_stats <<< t - s
+	}
+}

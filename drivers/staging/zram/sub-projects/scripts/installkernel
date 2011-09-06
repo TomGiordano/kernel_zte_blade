@@ -1,0 +1,76 @@
+#! /bin/sh
+#
+# /sbin/installkernel
+#
+# Copyright 2007-2008 Red Hat, Inc.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Author(s): tyson@rwii.com
+#
+# Adapted from /sbin/installkernel (Nitin Gupta)
+# Copies kernel and system map image to INSTALL_PATH
+
+# Called when 'make install' is issued
+# Calls ~/bin/new-kernel-pkg
+#
+
+usage() {
+    echo "Usage: `basename $0` <kernel_version> <bootimage> <mapfile>" >&2
+    exit 1
+}
+
+if [ -z "$INSTALL_PATH" ]; then
+    echo "INSTALL_PATH missing"
+    exit 1
+fi
+
+KERNEL_VERSION=$1
+BOOTIMAGE=$2
+MAPFILE=$3
+KERNEL_NAME=vmlinuz
+
+if [ -z "$KERNEL_VERSION" -o -z "$BOOTIMAGE" -o -z "$MAPFILE" ]; then
+    usage
+fi
+
+if [ -f $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION ]; then 
+      mv $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION \
+              $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION.old;
+fi
+
+if [ ! -L $INSTALL_PATH/$KERNEL_NAME ]; then
+    if [ -e $INSTALLPATH/$KERNEL_NAME ]; then 
+	mv $INSTALL_PATH/$KERNEL_NAME $INSTALL_PATH/$KERNEL_NAME.old
+    fi
+fi
+
+if [ -f $INSTALL_PATH/System.map-$KERNEL_VERSION ]; then 
+      mv $INSTALL_PATH/System.map-$KERNEL_VERSION \
+              $INSTALL_PATH/System.map-$KERNEL_VERSION.old; 
+fi
+
+if [ ! -L $INSTALL_PATH/System.map ]; then
+    if [ -e $INSTALLPATH/System.map ]; then 
+	mv $INSTALL_PATH/System.map $INSTALL_PATH/System.map.old
+    fi
+fi
+
+cat $BOOTIMAGE > $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION
+cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
+
+if [ -x $HOME/bin/new-kernel-pkg ]; then
+	$HOME/bin/new-kernel-pkg --host-only \
+	--kernel-args="console=tty0\ console=ttyS0" -v $KERNEL_VERSION
+fi

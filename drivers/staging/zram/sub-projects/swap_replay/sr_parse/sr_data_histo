@@ -1,0 +1,4 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH="." ./sr_data_histo_bin "$@"
+

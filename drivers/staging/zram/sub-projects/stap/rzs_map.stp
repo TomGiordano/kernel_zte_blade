@@ -1,0 +1,19 @@
+probe begin
+{
+	printf("rzs lock probe begin\n")
+}
+
+probe end
+{
+	printf("rzs lock probe end\n")
+}
+
+probe module("ramzswap").function("map_backing_swap_page")
+{
+	printf("map called\n")
+}
+
+probe module("ramzswap").function("map_backing_swap_page").return
+{
+	printf("map return\n")
+}
