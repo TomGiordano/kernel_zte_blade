@@ -665,7 +665,7 @@ static int bcmsleep_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver bcmsleep_driver = {
+static struct platform_driver __refdata bcmsleep_driver = {
 	.probe = bcmsleep_probe,
 	.remove = bcmsleep_remove,
 	.driver = {

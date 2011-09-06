@@ -3113,7 +3113,7 @@ static int __init lcdc_panel_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver this_driver = {
+static struct platform_driver __refdata this_driver = {
 	.probe  = lcdc_panel_probe,
 	.driver = {
 		.name   = "lcdc_panel_qvga",
