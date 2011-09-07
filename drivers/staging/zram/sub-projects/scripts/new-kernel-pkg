@@ -1,0 +1,186 @@
+#!/bin/bash
+#
+# new-kernel-pkg
+# Invoked upon installation or removal of a kernel package, the following
+# tasks are/can be done here:
+# creation/removal of initrd
+# run of depmod/removal of depmod generated files
+# addition/removal of kernel images from grub/lilo configuration (via grubby)
+#
+# Copyright 2002-2008 Red Hat, Inc.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Adapted from /sbin/new-kernel-pkg (Nitin Gupta)
+# Called from ~/bin/installkernel
+#
+# Everything is done on REMOTE machine (ssh -p 2222 root@localhost)
+# (Assumes VirtualBox port forwarding: host 2222 -> guest 22)
+#
+
+PATH=/sbin:/bin:$PATH
+
+# connection strings for remote host
+PORT="2222"
+HOST="localhost"
+USER="root"
+SSH="ssh -p $PORT"
+# RSYNC="rsync -avz --rsh=$SSH"
+
+# binaries to be executed on remote host
+depmod=""
+dracut=""
+grubby=""
+
+bootPrefix=""
+initrdFile=""
+kernelName=""
+
+# scripts params
+dracuthostonly=""
+kernargs=""
+banner=""
+verbose=""
+version=""
+
+doInit() {
+	# Connection string for remote host
+	R="$SSH $USER@$HOST"
+
+	depmod="$R /sbin/depmod"
+	dracut="$R /sbin/dracut"
+	grubby="$R /sbin/grubby"
+
+	bootPrefix="/boot"
+	initrdFile="/boot/initramfs-$version.img" # as on the remote host
+	kernelName=vmlinuz
+}
+
+# NOTE: initramfs is generaed directly on remote host
+transferBinaries() {
+	U="$USER@$HOST"
+	T="$U:/lib/modules/$version" # target dir for modules
+
+	rm -rf $INSTALL_PATH/*.old
+	# copy kernel and system map images
+	rm -rf $INSTALL_PATH/*.old
+	rsync -avz --rsh="$SSH" $INSTALL_PATH/* $U:/boot
+
+	# copy modules
+	$SSH $U mkdir -p /lib/modules/$version
+	rsync -avz --rsh="$SSH" \
+		$INSTALL_MOD_PATH/lib/modules/$version/modules.* $T
+	find $INSTALL_MOD_PATH/lib/modules/$version -maxdepth 1 \
+			-mindepth 1 -type d | while read dname; do
+		rsync -avz --rsh="$SSH" $dname $T
+	done
+}
+
+# Add kernel and initrd entry to grub.conf
+doInstall() {
+    INITRD="--initrd $initrdFile"
+
+    $SSH $USER@$HOST cat /etc/fstab > /tmp/__remote_fstab
+    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /tmp/__remote_fstab)
+    rm /tmp/__remote_fstab
+
+    [ -n "$verbose" ] && echo "using rootdevice: $rootdevice"
+    [ -n "$verbose" ] && echo "adding $version to grub"
+
+    if [ -n "$banner" ]; then
+        title="$banner ($version)"
+    else
+        title="Custom Kernel ($version)"
+    fi
+
+    $grubby --add-kernel=$bootPrefix/$kernelName-$version \
+	$INITRD --copy-default $makedefault --title "\"$title\"" \
+	--args="root=$rootdevice\ $kernargs" --remove-kernel="TITLE=\"$title\""
+}
+
+doMkinitrd() {
+    [ -n "$verbose" ] && echo "creating initrd: $tool"
+    $dracut $dracuthostonly -f $initrdFile $version
+    rc=$?
+    if [ $rc != 0 ]; then
+	echo "mkinitrd failed" >&2
+	exit 1
+    fi
+}
+
+doDepmod() {
+    [ -n "$verbose" ] && echo "running depmod for $version"
+    $depmod -ae -F /boot/System.map-$version $version
+}
+
+usage()
+{
+    echo "blah!"
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+	--host-only)
+	    dracuthostonly=-H
+	    ;;
+
+	--kernel-args*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	kernargs=`echo $1 | sed 's/^--kernel-args=//'`
+	    else
+		kernargs=$2
+		shift
+	    fi
+	    ;;
+
+	--banner*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	banner=`echo $1 | sed 's/^--banner=//'`
+	    else
+		banner=$2
+		shift
+	    fi
+	    ;;
+
+	-v)
+	    verbose=-v
+	    ;;
+
+	*)
+	    if [ -z "$version" ]; then
+		version=$1
+	    else
+		usage
+	    fi
+	    ;;
+    esac
+
+    shift
+done
+
+if [ -z "$version" ]; then
+    usage
+fi
+
+doInit
+
+[ -n "$verbose" ] && echo "initrdFile is $initrdFile"
+
+transferBinaries
+
+doDepmod
+doMkinitrd
+doInstall
+
+exit 0

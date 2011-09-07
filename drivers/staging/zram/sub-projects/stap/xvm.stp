@@ -1,0 +1,12 @@
+probe begin {
+	print("xvm probe begin\n");
+}
+
+probe end {
+	print("xvm probe end\n");
+}
+
+probe module("xvmalloc").function("*") {
+	print("\n", probefunc())
+}
+

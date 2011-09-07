@@ -1,0 +1,4 @@
+probe kernel.function("ext3_get*") {
+	print("%s\n", probefunc())
+}
+

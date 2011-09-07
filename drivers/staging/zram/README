@@ -1,0 +1,105 @@
+zram: Compressed RAM based block devices
+----------------------------------------
+
+Project home: http://compcache.googlecode.com/
+
+* Introduction
+
+The zram module creates RAM based block devices named /dev/zram<id>
+(<id> = 0, 1, ...). Pages written to these disks are compressed and stored
+in memory itself. These disks allow very fast I/O and compression provides
+good amounts of memory savings. Some of the usecases include /tmp storage,
+use as swap disks, various caches under /var and maybe many more :)
+
+Statistics for individual zram devices are exported through sysfs nodes at
+/sys/block/zram<id>/
+
+Help page:
+  http://compcache.googlecode.com/CompilingAndUsingNew
+
+* Compiling
+  - 'make':	This will compile zram module against your kernel
+  - Optional (HIGHLY RECOMMENDED): ** Only for kernels older than 2.6.35 **
+	- Apply the patch found in compcache/patches/ directory and just
+	  compile the kernel as usual. This patch enables 'swap free notify'
+	  feature which allows the kernel to send callback to zram as soon
+	  as a swap slot becomes free. So, we can immediately free memory
+	  allocated for the corresponding page, eliminating any stale data
+	  in (compressed) memory. Currently, patches are available for
+	  2.6.29 and 2.6.33 kernels but it should apply to 'nearby' kernel
+	  versions too.  
+	- Uncomment '#define CONFIG_SWAP_FREE_NOTIFY' in compcache/compat.h
+	  before compiling compcache against this patched kernel. Otherwise,
+          this swap notify callback will not be used.
+	- Note that this patch is applicable only when zram devices are
+	  intended to be used as swap disks. They do not help when used
+	  for other purposes (see examples below).
+
+Following binaries are created:
+  - zram.ko (kernel driver)
+
+* Usage
+
+Following shows a typical sequence of steps for using zram.
+
+1) Load Module:
+	modprobe zram num_devices=4
+	This creates 4 devices: /dev/zram{0,1,2,3}
+	(num_devices parameter is optional. Default: 1)
+
+2) Set Disksize:
+	Set disk size by writing the value to sysfs node 'disksize'
+	(in bytes). If disksize is not given, default value of 25%
+	of RAM is used.
+
+	# Set disksize of 50MB for /dev/zram0
+	echo $((50*1024*1024)) > /sys/block/zram0/disksize
+
+	NOTE: disksize cannot be changed if the disk contains any
+	data. So, for such a disk, you need to issue 'reset' (see below)
+	before you can change its disksize.
+
+3) Activate:
+	mkswap /dev/zram0
+	swapon /dev/zram0
+
+	mkfs.ext4 /dev/zram1
+	mount /dev/zram1 /tmp
+
+4) Statistics:
+	Per-device statistics are exported as various nodes under
+	/sys/block/zram<id>/
+		disksize
+		num_reads
+		num_writes
+		invalid_io
+		notify_free
+		discard
+		zero_pages
+		orig_data_size
+		compr_data_size
+		mem_used_total
+
+	A helper script is included (sub-projects/scripts/zram_stats)
+	which shows these stats for devices containing any data. It also
+	shows (derived) values for average compression ratio and memory
+	overhead.
+
+5) Deactivate:
+	swapoff /dev/zram0
+	umount /dev/zram1
+
+6) Reset:
+	Write any positive value to 'reset' sysfs node
+	echo 1 > /sys/block/zram0/reset
+	echo 1 > /sys/block/zram1/reset
+
+	(This frees all the memory allocated for the given device).
+
+
+Please report any problems at:
+ - Mailing list: linux-mm-cc at laptop dot org
+ - Issue tracker: http://code.google.com/p/compcache/issues/list
+
+Nitin Gupta
+ngupta@vflare.org

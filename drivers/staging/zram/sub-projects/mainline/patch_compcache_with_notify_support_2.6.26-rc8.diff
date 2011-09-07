@@ -1,0 +1,1713 @@
+ Documentation/compcache.txt |   29 ++
+ drivers/block/Kconfig       |   27 ++
+ drivers/block/Makefile      |    1 +
+ drivers/block/compcache.c   |  466 +++++++++++++++++++++++++++++
+ drivers/block/compcache.h   |   96 ++++++
+ include/linux/swap.h        |    2 +
+ include/linux/tlsf.h        |   93 ++++++
+ init/Kconfig                |   28 ++
+ mm/Makefile                 |    1 +
+ mm/swapfile.c               |   19 ++
+ mm/tlsf.c                   |  676 +++++++++++++++++++++++++++++++++++++++++++
+ mm/tlsf_int.h               |  145 +++++++++
+ 12 files changed, 1583 insertions(+), 0 deletions(-)
+
+diff --git a/Documentation/compcache.txt b/Documentation/compcache.txt
+new file mode 100644
+index 0000000..2500da6
+--- /dev/null
++++ b/Documentation/compcache.txt
+@@ -0,0 +1,29 @@
++
++compcache: Compressed RAM based swap device
++-------------------------------------------
++
++Project home: http://code.google.com/p/compcache
++
++* Introduction
++This is a RAM based block device which acts as swap disk.
++Pages swapped to this device are compressed and stored in
++memory itself.
++
++It uses these components:
++ - TLSF: memory allocator
++ - LZO: de/compressor
++
++* Usage
++ - modprobe compcache compcache_size_kbytes=<size>
++   (If no size is specified, default size of 25% of RAM is taken).
++ - swapon /dev/ramzswap0
++
++* Notes
++ - Allocator and compcache statistics are exported via /proc interface:
++   (if stats are enabled for corresponding modules)
++   - /proc/tlsfinfo (from tlsf.ko)
++   - /proc/compcache (from compcache.ko)
++
++
++Nitin Gupta
++(nitingupta910@gmail.com)
+diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
+index 0d1d213..d4ed9da 100644
+--- a/drivers/block/Kconfig
++++ b/drivers/block/Kconfig
+@@ -347,6 +347,33 @@ config BLK_DEV_RAM_SIZE
+ 	  The default value is 4096 kilobytes. Only change this if you know
+ 	  what you are doing.
+ 
++config BLK_DEV_COMPCACHE
++	tristate "Compressed RAM based swap device"
++	select TLSF
++	select LZO_COMPRESS
++	select LZO_DECOMPRESS
++	help
++	  This creates RAM based block device which acts as swap disk. Pages
++	  swapped to this disk are compressed and stored in memory itself.
++	  Project Home: http://code.google.com/p/compcache/
++
++config BLK_DEV_COMPCACHE_DEBUG
++	default y
++	depends on BLK_DEV_COMPCACHE
++	bool "Enable debugging"
++	help
++	  This causes negligible performance loss and size increase.
++	  If unsure, say Y.
++
++config BLK_DEV_COMPCACHE_STATS
++	default y
++	depends on BLK_DEV_COMPCACHE
++	bool "Enable statistics"
++	help
++	  Creates /proc/compcache to export various statistics.
++	  This adds about 4K to size with negligible performance loss.
++	  If unsure, say Y.
++
+ config BLK_DEV_XIP
+ 	bool "Support XIP filesystems on RAM block device"
+ 	depends on BLK_DEV_RAM
+diff --git a/drivers/block/Makefile b/drivers/block/Makefile
+index 5e58430..b6d3dd2 100644
+--- a/drivers/block/Makefile
++++ b/drivers/block/Makefile
+@@ -12,6 +12,7 @@ obj-$(CONFIG_PS3_DISK)		+= ps3disk.o
+ obj-$(CONFIG_ATARI_FLOPPY)	+= ataflop.o
+ obj-$(CONFIG_AMIGA_Z2RAM)	+= z2ram.o
+ obj-$(CONFIG_BLK_DEV_RAM)	+= brd.o
++obj-$(CONFIG_BLK_DEV_COMPCACHE)	+= compcache.o
+ obj-$(CONFIG_BLK_DEV_LOOP)	+= loop.o
+ obj-$(CONFIG_BLK_DEV_XD)	+= xd.o
+ obj-$(CONFIG_BLK_CPQ_DA)	+= cpqarray.o
+diff --git a/drivers/block/compcache.c b/drivers/block/compcache.c
+new file mode 100644
+index 0000000..a348fca
+--- /dev/null
++++ b/drivers/block/compcache.c
+@@ -0,0 +1,466 @@
++/*
++ * Compressed RAM based swap device
++ *
++ * (C) 2008 Nitin Gupta <nitingupta910@gmail.com>
++ *
++ * This RAM based block device acts as swap disk.
++ * Pages swapped to this device are compressed and
++ * stored in memory.
++ *
++ * Released under the terms of the GNU General Public
++ * License (version 2). See linux/COPYING for more information.
++ *
++ * Project home: http://code.google.com/p/compcache
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/blkdev.h>
++#include <linux/buffer_head.h>
++#include <linux/device.h>
++#include <linux/genhd.h>
++#include <linux/highmem.h>
++#include <linux/lzo.h>
++#include <linux/mutex.h>
++#include <linux/proc_fs.h>
++#include <linux/string.h>
++#include <linux/swap.h>
++#include <linux/swapops.h>
++#include <linux/tlsf.h>
++#include <linux/vmalloc.h>
++
++#include "compcache.h"
++
++static struct block_device_operations compcache_devops = {
++	.owner = THIS_MODULE,
++};
++
++static unsigned int init_done;
++static struct compcache compcache;
++static unsigned long compcache_size_kbytes;
++#if defined(STATS)
++static struct compcache_stats stats;
++#endif
++
++#if defined(STATS)
++static struct proc_dir_entry *proc;
++
++static int proc_compcache_read(char *page, char **start, off_t off,
++				int count, int *eof, void *data)
++{
++	int len;
++#if defined(STATS)
++	size_t succ_writes;
++	unsigned int good_compress_perc = 0, no_compress_perc = 0;
++#endif
++
++	if (off > 0) {
++		*eof = 1;
++		return 0;
++	}
++
++	len = sprintf(page,
++		"DiskSize:	%8zu kB\n",
++		compcache.size >> (10 - SECTOR_SHIFT));
++#if defined(STATS)
++	succ_writes = stats.num_writes - stats.failed_writes;
++	if (succ_writes) {
++		good_compress_perc = stats.good_compress * 100 / succ_writes;
++		no_compress_perc = stats.pages_expand * 100 / succ_writes;
++	}
++
++#define K(x)	((x) >> 10)
++	len += sprintf(page + len,
++		"NumReads:	%8u\n"
++		"NumWrites:	%8u\n"
++		"FailedReads:	%8u\n"
++		"FailedWrites:	%8u\n"
++		"InvalidIO:	%8u\n"
++		"GoodCompress:	%8u %%\n"
++		"NoCompress:	%8u %%\n"
++		"NotifyFree:	%8u\n"
++		"CurrentPages:	%8zu\n"
++		"CurrentMem:	%8zu kB\n"
++		"PeakMem:	%8zu kB\n",
++		stats.num_reads,
++		stats.num_writes,
++		stats.failed_reads,
++		stats.failed_writes,
++		stats.invalid_io,
++		good_compress_perc,
++		no_compress_perc,
++		stats.notify_free,
++		stats.curr_pages,
++		K(stats.curr_mem),
++		K(stats.peak_mem));
++#endif
++	return len;
++}
++#endif	/* STATS */
++
++/*
++ * callback function called when swap_map[offset] == 0
++ * i.e page at this swap offset is not longer used
++ */
++static void notify_swap_entry_free(unsigned long offset)
++{
++	stat_inc(stats.notify_free);
++
++	/* This page was never written to swap disk */
++	if (!compcache.table[offset].addr)
++		return;
++
++	tlsf_free(compcache.table[offset].addr, compcache.mem_pool);
++	stat_dec(stats.curr_pages);
++	stat_set(stats.curr_mem, stats.curr_mem	-
++			compcache.table[offset].len);
++	compcache.table[offset].addr = NULL;
++	compcache.table[offset].len = 0;
++}
++
++/* Check if request is within bounds and page aligned */
++static inline int valid_swap_request(struct bio *bio)
++{
++	if (unlikely((bio->bi_sector >= compcache.size) ||
++			(bio->bi_sector & (SECTORS_PER_PAGE - 1)) ||
++			(bio->bi_vcnt != 1) ||
++			(bio->bi_size != PAGE_SIZE) ||
++			(bio->bi_io_vec[0].bv_offset != 0)))
++		return 0;
++	return 1;
++}
++
++static int compcache_make_request(struct request_queue *queue, struct bio *bio)
++{
++	int ret;
++	size_t clen, page_no;
++	void *user_mem;
++	struct page *page;
++
++	if (!valid_swap_request(bio)) {
++		stat_inc(stats.invalid_io);
++		goto out_nomap;
++	}
++
++	page = bio->bi_io_vec[0].bv_page;
++	page_no = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
++
++	if (unlikely(!init_done)) {
++		if (PageSwapCache(page)) {
++			swp_entry_t entry = { .val = page_private(page) };
++			set_notify_swap_entry_free(swp_type(entry),
++					notify_swap_entry_free);
++			init_done = 1;
++		}
++	}
++
++	user_mem = kmap(page);
++
++	if (bio_data_dir(bio) == READ) {
++		stat_inc(stats.num_reads);
++		/*
++		 * This is attempt to read before any previous write
++		 * to this location. This happens due to readahead when
++		 * swap device is read from user-space (e.g. during swapon)
++		 */
++		if (unlikely(compcache.table[page_no].addr == NULL)) {
++			pr_debug("Read before write on swap device: "
++				"sector=%lu, size=%u, offset=%u\n",
++				(ulong)(bio->bi_sector),
++				bio->bi_size,
++				bio->bi_io_vec[0].bv_offset);
++			memset(user_mem, 0, PAGE_SIZE);
++			kunmap(page);
++			set_bit(BIO_UPTODATE, &bio->bi_flags);
++			bio_endio(bio, 0);
++			return 0;
++		}
++
++		/* Page is stored uncompressed since its incompressible */
++		if (unlikely(compcache.table[page_no].len == PAGE_SIZE)) {
++			memcpy(user_mem, compcache.table[page_no].addr,
++							PAGE_SIZE);
++			kunmap(page);
++			set_bit(BIO_UPTODATE, &bio->bi_flags);
++			bio_endio(bio, 0);
++			return 0;
++		}
++
++		clen = PAGE_SIZE;
++		ret = lzo1x_decompress_safe(
++			compcache.table[page_no].addr,
++			compcache.table[page_no].len,
++			user_mem,
++			&clen);
++
++		/* should NEVER happen */
++		if (unlikely(ret != LZO_E_OK)) {
++			pr_err(C "Decompression failed! "
++				"err=%d, page=%zu, len=%lu\n", ret, page_no,
++				compcache.table[page_no].len);
++			stat_inc(stats.failed_reads);
++			goto out;
++		}
++
++		kunmap(page);
++		set_bit(BIO_UPTODATE, &bio->bi_flags);
++		bio_endio(bio, 0);
++		return 0;
++	} else {	/* Write */
++		unsigned char *src = compcache.compress_buffer;
++		stat_inc(stats.num_writes);
++		/*
++		 * System swaps to same sector again when the stored page
++		 * is no longer referenced by any process. So, its now safe
++		 * to free the memory that was allocated for this page.
++		 */
++		if (compcache.table[page_no].addr) {
++			tlsf_free(compcache.table[page_no].addr,
++				compcache.mem_pool);
++			stat_dec(stats.curr_pages);
++			stat_set(stats.curr_mem, stats.curr_mem	-
++					compcache.table[page_no].len);
++			compcache.table[page_no].addr = NULL;
++			compcache.table[page_no].len = 0;
++		}
++
++		mutex_lock(&compcache.lock);
++		ret = lzo1x_1_compress(user_mem, PAGE_SIZE,
++			src, &clen, compcache.compress_workmem);
++		if (unlikely(ret != LZO_E_OK)) {
++			mutex_unlock(&compcache.lock);
++			pr_err(C "Compression failed! err=%d\n", ret);
++			compcache.table[page_no].addr = NULL;
++			compcache.table[page_no].len = 0;
++			stat_inc(stats.failed_writes);
++			goto out;
++		}
++
++		/* Page is incompressible - store it as is */
++		if (clen >= PAGE_SIZE) {
++			pr_debug("Page expand on compression: "
++				"page=%zu, size=%zu\n", page_no, clen);
++			clen = PAGE_SIZE;
++			src = user_mem;
++		}
++
++		if ((compcache.table[page_no].addr = tlsf_malloc(clen,
++					compcache.mem_pool)) == NULL) {
++			mutex_unlock(&compcache.lock);
++			pr_err(C "Error allocating memory for compressed "
++				"page: %zu, size=%zu \n", page_no, clen);
++			compcache.table[page_no].len = 0;
++			stat_inc(stats.failed_writes);
++			goto out;
++		}
++		
++		memcpy(compcache.table[page_no].addr, src, clen);
++
++		/* Update stats */
++		stat_inc(stats.curr_pages);
++		stat_set(stats.curr_mem, stats.curr_mem + clen);
++		stat_setmax(stats.peak_mem, stats.curr_mem);
++		stat_inc_if_less(stats.pages_expand, PAGE_SIZE - 1, clen);
++		stat_inc_if_less(stats.good_compress, clen,
++						PAGE_SIZE / 2 + 1);
++		mutex_unlock(&compcache.lock);
++		
++		compcache.table[page_no].len = clen;
++
++		kunmap(page);
++		set_bit(BIO_UPTODATE, &bio->bi_flags);
++		bio_endio(bio, 0);
++		return 0;
++	}
++out:
++	kunmap(page);
++out_nomap:
++	bio_io_error(bio);
++	return 0;
++}
++
++static void setup_swap_header(union swap_header *s)
++{
++	s->info.version = 1;
++	s->info.last_page = compcache.size >> SECTORS_PER_PAGE_SHIFT;
++	s->info.nr_badpages = 0;
++	memcpy(s->magic.magic, "SWAPSPACE2", 10);
++}
++
++static void *get_mem(size_t size)
++{
++	return __vmalloc(size, GFP_NOIO, PAGE_KERNEL);
++}
++
++static void put_mem(void *ptr)
++{
++	vfree(ptr);
++}
++
++static int __init compcache_init(void)
++{
++	int ret;
++	size_t num_pages;
++	struct sysinfo i;
++
++	mutex_init(&compcache.lock);
++
++	if (compcache_size_kbytes == 0) {
++		pr_info(C "compcache size not provided."
++			" Using default: (%u%% of Total RAM).\n"
++			"Use compcache_size_kbytes module param to specify"
++			" custom size\n", DEFAULT_COMPCACHE_PERCENT);
++		si_meminfo(&i);
++		compcache_size_kbytes = ((DEFAULT_COMPCACHE_PERCENT *
++				i.totalram) / 100) << (PAGE_SHIFT - 10);
++	}
++	
++	compcache.size = compcache_size_kbytes << 10;
++	compcache.size = (compcache.size + PAGE_SIZE - 1) & PAGE_MASK;
++	pr_info(C "Compressed swap size set to: %zu KB\n", compcache.size >> 10);
++	compcache.size >>= SECTOR_SHIFT;
++
++	compcache.compress_workmem = kmalloc(LZO1X_MEM_COMPRESS, GFP_KERNEL);
++	if (compcache.compress_workmem == NULL) {
++		pr_err(C "Error allocating compressor working memory\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	compcache.compress_buffer = kmalloc(2 * PAGE_SIZE, GFP_KERNEL);
++	if (compcache.compress_buffer == NULL) {
++		pr_err(C "Error allocating compressor buffer space\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	num_pages = compcache.size >> SECTORS_PER_PAGE_SHIFT;
++        compcache.table = vmalloc(num_pages * sizeof(*compcache.table));
++        if (compcache.table == NULL) {
++                pr_err(C "Error allocating compcache address table\n");
++                ret = -ENOMEM;
++                goto fail;
++        }
++        memset(compcache.table, 0, num_pages * sizeof(*compcache.table));
++
++	compcache.table[0].addr = (void *)get_zeroed_page(GFP_KERNEL);
++	if (compcache.table[0].addr == NULL) {
++		pr_err(C "Error allocating swap header page\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++	compcache.table[0].len = PAGE_SIZE;
++	setup_swap_header((union swap_header *)(compcache.table[0].addr));
++
++	compcache.disk = alloc_disk(1);
++	if (compcache.disk == NULL) {
++		pr_err(C "Error allocating disk structure\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++	compcache.disk->first_minor = 0;
++	compcache.disk->fops = &compcache_devops;
++	/*
++	 * It is named like this to prevent distro installers
++	 * from offering compcache as installation target. They
++	 * seem to ignore all devices beginning with 'ram'
++	 */
++	strcpy(compcache.disk->disk_name, "ramzswap0");
++
++	compcache.disk->major = register_blkdev(0, compcache.disk->disk_name);
++	if (compcache.disk->major < 0) {
++		pr_err(C "Cannot register block device\n");
++		ret = -EFAULT;
++		goto fail;
++	}
++
++	compcache.disk->queue = blk_alloc_queue(GFP_KERNEL);
++	if (compcache.disk->queue == NULL) {
++		pr_err(C "Cannot register disk queue\n");
++		ret = -EFAULT;
++		goto fail;
++	}
++
++	set_capacity(compcache.disk, compcache.size);
++	blk_queue_make_request(compcache.disk->queue, compcache_make_request);
++	blk_queue_hardsect_size(compcache.disk->queue, PAGE_SIZE);
++	add_disk(compcache.disk);
++
++	compcache.mem_pool = tlsf_create_memory_pool("compcache",
++				get_mem, put_mem,
++				INIT_SIZE_BYTES, 0, GROW_SIZE_BYTES);
++	if (compcache.mem_pool == NULL) {
++		pr_err(C "Error creating memory pool\n");
++		ret = -ENOMEM;
++		goto fail;
++	}
++
++#if defined(STATS)
++	proc = create_proc_entry("compcache", S_IRUGO, NULL);
++	if (proc)
++		proc->read_proc = &proc_compcache_read;
++	else {
++		ret = -ENOMEM;
++		pr_warning(C "Error creating proc entry\n");
++		goto fail;
++	}
++#endif
++
++	pr_debug(C "Initialization done!\n");
++	return 0;
++
++fail:
++	if (compcache.disk != NULL) {
++		if (compcache.disk->major > 0)
++			unregister_blkdev(compcache.disk->major,
++					compcache.disk->disk_name);
++		del_gendisk(compcache.disk);
++	}
++
++	free_page((unsigned long)compcache.table[0].addr);
++	kfree(compcache.compress_workmem);
++	kfree(compcache.compress_buffer);
++	vfree(compcache.table);
++	tlsf_destroy_memory_pool(compcache.mem_pool);
++#if defined(STATS)
++	if (proc)
++		remove_proc_entry("compcache", proc->parent);
++#endif
++	pr_err(C "Initialization failed: err=%d\n", ret);
++	return ret;
++}
++
++static void __exit compcache_exit(void)
++{
++	size_t i, num_pages;
++	num_pages = compcache.size >> SECTORS_PER_PAGE_SHIFT;
++
++	unregister_blkdev(compcache.disk->major, compcache.disk->disk_name);
++	del_gendisk(compcache.disk);
++	free_page((unsigned long)compcache.table[0].addr);
++	kfree(compcache.compress_workmem);
++	kfree(compcache.compress_buffer);
++
++	/* Free all pages that are still in compcache */
++	for (i = 1; i < num_pages; i++)
++		if (compcache.table[i].addr)
++			tlsf_free(compcache.table[i].addr, compcache.mem_pool);
++	vfree(compcache.table);
++	tlsf_destroy_memory_pool(compcache.mem_pool);
++
++#if defined(STATS)
++	remove_proc_entry("compcache", proc->parent);
++#endif
++	pr_debug("cleanup done!\n");
++}
++
++module_param(compcache_size_kbytes, ulong, 0);
++MODULE_PARM_DESC(compcache_size_kbytes, "compcache device size (in KB)");
++
++module_init(compcache_init);
++module_exit(compcache_exit);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Nitin Gupta <nitingupta910@gmail.com>");
++MODULE_DESCRIPTION("Compressed RAM Based Swap Device");
+diff --git a/drivers/block/compcache.h b/drivers/block/compcache.h
+new file mode 100644
+index 0000000..242d257
+--- /dev/null
++++ b/drivers/block/compcache.h
+@@ -0,0 +1,96 @@
++/*
++ * Compressed RAM based swap device
++ *
++ * (C) 2008 Nitin Gupta <nitingupta910@gmail.com>
++ *
++ * This RAM based block device acts as swap disk.
++ * Pages swapped to this device are compressed and
++ * stored in memory.
++ *
++ * Released under the terms of the GNU General Public
++ * License (version 2). See linux/COPYING for more information.
++ *
++ * Project home: http://code.google.com/p/compcache
++ */
++
++#ifndef _COMPCACHE_H_
++#define _COMPCACHE_H_
++
++#define SECTOR_SHIFT		9
++#define SECTOR_SIZE		(1 << SECTOR_SHIFT)
++#define SECTORS_PER_PAGE_SHIFT	(PAGE_SHIFT - SECTOR_SHIFT)
++#define SECTORS_PER_PAGE	(1 << SECTORS_PER_PAGE_SHIFT)
++
++/*-- Configurable parameters */
++/* Default compcache size: 25% of total RAM */
++#define DEFAULT_COMPCACHE_PERCENT	25
++#define INIT_SIZE_BYTES			(16 * 1024)
++#define GROW_SIZE_BYTES			INIT_SIZE_BYTES
++/*-- */
++
++/* Message prefix */
++#define C "compcache: "
++
++/* Debugging and Stats */
++#define NOP	do { } while(0)
++
++#if defined(CONFIG_BLK_DEV_COMPCACHE_DEBUG)
++#define DEBUG
++#endif
++
++#if defined(CONFIG_BLK_DEV_COMPCACHE_STATS)
++#define STATS
++#endif
++
++#if defined(STATS)
++#define stat_inc(stat)			(stat++)
++#define stat_dec(stat)			(stat--)
++#define stat_set(stat, val)		(stat = val)
++#define stat_setmax(stat, curr)		(stat = (curr) > stat ? (curr) : stat) 
++#define stat_inc_if_less(stat, val1, val2) \
++					(stat += ((val1) < (val2) ? 1 : 0))
++#else	/* STATS */
++#define stat_inc(x)			NOP
++#define stat_dec(x)			NOP
++#define stat_set(x, v)			NOP
++#define stat_setmax(x, v)		NOP
++#define stat_inc_if_less(x, v1, v2)	NOP
++#endif	/* STATS */
++
++/*-- Data structures */
++/* Indexed by page no. */
++struct table {
++	void *addr;
++	unsigned long len;
++};
++
++struct compcache {
++	void *mem_pool;
++	void *compress_workmem;
++	void *compress_buffer;
++	struct table *table;
++	struct mutex lock;
++	struct gendisk *disk;
++	size_t size;            /* In sectors */
++};
++
++#if defined(STATS)
++struct compcache_stats {
++	u32 num_reads;		/* failed + successful */
++	u32 num_writes;		/* --do-- */
++	u32 failed_reads;	/* can happen when memory is tooo low */
++	u32 failed_writes;	/* should NEVER! happen */
++	u32 invalid_io;		/* non-swap I/O requests */
++	u32 good_compress;	/* no. of pages with compression
++				 * ratio <= 50%. TODO: export full
++				 * compressed page size histogram */
++	u32 pages_expand;	/* no. of incompressible pages */
++	u32 notify_free;	/* count of swap entry free notifications */
++	size_t curr_pages;	/* current no. of compressed pages */
++	size_t curr_mem;	/* current total size of compressed pages */
++	size_t peak_mem;
++};
++#endif
++/*-- */
++
++#endif
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 0b33776..cd3e79b 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -149,6 +149,7 @@ struct swap_info_struct {
+ 	unsigned int max;
+ 	unsigned int inuse_pages;
+ 	int next;			/* next entry on swap list */
++	void (*notify_swap_entry_free_fn) (unsigned long);
+ };
+ 
+ struct swap_list_t {
+@@ -252,6 +253,7 @@ extern sector_t swapdev_block(int, pgoff_t);
+ extern struct swap_info_struct *get_swap_info_struct(unsigned);
+ extern int can_share_swap_page(struct page *);
+ extern int remove_exclusive_swap_page(struct page *);
++extern void set_notify_swap_entry_free(unsigned, void (*) (unsigned long));
+ struct backing_dev_info;
+ 
+ extern spinlock_t swap_lock;
+diff --git a/include/linux/tlsf.h b/include/linux/tlsf.h
+new file mode 100644
+index 0000000..bc224b5
+--- /dev/null
++++ b/include/linux/tlsf.h
+@@ -0,0 +1,93 @@
++/*
++ * Two Levels Segregate Fit memory allocator (TLSF)
++ * Version 2.3.2
++ *
++ * Written by Miguel Masmano Tello <mimastel@doctor.upv.es>
++ *
++ * Thanks to Ismael Ripoll for his suggestions and reviews
++ *
++ * Copyright (C) 2007, 2006, 2005, 2004
++ *
++ * This code is released using a dual license strategy: GPL/LGPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of the GNU General Public License Version 2.0
++ * Released under the terms of the GNU Lesser General Public License Version 2.1
++ *
++ * This is kernel port of TLSF allocator.
++ * Original code can be found at: http://rtportal.upv.es/rtmalloc/
++ * 	- Nitin Gupta (nitingupta910@gmail.com)
++ */
++
++#ifndef _TLSF_H_
++#define _TLSF_H_
++
++typedef void* (get_memory)(size_t bytes);
++typedef void (put_memory)(void *ptr);
++
++/**
++ * tlsf_create_memory_pool - create dynamic memory pool
++ * @name: name of the pool
++ * @get_mem: callback function used to expand pool
++ * @put_mem: callback function used to shrink pool
++ * @init_size: inital pool size (in bytes)
++ * @max_size: maximum pool size (in bytes) - set this as 0 for no limit
++ * @grow_size: amount of memory (in bytes) added to pool whenever required
++ *
++ * All size values are rounded up to next page boundary.
++ */
++extern void *tlsf_create_memory_pool(const char *name,
++					get_memory get_mem,
++					put_memory put_mem,
++					size_t init_size,
++					size_t max_size,
++					size_t grow_size);
++/**
++ * tlsf_destory_memory_pool - cleanup given pool
++ * @mem_pool: Pool to be destroyed
++ *
++ * Data structures associated with pool are freed.
++ * All memory allocated from pool must be freed before
++ * destorying it.
++ */
++extern void tlsf_destroy_memory_pool(void *mem_pool);
++
++/**
++ * tlsf_malloc - allocate memory from given pool
++ * @size: no. of bytes
++ * @mem_pool: pool to allocate from
++ */
++extern void *tlsf_malloc(size_t size, void *mem_pool);
++
++/**
++ * tlsf_calloc - allocate and zero-out memory from given pool
++ * @size: no. of bytes
++ * @mem_pool: pool to allocate from
++ */
++extern void *tlsf_calloc(size_t nelem, size_t elem_size, void *mem_pool);
++
++/**
++ * tlsf_free - free memory from given pool
++ * @ptr: address of memory to be freed
++ * @mem_pool: pool to free from
++ */
++extern void tlsf_free(void *ptr, void *mem_pool);
++
++/**
++ * tlsf_get_used_size - get memory currently used by given pool
++ *
++ * Used memory includes stored data + metadata + internal fragmentation
++ */
++extern size_t tlsf_get_used_size(void *mem_pool);
++
++/**
++ * tlsf_get_total_size - get total memory currently allocated for given pool
++ *
++ * This is the total memory currently allocated for this pool which includes
++ * used size + free size.
++ *
++ * (Total - Used) is good indicator of memory efficiency of allocator.
++ */
++extern size_t tlsf_get_total_size(void *mem_pool);
++
++#endif
+diff --git a/init/Kconfig b/init/Kconfig
+index 6199d11..92a0b8b 100644
+--- a/init/Kconfig
++++ b/init/Kconfig
+@@ -776,6 +776,34 @@ config SLOB
+ 
+ endchoice
+ 
++config TLSF
++	depends on EMBEDDED
++	tristate "TLSF Allocator"
++	help
++	  Two Level Segregate Fit Allocator. Its fast and gives low
++	  fragmentation. See:
++		http://rtportal.upv.es/rtmalloc/
++		http://code.google.com/p/compcache/wiki/TLSFAllocator
++	  for more information.
++
++config TLSF_DEBUG
++	default y
++	depends on TLSF
++	bool "Enable TLSF allocator debugging" if EMBEDDED
++	help
++	  Enable TLSF debugging.
++	  This causes negligible performance loss and size increase.
++	  If unusure, say Y. 
++
++config TLSF_STATS
++	default N
++	depends on TLSF
++	bool "Collect TLSF statistics" if EMBEDDED
++	help
++	  Creates /proc/tlsfinfo to export various tlsf statistics.
++	  This adds about 30K to size with significant performance loss.
++	  If unsure, say N.
++
+ config PROFILING
+ 	bool "Profiling support (EXPERIMENTAL)"
+ 	help
+diff --git a/mm/Makefile b/mm/Makefile
+index 18c143b..c69b9ba 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -27,6 +27,7 @@ obj-$(CONFIG_TINY_SHMEM) += tiny-shmem.o
+ obj-$(CONFIG_SLOB) += slob.o
+ obj-$(CONFIG_SLAB) += slab.o
+ obj-$(CONFIG_SLUB) += slub.o
++obj-$(CONFIG_TLSF) += tlsf.o
+ obj-$(CONFIG_MEMORY_HOTPLUG) += memory_hotplug.o
+ obj-$(CONFIG_FS_XIP) += filemap_xip.o
+ obj-$(CONFIG_MIGRATION) += migrate.o
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index bd1bb59..a770a55 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -285,6 +285,8 @@ static int swap_entry_free(struct swap_info_struct *p, unsigned long offset)
+ 				swap_list.next = p - swap_info;
+ 			nr_swap_pages++;
+ 			p->inuse_pages--;
++			if (p->notify_swap_entry_free_fn)
++				p->notify_swap_entry_free_fn(offset);
+ 		}
+ 	}
+ 	return count;
+@@ -1798,6 +1800,23 @@ get_swap_info_struct(unsigned type)
+ }
+ 
+ /*
++ * Sets callback for event when swap_map[offset] == 0
++ * i.e. page at this swap offset is not longer used.
++ *
++ * type: identifies swap file
++ * fn: callback function
++ */
++void set_notify_swap_entry_free(unsigned type, void (*fn) (unsigned long))
++{
++	struct swap_info_struct *sis;
++	sis = get_swap_info_struct(type);
++	BUG_ON(!sis);
++	sis->notify_swap_entry_free_fn = fn;
++	return;
++}
++EXPORT_SYMBOL(set_notify_swap_entry_free);
++
++/*
+  * swap_lock prevents swap_map being freed. Don't grab an extra
+  * reference on the swaphandle, it doesn't matter if it becomes unused.
+  */
+diff --git a/mm/tlsf.c b/mm/tlsf.c
+new file mode 100644
+index 0000000..5d87fa2
+--- /dev/null
++++ b/mm/tlsf.c
+@@ -0,0 +1,676 @@
++/*
++ * Two Levels Segregate Fit memory allocator (TLSF)
++ * Version 2.3.2
++ *
++ * Written by Miguel Masmano Tello <mimastel@doctor.upv.es>
++ *
++ * Thanks to Ismael Ripoll for his suggestions and reviews
++ *
++ * Copyright (C) 2007, 2006, 2005, 2004
++ *
++ * This code is released using a dual license strategy: GPL/LGPL
++ * You can choose the licence that better fits your requirements.
++ *
++ * Released under the terms of the GNU General Public License Version 2.0
++ * Released under the terms of the GNU Lesser General Public License Version 2.1
++ *
++ * This is kernel port of TLSF allocator.
++ * Original code can be found at: http://rtportal.upv.es/rtmalloc/
++ * 	- Nitin Gupta (nitingupta910@gmail.com)
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/list.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/string.h>
++#include <linux/tlsf.h>
++
++#include "tlsf_int.h"
++
++static spinlock_t pool_list_lock;
++static struct list_head pool_list_head;
++
++#if defined(CONFIG_TLSF_STATS)
++static struct proc_dir_entry *proc;
++
++/* Print in format similar to /proc/slabinfo -- easy to awk */
++static void print_tlsfinfo_header(struct seq_file *tlsf)
++{
++	seq_puts(tlsf, "# Size in kB\n");
++	seq_puts(tlsf, "# name         <init_size> <max_size> <grow_size>"
++			" <used_size> <total_size> <extra>");
++#if defined(CONFIG_TLSF_STATS)
++	seq_puts(tlsf, " <peak_used> <peak_total> <peak_extra>"
++		" <count_alloc> <count_free> <count_region_alloc>"
++		" <count_region_free> <failed_alloc>");
++#endif
++#if defined(CONFIG_TLSF_DEBUG)
++	seq_puts(tlsf, " <valid>");
++#endif
++
++	seq_putc(tlsf, '\n');
++}
++
++/* Get pool no. (*pos) from pool list */
++static void *tlsf_start(struct seq_file *tlsf, loff_t *pos)
++{
++	struct list_head *lp;
++	loff_t p = *pos;
++
++	spin_lock(&pool_list_lock);
++	if (!p)
++		return SEQ_START_TOKEN;
++
++	list_for_each(lp, &pool_list_head) {
++		if (!--p)
++			return lp;
++	}
++
++	return NULL;
++}
++
++/* Get pool next to the one given by tlsf_start()/previous tlsf_next() */
++static void *tlsf_next(struct seq_file *tlsf, void *v, loff_t *pos)
++{
++	struct list_head *lp;
++
++	if (v == SEQ_START_TOKEN)
++		lp = &pool_list_head;
++	else
++		lp = v;
++
++	lp = lp->next;
++	if (lp == &pool_list_head)
++		return NULL;
++
++	++*pos;
++	return lp;
++}
++
++static void tlsf_stop(struct seq_file *tlsf, void *v)
++{
++	spin_unlock(&pool_list_lock);
++}
++
++/* Display stats for pool given by tlsf_next() */
++static int tlsf_show(struct seq_file *tlsf, void *v)
++{
++	struct pool *pool;
++	size_t used, total;
++	if (v == SEQ_START_TOKEN) {
++		print_tlsfinfo_header(tlsf);
++		return 0;
++	}
++
++	pool = list_entry(v, struct pool, list);
++	used = tlsf_get_used_size(pool);
++	total = tlsf_get_total_size(pool);
++#define K(x)	((x) >> 10)
++	seq_printf(tlsf, "%-16s %6zu %6zu %6zu %6zu %6zu %6zu",
++			pool->name,
++			K(pool->init_size),
++			K(pool->max_size),
++			K(pool->grow_size),
++			K(used),
++			K(total),
++			K(total - used));
++
++#if defined(CONFIG_TLSF_STATS)
++	seq_printf(tlsf, " %6zu %6zu %6zu %6zu %6zu %6zu %6zu %6zu",
++			K(pool->peak_used),
++			K(pool->peak_total),
++			K(pool->peak_extra),
++			pool->count_alloc,
++			pool->count_free,
++			pool->count_region_alloc,
++			pool->count_region_free,
++			pool->count_failed_alloc);
++#endif
++
++#if defined(CONFIG_TLSF_DEBUG)
++	seq_printf(tlsf, " %u", pool->valid);
++#endif
++
++	seq_putc(tlsf, '\n');
++	return 0;
++}
++
++static struct seq_operations tlsfinfo_op = {
++	.start = tlsf_start,
++	.next = tlsf_next,
++	.stop = tlsf_stop,
++	.show = tlsf_show,
++};
++
++static int tlsfinfo_open(struct inode *inode, struct file *file)
++{
++	return seq_open(file, &tlsfinfo_op);
++}
++
++static const struct file_operations proc_tlsfinfo_operations = {
++	.open		= tlsfinfo_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= seq_release,
++};
++#endif	/* CONFIG_TLSF_STATS */
++
++/*
++ * Helping functions
++ */
++
++/**
++ * Returns indexes (fl, sl) of the list used to serve request of size r
++ */
++static inline void MAPPING_SEARCH(size_t *r, int *fl, int *sl)
++{
++	int t;
++
++	if (*r < SMALL_BLOCK) {
++		*fl = 0;
++		*sl = *r / (SMALL_BLOCK / MAX_SLI);
++	} else {
++		t = (1 << (fls(*r) - 1 - MAX_LOG2_SLI)) - 1;
++		*r = *r + t;
++		*fl = fls(*r) - 1;
++		*sl = (*r >> (*fl - MAX_LOG2_SLI)) - MAX_SLI;
++		*fl -= FLI_OFFSET;
++		/*if ((*fl -= FLI_OFFSET) < 0) // FL will be always >0!
++		 *fl = *sl = 0;
++		 */
++		*r &= ~t;
++	}
++}
++
++/**
++ * Returns indexes (fl, sl) which is used as starting point to search
++ * for a block of size r. It also rounds up requested size(r) to the
++ * next list.
++ */
++static inline void MAPPING_INSERT(size_t r, int *fl, int *sl)
++{
++	if (r < SMALL_BLOCK) {
++		*fl = 0;
++		*sl = r / (SMALL_BLOCK / MAX_SLI);
++	} else {
++		*fl = fls(r) - 1;
++		*sl = (r >> (*fl - MAX_LOG2_SLI)) - MAX_SLI;
++		*fl -= FLI_OFFSET;
++	}
++}
++
++/**
++ * Returns first block from a list that hold blocks larger than or
++ * equal to the one pointed by the indexes (fl, sl)
++ */
++static inline struct bhdr *FIND_SUITABLE_BLOCK(struct pool *p, int *fl,
++						int *sl)
++{
++	u32 tmp = p->sl_bitmap[*fl] & (~0 << *sl);
++	struct bhdr *b = NULL;
++
++	if (tmp) {
++		*sl = ffs(tmp) - 1;
++		b = p->matrix[*fl][*sl];
++	} else {
++		*fl = ffs(p->fl_bitmap & (~0 << (*fl + 1))) - 1;
++		if (*fl > 0) {		/* likely */
++			*sl = ffs(p->sl_bitmap[*fl]) - 1;
++			b = p->matrix[*fl][*sl];
++		}
++	}
++	return b;
++}
++
++/**
++ * Remove first free block(b) from free list with indexes (fl, sl).
++ */
++static inline void EXTRACT_BLOCK_HDR(struct bhdr *b, struct pool *p, int fl,
++					int sl)
++{
++	p->matrix[fl][sl] = b->ptr.free_ptr.next;
++	if (p->matrix[fl][sl])
++		p->matrix[fl][sl]->ptr.free_ptr.prev = NULL;
++	else {
++		clear_bit(sl, (void *)&p->sl_bitmap[fl]);
++		if(!p->sl_bitmap[fl])
++			clear_bit (fl, (void *)&p->fl_bitmap);
++	}
++	b->ptr.free_ptr = (struct free_ptr) {NULL, NULL};
++}
++
++/**
++ * Removes block(b) from free list with indexes (fl, sl)
++ */
++static inline void EXTRACT_BLOCK(struct bhdr *b, struct pool *p, int fl,
++					int sl)
++{
++	if (b->ptr.free_ptr.next)
++		b->ptr.free_ptr.next->ptr.free_ptr.prev =
++					b->ptr.free_ptr.prev;
++	if (b->ptr.free_ptr.prev)
++		b->ptr.free_ptr.prev->ptr.free_ptr.next =
++					b->ptr.free_ptr.next;
++	if (p->matrix[fl][sl] == b) {
++		p->matrix[fl][sl] = b->ptr.free_ptr.next;
++		if (!p->matrix[fl][sl]) {
++			clear_bit(sl, (void *)&p->sl_bitmap[fl]);
++			if (!p->sl_bitmap[fl])
++				clear_bit (fl, (void *)&p->fl_bitmap);
++		}
++	}
++	b->ptr.free_ptr = (struct free_ptr) {NULL, NULL};
++}
++
++/**
++ * Insert block(b) in free list with indexes (fl, sl)
++ */
++static inline void INSERT_BLOCK(struct bhdr *b, struct pool *p, int fl, int sl)
++{
++	b->ptr.free_ptr = (struct free_ptr) {NULL, p->matrix[fl][sl]};
++	if (p->matrix[fl][sl])
++		p->matrix[fl][sl]->ptr.free_ptr.prev = b;
++	p->matrix[fl][sl] = b;
++	set_bit(sl, (void *)&p->sl_bitmap[fl]);
++	set_bit(fl, (void *)&p->fl_bitmap);
++}
++
++/**
++ * Region is a virtually contiguous memory region and Pool is
++ * collection of such regions
++ */
++static inline void ADD_REGION(void *region, size_t region_size,
++					struct pool *pool)
++{
++	int fl, sl;
++	struct bhdr *b, *lb;
++
++	b = (struct bhdr *)(region);
++	b->prev_hdr = NULL;
++	b->size = ROUNDDOWN_SIZE(region_size - 2 * BHDR_OVERHEAD)
++						| FREE_BLOCK | PREV_USED;
++	MAPPING_INSERT(b->size & BLOCK_SIZE_MASK, &fl, &sl);
++	INSERT_BLOCK(b, pool, fl, sl);
++	/* The sentinel block: allows us to know when we're in the last block */
++	lb = GET_NEXT_BLOCK(b->ptr.buffer, b->size & BLOCK_SIZE_MASK);
++	lb->prev_hdr = b;
++	lb->size = 0 | USED_BLOCK | PREV_FREE;
++	pool->used_size += BHDR_OVERHEAD; /* only sentinel block is "used" */
++	pool->num_regions++;
++	stat_inc(pool->count_region_alloc);
++}
++
++/*
++ * Allocator code start
++ */
++
++/**
++ * tlsf_create_memory_pool - create dynamic memory pool
++ * @name: name of the pool
++ * @get_mem: callback function used to expand pool
++ * @put_mem: callback function used to shrink pool
++ * @init_size: inital pool size (in bytes)
++ * @max_size: maximum pool size (in bytes) - set this as 0 for no limit
++ * @grow_size: amount of memory (in bytes) added to pool whenever required
++ *
++ * All size values are rounded up to next page boundary.
++ */
++void *tlsf_create_memory_pool(const char *name,
++			get_memory get_mem,
++			put_memory put_mem,
++			size_t init_size,
++			size_t max_size,
++			size_t grow_size)
++{
++	struct pool *pool;
++	void *region;
++#if defined(CONFIG_TLSF_STATS)
++	size_t used, total;
++#endif
++
++	if (max_size)	
++		BUG_ON(max_size < init_size);
++
++	pool = get_mem(ROUNDUP_SIZE(sizeof(*pool)));
++	if (pool == NULL)
++		goto out;
++	memset(pool, 0, ROUNDUP_SIZE(sizeof(*pool)));
++
++	/* Round to next page boundary */
++	init_size = ROUNDUP_PAGE(init_size);
++	max_size = ROUNDUP_PAGE(max_size);
++	grow_size = ROUNDUP_PAGE(grow_size);
++	pr_info(T "pool: %p, init_size=%zu, max_size=%zu, grow_size=%zu\n",
++			pool, init_size, max_size, grow_size);
++
++	/* pool global overhead not included in used size */
++	pool->used_size = 0;
++
++	pool->init_size = init_size;
++	pool->max_size = max_size;
++	pool->grow_size = grow_size;
++	pool->get_mem = get_mem;
++	pool->put_mem = put_mem;
++	strncpy(pool->name, name, MAX_POOL_NAME_LEN);
++	pool->name[MAX_POOL_NAME_LEN - 1] = '\0';
++#if defined(CONFIG_TLSF_DEBUG)
++	pool->valid = 1;
++#endif
++	region = get_mem(init_size);
++	if (region == NULL)
++		goto out_region;
++	ADD_REGION(region, init_size, pool);
++	pool->init_region = region;
++
++	spin_lock_init(&pool->lock);
++
++	spin_lock(&pool_list_lock);
++	list_add_tail(&pool->list, &pool_list_head);
++	spin_unlock(&pool_list_lock);
++
++	/* Pool created: update stats */
++	stat_set(used, tlsf_get_used_size(pool));
++	stat_set(total, tlsf_get_total_size(pool));
++	stat_inc(pool->count_alloc);
++	stat_setmax(pool->peak_extra, total - used);
++	stat_setmax(pool->peak_used, used);
++	stat_setmax(pool->peak_total, total);
++
++	return pool;
++
++out_region:
++	put_mem(pool);
++
++out:
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(tlsf_create_memory_pool);
++
++/**
++ * tlsf_get_used_size - get memory currently used by given pool
++ *
++ * Used memory includes stored data + metadata + internal fragmentation
++ */
++size_t tlsf_get_used_size(void *mem_pool)
++{
++	struct pool *pool = (struct pool *)mem_pool;
++	return pool->used_size;
++}
++EXPORT_SYMBOL_GPL(tlsf_get_used_size);
++
++/**
++ * tlsf_get_total_size - get total memory currently allocated for given pool
++ *
++ * This is the total memory currently allocated for this pool which includes
++ * used size + free size.
++ *
++ * (Total - Used) is good indicator of memory efficiency of allocator.
++ */
++size_t tlsf_get_total_size(void *mem_pool)
++{
++	size_t total;
++	struct pool *pool = (struct pool *)mem_pool;
++	total = ROUNDUP_SIZE(sizeof(*pool))
++		+ pool->init_size
++		+ (pool->num_regions - 1) * pool->grow_size;
++	return total;
++}
++EXPORT_SYMBOL_GPL(tlsf_get_total_size);
++
++/**
++ * tlsf_destory_memory_pool - cleanup given pool
++ * @mem_pool: Pool to be destroyed
++ *
++ * Data structures associated with pool are freed.
++ * All memory allocated from pool must be freed before
++ * destorying it.
++ */
++void tlsf_destroy_memory_pool(void *mem_pool) 
++{
++	struct pool *pool;
++
++	if (mem_pool == NULL)
++		return;
++
++	pool = (struct pool *)mem_pool;
++
++	/* User is destorying without ever allocating from this pool */
++	if (tlsf_get_used_size(pool) == BHDR_OVERHEAD) {
++		pool->put_mem(pool->init_region);
++		pool->used_size -= BHDR_OVERHEAD;
++		stat_inc(pool->count_region_free);
++	}
++
++	/* Check for memory leaks in this pool */
++	if (tlsf_get_used_size(pool)) {
++		pr_warning(T "memory leak in pool: %s (%p). "
++			"%zu bytes still in use.\n",
++			pool->name, pool, tlsf_get_used_size(pool));
++
++#if defined(CONFIG_TLSF_DEBUG)
++		pool->valid = 0;
++		/* Invalid pools stay in list for debugging purpose */
++		return;
++#endif
++	}
++	spin_lock(&pool_list_lock);
++	list_del_init(&pool->list);
++	spin_unlock(&pool_list_lock);
++	pool->put_mem(pool);
++}
++EXPORT_SYMBOL_GPL(tlsf_destroy_memory_pool);
++
++/**
++ * tlsf_malloc - allocate memory from given pool
++ * @size: no. of bytes
++ * @mem_pool: pool to allocate from
++ */
++void *tlsf_malloc(size_t size, void *mem_pool)
++{
++	struct pool *pool = (struct pool *)mem_pool;
++	struct bhdr *b, *b2, *next_b, *region;
++	int fl, sl;
++	size_t tmp_size;
++#if defined(CONFIG_TLSF_STATS)
++	size_t used, total;
++#endif
++
++#if defined(CONFIG_TLSF_DEBUG)
++	unsigned int retries = 0;
++#endif
++
++	size = (size < MIN_BLOCK_SIZE) ? MIN_BLOCK_SIZE : ROUNDUP_SIZE(size);
++	/* Rounding up the requested size and calculating fl and sl */
++
++	spin_lock(&pool->lock);
++retry_find:
++	MAPPING_SEARCH(&size, &fl, &sl);
++
++	/* Searching a free block */
++	if (!(b = FIND_SUITABLE_BLOCK(pool, &fl, &sl))) {
++#if defined(CONFIG_TLSF_DEBUG)
++		/*
++		 * This can happen if there are too many users
++		 * allocating from this pool simultaneously.
++		 */
++		if (unlikely(retries == MAX_RETRY_EXPAND))
++			goto out_locked;
++		retries++;
++#endif
++		/* Not found */
++		if (size > (pool->grow_size - 2 * BHDR_OVERHEAD))
++			goto out_locked;
++		if (pool->max_size && (pool->init_size +
++				pool->num_regions * pool->grow_size
++				> pool->max_size))
++			goto out_locked;
++		spin_unlock(&pool->lock);
++		if ((region = pool->get_mem(pool->grow_size)) == NULL)
++			goto out;
++		spin_lock(&pool->lock);
++		ADD_REGION(region, pool->grow_size, pool);
++		goto retry_find;
++	}
++	EXTRACT_BLOCK_HDR(b, pool, fl, sl);
++
++	/*-- found: */
++	next_b = GET_NEXT_BLOCK(b->ptr.buffer, b->size & BLOCK_SIZE_MASK);
++	/* Should the block be split? */
++	tmp_size = (b->size & BLOCK_SIZE_MASK) - size;
++	if (tmp_size >= sizeof(struct bhdr) ) {
++		tmp_size -= BHDR_OVERHEAD;
++		b2 = GET_NEXT_BLOCK(b->ptr.buffer, size);
++
++		b2->size = tmp_size | FREE_BLOCK | PREV_USED;
++		b2->prev_hdr = b;
++
++		next_b->prev_hdr = b2;
++
++		MAPPING_INSERT(tmp_size, &fl, &sl);
++		INSERT_BLOCK(b2, pool, fl, sl);
++
++		b->size = size | (b->size & PREV_STATE);
++	} else {
++		next_b->size &= (~PREV_FREE);
++		b->size &= (~FREE_BLOCK);	/* Now it's used */
++	}
++
++	pool->used_size += (b->size & BLOCK_SIZE_MASK) + BHDR_OVERHEAD;
++
++	/* Successful alloc: update stats. */
++	stat_set(used, tlsf_get_used_size(pool));
++	stat_set(total, tlsf_get_total_size(pool));
++	stat_inc(pool->count_alloc);
++	stat_setmax(pool->peak_extra, total - used);
++	stat_setmax(pool->peak_used, used);
++	stat_setmax(pool->peak_total, total);
++
++	spin_unlock(&pool->lock);
++	return (void *)b->ptr.buffer;
++
++	/* Failed alloc */
++out_locked:
++	spin_unlock(&pool->lock);
++
++out:
++	stat_inc(pool->count_failed_alloc);
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(tlsf_malloc);
++
++/**
++ * tlsf_free - free memory from given pool
++ * @ptr: address of memory to be freed
++ * @mem_pool: pool to free from
++ */
++void tlsf_free(void *ptr, void *mem_pool)
++{
++	struct pool *pool = (struct pool *)mem_pool;
++	struct bhdr *b, *tmp_b;
++	int fl = 0, sl = 0;
++#if defined(CONFIG_TLSF_STATS)
++	size_t used, total;
++#endif
++	if (unlikely(ptr == NULL))
++		return;
++
++	b = (struct bhdr *) ((char *) ptr - BHDR_OVERHEAD);
++
++	spin_lock(&pool->lock);
++	b->size |= FREE_BLOCK;
++	pool->used_size -= (b->size & BLOCK_SIZE_MASK) + BHDR_OVERHEAD;
++	b->ptr.free_ptr = (struct free_ptr) { NULL, NULL};
++	tmp_b = GET_NEXT_BLOCK(b->ptr.buffer, b->size & BLOCK_SIZE_MASK);
++	if (tmp_b->size & FREE_BLOCK) {
++		MAPPING_INSERT(tmp_b->size & BLOCK_SIZE_MASK, &fl, &sl);
++		EXTRACT_BLOCK(tmp_b, pool, fl, sl);
++		b->size += (tmp_b->size & BLOCK_SIZE_MASK) + BHDR_OVERHEAD;
++	}
++	if (b->size & PREV_FREE) {
++		tmp_b = b->prev_hdr;
++		MAPPING_INSERT(tmp_b->size & BLOCK_SIZE_MASK, &fl, &sl);
++		EXTRACT_BLOCK(tmp_b, pool, fl, sl);
++		tmp_b->size += (b->size & BLOCK_SIZE_MASK) + BHDR_OVERHEAD;
++		b = tmp_b;
++	}
++	tmp_b = GET_NEXT_BLOCK(b->ptr.buffer, b->size & BLOCK_SIZE_MASK);
++	tmp_b->prev_hdr = b;
++
++	MAPPING_INSERT(b->size & BLOCK_SIZE_MASK, &fl, &sl);
++
++	if ((b->prev_hdr == NULL) && ((tmp_b->size & BLOCK_SIZE_MASK) == 0)) {
++		pool->put_mem(b);
++		pool->num_regions--;
++		pool->used_size -= BHDR_OVERHEAD; /* sentinel block header */
++		stat_inc(pool->count_region_free);
++		goto out;
++	}
++	
++	INSERT_BLOCK(b, pool, fl, sl);
++
++	tmp_b->size |= PREV_FREE;
++	tmp_b->prev_hdr = b;
++out:
++	/* Update stats */
++	stat_set(used, tlsf_get_used_size(pool));
++	stat_set(total, tlsf_get_total_size(pool));
++	stat_inc(pool->count_free);
++	stat_setmax(pool->peak_extra, total - used);
++	stat_setmax(pool->peak_used, used);
++	stat_setmax(pool->peak_total, total);
++
++	spin_unlock(&pool->lock);
++}
++EXPORT_SYMBOL_GPL(tlsf_free);
++
++/**
++ * tlsf_calloc - allocate and zero-out memory from given pool
++ * @size: no. of bytes
++ * @mem_pool: pool to allocate from
++ */
++void *tlsf_calloc(size_t nelem, size_t elem_size, void *mem_pool)
++{
++	void *ptr;
++
++	if (nelem == 0 || elem_size == 0)
++		return NULL;
++
++	if ((ptr = tlsf_malloc(nelem * elem_size, mem_pool)) == NULL)
++		return NULL;
++	memset(ptr, 0, nelem * elem_size);
++
++	return ptr;
++}
++EXPORT_SYMBOL_GPL(tlsf_calloc);
++
++static int __init tlsf_init(void)
++{
++	INIT_LIST_HEAD(&pool_list_head);
++	spin_lock_init(&pool_list_lock);
++#if defined(CONFIG_TLSF_STATS)
++	proc = create_proc_entry("tlsfinfo", S_IRUGO, NULL);
++	if (proc)
++		proc->proc_fops = &proc_tlsfinfo_operations;
++	else
++		pr_warning(T "error creating proc entry\n");
++#endif
++	return 0;
++}
++
++static void __exit tlsf_exit(void)
++{
++#if defined(CONFIG_TLSF_STATS)
++	if (proc)
++		remove_proc_entry("tlsfinfo", &proc_root);
++#endif
++	return;
++}
++
++module_init(tlsf_init);
++module_exit(tlsf_exit);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Nitin Gupta <nitingupta910@gmail.com>");
++MODULE_DESCRIPTION("TLSF Memory Allocator");
+diff --git a/mm/tlsf_int.h b/mm/tlsf_int.h
+new file mode 100644
+index 0000000..b887355
+--- /dev/null
++++ b/mm/tlsf_int.h
+@@ -0,0 +1,145 @@
++/*
++ * To be used internally by TLSF allocator.
++ */
++
++#ifndef _TLSF_INT_H_
++#define _TLSF_INT_H_
++
++#include <linux/tlsf.h>
++#include <asm/types.h>
++
++/* Debugging and Stats */
++#define NOP	do { } while(0)
++
++#if defined(CONFIG_TLSF_STATS)
++#define stat_inc(stat)		(stat++)
++#define stat_set(stat, val)	(stat = val)
++#define stat_setmax(stat, curr)	(stat = (curr) > stat ? (curr) : stat) 
++
++#else	/* STATS */
++#define stat_inc(x)		NOP
++#define stat_dec(x)		NOP
++#define stat_set(x, v)		NOP
++#define stat_setmax(x, v)	NOP
++#endif	/* STATS */
++
++/* Messsage prefix */
++#define T "TLSF: "
++
++#define MAX_POOL_NAME_LEN	16
++
++/*-- TLSF structures */
++
++/* Some IMPORTANT TLSF parameters */
++#define MEM_ALIGN	(sizeof(void *) * 2)
++#define MEM_ALIGN_MASK	(~(MEM_ALIGN - 1))
++
++#define MAX_FLI		(30)
++#define MAX_LOG2_SLI	(5)
++#define MAX_SLI		(1 << MAX_LOG2_SLI)
++
++#define FLI_OFFSET	(6)
++/* tlsf structure just will manage blocks bigger than 128 bytes */
++#define SMALL_BLOCK	(128)
++#define REAL_FLI	(MAX_FLI - FLI_OFFSET)
++#define MIN_BLOCK_SIZE	(sizeof(struct free_ptr))
++#define BHDR_OVERHEAD	(sizeof(struct bhdr) - MIN_BLOCK_SIZE)
++
++#define	PTR_MASK	(sizeof(void *) - 1)
++#define BLOCK_SIZE_MASK	(0xFFFFFFFF - PTR_MASK)
++
++#define GET_NEXT_BLOCK(addr, r)	((struct bhdr *) \
++				((char *)(addr) + (r)))
++#define ROUNDUP_SIZE(r)		(((r) + MEM_ALIGN - 1) & MEM_ALIGN_MASK)
++#define ROUNDDOWN_SIZE(r)	((r) & MEM_ALIGN_MASK)
++#define ROUNDUP_PAGE(r)		(((r) + PAGE_SIZE - 1) & PAGE_MASK)
++
++#define BLOCK_STATE	(0x1)
++#define PREV_STATE	(0x2)
++
++/* bit 0 of the block size */
++#define FREE_BLOCK	(0x1)
++#define USED_BLOCK	(0x0)
++
++/* bit 1 of the block size */
++#define PREV_FREE	(0x2)
++#define PREV_USED	(0x0)
++
++#if defined(CONFIG_TLSF_DEBUG)
++#define MAX_RETRY_EXPAND	10
++#endif
++
++struct free_ptr {
++	struct bhdr *prev;
++	struct bhdr *next;
++};
++
++struct bhdr {
++	/* All blocks in a region are linked in order of physical address */
++	struct bhdr *prev_hdr;
++	/*
++	 * The size is stored in bytes
++	 * 	bit 0: block is free, if set
++	 * 	bit 1: previous block is free, if set
++	 */
++	u32 size;
++	/* Free blocks in individual freelists are linked */
++	union {
++		struct free_ptr free_ptr;
++		u8 buffer[sizeof(struct free_ptr)];
++	} ptr;
++};
++
++struct pool {
++	/* First level bitmap (REAL_FLI bits) */
++	u32 fl_bitmap;
++
++	/* Second level bitmap */
++	u32 sl_bitmap[REAL_FLI];
++
++	/* Free lists */
++	struct bhdr *matrix[REAL_FLI][MAX_SLI];
++
++	spinlock_t lock;
++
++	size_t init_size;
++	size_t max_size;
++	size_t grow_size;
++
++	/* Basic stats */
++	size_t used_size;
++	size_t num_regions;
++
++	/* User provided functions for expanding/shrinking pool */
++	get_memory *get_mem;
++	put_memory *put_mem;
++
++	struct list_head list;
++
++#if defined(CONFIG_TLSF_STATS)
++	/* Extra stats */
++	size_t peak_used;
++	size_t peak_total;
++	size_t peak_extra;	/* MAX(Total - Used) */
++	size_t count_alloc;
++	size_t count_free;
++	size_t count_region_alloc;
++	size_t count_region_free;
++	size_t count_failed_alloc;
++#endif
++
++#if defined(CONFIG_TLSF_DEBUG)
++	/*
++	 * Pool used size must be 0 when its destroyed.
++	 * When non-empty pool is destroyed, it suggests
++	 * memory leak. Such pools are marked invalid
++	 * and kept in pool list for later debugging.
++	 */
++	unsigned int valid;
++#endif
++	void *init_region;
++	char name[MAX_POOL_NAME_LEN];
++};
++/*-- TLSF structures end */
++
++#endif

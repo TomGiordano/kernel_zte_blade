@@ -1,0 +1,39 @@
+
+Code contributions:
+
+(Feb 17 2008) Nitin Gupta <nitingupta910@gmail.com>
+ - Ported to Linux kernel.
+ - A "pool" is now a collection of contiguous memory regions.
+ - Pool can dynamically grow and shrink.
+ - Above chages required changes to TLSF interface for creating
+   new memory pool.
+ - Removed realloc(): No immediate requirement.
+ - Other misc changes.
+
+(Jul 28 2007) Herman ten Brugge <hermantenbrugge@home.nl>:
+
+ - Add 64 bit support. It now runs on x86_64 and solaris64.
+ - I also tested this on vxworks/32and solaris/32 and i386/32 processors.
+ - Remove assembly code. I could not measure any performance difference
+   on my core2 processor. This also makes the code more portable.
+ - Moved defines/typedefs from tlsf.h to tlsf.c
+ - Changed MIN_BLOCK_SIZE to sizeof (free_ptr_t) and BHDR_OVERHEAD to
+   (sizeof (bhdr_t) - MIN_BLOCK_SIZE). This does not change the fact
+    that the minumum size is still sizeof
+   (bhdr_t).
+ - Changed all C++ comment style to C style. (// -> /.
+ - Used ls_bit instead of ffs and ms_bit instead of fls. I did this to
+   avoid confusion with the standard ffs function which returns
+   different values.
+ - Created set_bit/clear_bit fuctions because they are not present
+   on x86_64.
+ - Added locking support + extra file target.h to show how to use it.
+ - Added get_used_size function
+ - Added rtl_realloc and rtl_calloc function
+ - Implemented realloc clever support.
+ - Added some test code in the example directory.
+
+
+(Oct 23 2006) Adam Scislowicz:
+
+ - Support for ARMv5 implemented

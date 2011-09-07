@@ -1,0 +1,22 @@
+global time
+global time_aggr
+
+
+probe begin {
+	print("# lzo probe begin\n")
+}
+
+probe end {
+	print("# lzo probe end\n")
+}
+
+probe module("lzo_compress").function("lzo1x_1_compress") {
+	time[tid()] = gettimeofday_ns()
+}
+
+probe module("lzo_compress").function("lzo1x_1_compress").return {
+	//printf("%d\n", gettimeofday_ns() - time[tid()])
+	time_aggr <<< (gettimeofday_ns() - time[tid()])
+	delete time[tid()]
+}
+

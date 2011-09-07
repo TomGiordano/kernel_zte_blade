@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "mainline"
+git pull
+
+echo "linux-next"
+git fetch -v linux-next
+git fetch --tags linux-next
+
+echo "mmotm"
+git fetch -v mmotm
+git fetch --tags mmotm
