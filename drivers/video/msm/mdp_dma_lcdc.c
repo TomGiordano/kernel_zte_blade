@@ -37,7 +37,7 @@
 #include "mdp.h"
 #include "msm_fb.h"
 #include "mdp4.h"
-#if (defined CONFIG_FB_MSM_LCDC_OLED_WVGA)||(defined CONFIG_FB_MSM_LCDC_SKATE_WVGA)   //ZTE_LCD_LHT_20100810_001
+#if (defined CONFIG_FB_MSM_LCDC_OLED_WVGA)||(defined CONFIG_FB_MSM_LCDC_SKATE_WVGA)||(defined CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA)   //ZTE_LCD_LHT_20100810_001
 extern void lcdc_lead_sleep(void);
 extern void lcdc_truly_sleep(void);
 extern u32 LcdPanleID;
@@ -330,6 +330,12 @@ int mdp_lcdc_off(struct platform_device *pdev)
 	if(LcdPanleID==60)
 		lcdc_lead_sleep();
 	if(LcdPanleID==61)
+		lcdc_truly_sleep();
+#endif
+#ifdef CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA    //ZTE_LCD_LHT_20100810_001
+	if(LcdPanleID==42)
+		lcdc_lead_sleep();
+	if(LcdPanleID==41)
 		lcdc_truly_sleep();
 #endif
 

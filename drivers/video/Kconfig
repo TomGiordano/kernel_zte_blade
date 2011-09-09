@@ -2390,6 +2390,9 @@ config  FB_MSM_LCDC_HIMAX_WQVGA722
 config  FB_MSM_LCDC_SKATE_WVGA
 	bool 
 	select FB_MSM_LCDC_PANEL
+config  FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA
+	bool 
+	select FB_MSM_LCDC_PANEL
 config  FB_MSM_LCDC_LEAD_QVGA
 	bool
 	select FB_MSM_LCDC_PANEL
@@ -2506,6 +2509,12 @@ config FB_MSM_LCDC_SKATE_WVGA_PANEL
 	select FB_MSM_LCDC_SKATE_WVGA
 	---help---
 	  Support for LCDC skate WVGA (480x800) panel
+config FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC skate (test sample) WVGA Panel"
+	select FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA
+	---help---
+	  Support for LCDC skate (dev phone) WVGA (480x800) panel
 config FB_MSM_LCDC_LEAD_QVGA_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC Lead QVGA Panel"
