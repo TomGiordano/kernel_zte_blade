@@ -83,7 +83,7 @@ static int lcdc_off(struct platform_device *pdev)
 		if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
 			lcdc_pdata->lcdc_power_save(0);
 	}
-#elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)
+#elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)||defined(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA)
 
 #else
 	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
