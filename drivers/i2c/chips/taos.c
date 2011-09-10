@@ -28,6 +28,7 @@ Wenn               Wer          Was                                             
 #include <linux/i2c/PS_ALS_common.h>
 #include <linux/input.h>
 #include <linux/miscdevice.h>
+#include <linux/wakelock.h>
 
 
 #define TAOS_INT_GPIO 42
@@ -128,6 +129,7 @@ static void taos_report_value(int mask);
 static int calc_distance(int value);
 static int enable_light_and_proximity(int mask);	
 static void taos_chip_diff_settings(void);
+static struct wake_lock taos_wake_lock;
 static int light_on=0;  
 static int prox_on = 0;
 
@@ -522,6 +524,7 @@ static int __init taos_init(void) {
 		printk(KERN_ERR "TAOS: i2c_add_driver() failed in taos_init(),%d\n",ret);
                 return (ret);
 	}
+        wake_lock_init(&taos_wake_lock, WAKE_LOCK_SUSPEND, "taos");
     	//pr_crit(TAOS_TAG "%s:%d\n",__func__,ret);
         return (ret);
 }
@@ -985,6 +988,9 @@ static int enable_light_and_proximity(int mask)
                                 printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_on\n");
                                 return (ret);
                 }
+                // Use wake lock to stop suspending during calls.
+                wake_lock(&taos_wake_lock);
+                pr_crit(TAOS_TAG "get wake lock");
 		return ret;
 	}	
 	if(mask==0x20)
@@ -1026,6 +1032,8 @@ static int enable_light_and_proximity(int mask)
                                 printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_off\n");
                                 return (ret);
                 }
+                wake_unlock(&taos_wake_lock);
+                pr_crit(TAOS_TAG "release wake lock");
 		return ret;
 	}
 	return ret;
