@@ -129,6 +129,7 @@ obj-$(CONFIG_FB_MSM_LCDC_HIMAX_QVGA725A) += lcdc_panel_qvga725A.o
 obj-$(CONFIG_FB_MSM_LCDC_LEAD_HVGA) += lcdc_panel_hvga_lead.o
 obj-$(CONFIG_FB_MSM_LCDC_OLED_WVGA) += lcdc_panel_wvga_oled.o
 obj-$(CONFIG_FB_MSM_LCDC_SKATE_WVGA) += lcdc_panel_wvga_skate.o
+obj-$(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA) += lcdc_panel_wvga_skate_test_sample.o
 obj-$(CONFIG_FB_MSM_LCDC_NOVA_HVGA) += lcdc_panel_hvga_nova.o
 obj-$(CONFIG_FB_MSM_LCDC_SAILBOAT_HVGA) += lcdc_panel_hvga_sailboat.o
 
