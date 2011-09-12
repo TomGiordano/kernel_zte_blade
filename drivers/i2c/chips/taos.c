@@ -1002,10 +1002,10 @@ static int enable_light_and_proximity(int mask)
             printk(KERN_ERR "TAOS: i2c_smbus_write_byte_data failed in ioctl prox_off\n");
             return (ret);
         }
+        wake_unlock(&taos_wake_lock);
+        pr_crit(TAOS_TAG "release wake lock");
         return ret;
     }
-    wake_unlock(&taos_wake_lock);
-    pr_crit(TAOS_TAG "release wake lock");
     return ret;
 }
 
