@@ -1815,6 +1815,21 @@ static struct platform_device mipi_dsi_toshiba_panel_device = {
 	.name = "mipi_toshiba",
 	.id = 0,
 };
+
+#define FPGA_3D_GPIO_CONFIG_ADDR	0x1D00017A
+
+static struct mipi_dsi_panel_platform_data novatek_pdata = {
+	.fpga_3d_config_addr  = FPGA_3D_GPIO_CONFIG_ADDR,
+	.fpga_ctrl_mode = FPGA_EBI2_INTF,
+};
+
+static struct platform_device mipi_dsi_novatek_panel_device = {
+	.name = "mipi_novatek",
+	.id = 0,
+	.dev = {
+		.platform_data = &novatek_pdata,
+	}
+};
 #endif
 
 static void __init msm8x60_allocate_memory_regions(void)
