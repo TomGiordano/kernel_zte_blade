@@ -1440,6 +1440,80 @@ int mdp4_overlay_req_check(uint32 id, uint32 z_order, uint32 mixer)
 	return -EPERM;
 }
 
+static int mdp4_overlay_validate_downscale(struct mdp_overlay *req,
+	struct msm_fb_data_type *mfd, uint32 perf_level, uint32 pclk_rate)
+{
+	__u32 panel_clk_khz, mdp_clk_khz;
+	__u32 num_hsync_pix_clks, mdp_clks_per_hsync, src_wh;
+	__u32 hsync_period_ps, mdp_period_ps, total_hsync_period_ps;
+	unsigned long fill_rate_y_dir, fill_rate_x_dir;
+	unsigned long fillratex100, mdp_pixels_produced;
+	unsigned long mdp_clk_hz;
+
+	pr_debug("%s: LCDC Mode Downscale validation with MDP Core"
+		" Clk rate\n", __func__);
+	pr_debug("src_w %u, src_h %u, dst_w %u, dst_h %u\n",
+		req->src_rect.w, req->src_rect.h, req->dst_rect.w,
+		req->dst_rect.h);
+
+
+	panel_clk_khz = pclk_rate/1000;
+	mdp_clk_hz = mdp_perf_level2clk_rate(perf_level);
+
+	if (!mdp_clk_hz || !req->dst_rect.w || !req->dst_rect.h) {
+		pr_debug("mdp_perf_level2clk_rate returned 0,"
+			 "or dst_rect height/width is 0,"
+			 "Downscale Validation incomplete\n");
+		return 0;
+	}
+
+	mdp_clk_khz = mdp_clk_hz/1000;
+
+	num_hsync_pix_clks = mfd->panel_info.lcdc.h_back_porch +
+		mfd->panel_info.lcdc.h_front_porch +
+		mfd->panel_info.lcdc.h_pulse_width +
+		mfd->panel_info.xres;
+
+	hsync_period_ps = 1000000000/panel_clk_khz;
+	mdp_period_ps = 1000000000/mdp_clk_khz;
+
+	total_hsync_period_ps = num_hsync_pix_clks * hsync_period_ps;
+	mdp_clks_per_hsync = total_hsync_period_ps/mdp_period_ps;
+
+	pr_debug("hsync_period_ps %u, mdp_period_ps %u,"
+		"total_hsync_period_ps %u\n", hsync_period_ps,
+		mdp_period_ps, total_hsync_period_ps);
+
+	src_wh = req->src_rect.w * req->src_rect.h;
+	if (src_wh % req->dst_rect.h)
+		fill_rate_y_dir = (src_wh / req->dst_rect.h) + 1;
+	else
+		fill_rate_y_dir = (src_wh / req->dst_rect.h);
+
+	fill_rate_x_dir = (mfd->panel_info.xres - req->dst_rect.w)
+		+ req->src_rect.w;
+
+	if (fill_rate_y_dir >= fill_rate_x_dir)
+		fillratex100 = 100 * fill_rate_y_dir / mfd->panel_info.xres;
+	else
+		fillratex100 = 100 * fill_rate_x_dir / mfd->panel_info.xres;
+
+	pr_debug("mdp_clks_per_hsync %u, fill_rate_y_dir %lu,"
+		"fill_rate_x_dir %lu\n", mdp_clks_per_hsync,
+		fill_rate_y_dir, fill_rate_x_dir);
+
+	mdp_pixels_produced = 100 * mdp_clks_per_hsync/fillratex100;
+	pr_debug("fillratex100 %lu, mdp_pixels_produced %lu\n",
+		fillratex100, mdp_pixels_produced);
+	if (mdp_pixels_produced <= mfd->panel_info.xres) {
+		pr_err("%s(): LCDC underflow detected during downscale\n",
+			__func__);
+		return -ERANGE;
+	}
+
+	return 0;
+}
+
 static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 			struct mdp4_overlay_pipe **ppipe,
 			struct msm_fb_data_type *mfd)
