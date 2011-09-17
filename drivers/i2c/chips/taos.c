@@ -241,8 +241,13 @@ static u16 gain_trim_param = 100;
 static u16 gain_trim_param = 25; //this value is set according to specific device
 #endif
 
+#if defined(CONFIG_MACH_BLADE)
+static u16 prox_threshold_hi_param = 380;
+static u16 prox_threshold_lo_param = 300;
+#else
 static u16 prox_threshold_hi_param = 1023; 
 static u16 prox_threshold_lo_param = 1023;
+#endif
 static u8 prox_int_time_param = 0xF6;
 static u8 prox_adc_time_param = 0xFF;
 static u8 prox_wait_time_param = 0xFF;
