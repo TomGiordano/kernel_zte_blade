@@ -244,6 +244,9 @@ static u16 gain_trim_param = 25; //this value is set according to specific devic
 #if defined(CONFIG_MACH_BLADE)
 static u16 prox_threshold_hi_param = 380;
 static u16 prox_threshold_lo_param = 300;
+#elif defined(CONFIG_MACH_SKATE)
+static u16 prox_threshold_hi_param = 600;
+static u16 prox_threshold_lo_param = 500;
 #else
 static u16 prox_threshold_hi_param = 1023; 
 static u16 prox_threshold_lo_param = 1023;
