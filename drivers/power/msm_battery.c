@@ -88,7 +88,7 @@ static int wl_initialized = 0;//The rpc occur anytime ,so ,we must make sure tha
 
 
 /* liu.yijian@zte.com.cn 20091127 _FILE_INDEX */
-#define MSM_BATTERY_DEBUGX
+//#define MSM_BATTERY_DEBUGX
 #ifdef MSM_BATTERY_DEBUGX
 #define DEBUG_MSM_BATTERY(fmt, args...)\
     do\
