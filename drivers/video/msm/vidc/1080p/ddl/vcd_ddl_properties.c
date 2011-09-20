@@ -1391,6 +1391,11 @@ void ddl_set_default_dec_property(struct ddl_client_context *ddl)
 	decoder->client_frame_size.stride = VCD_DDL_TEST_DEFAULT_WIDTH;
 	decoder->client_frame_size.scan_lines = VCD_DDL_TEST_DEFAULT_HEIGHT;
 	decoder->progressive_only = 1;
+	decoder->idr_only_decoding = false;
+	decoder->output_order = VCD_DEC_ORDER_DISPLAY;
+	decoder->field_needed_for_prev_ip = 0;
+	decoder->cont_mode = 0;
+	decoder->reconfig_detected = false;
 	ddl_set_default_metadata_flag(ddl);
 	ddl_set_default_decoder_buffer_req(decoder, true);
 }

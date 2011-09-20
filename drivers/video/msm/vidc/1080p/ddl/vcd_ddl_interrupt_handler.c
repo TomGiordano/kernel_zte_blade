@@ -620,7 +620,17 @@ static u32 ddl_eos_frame_done_callback(
 		ddl_vidc_decode_dynamic_property(ddl, false);
 		if (dec_disp_info->display_status ==
 			VIDC_1080P_DISPLAY_STATUS_DPB_EMPTY) {
-			ddl_decoder_eos_done_callback(ddl);
+			if (rsl_chg) {
+				decoder->header_in_start = false;
+				decoder->decode_config.sequence_header =
+					ddl->input_frame.vcd_frm.physical;
+				decoder->decode_config.sequence_header_len =
+					ddl->input_frame.vcd_frm.data_len;
+				decoder->reconfig_detected = false;
+				ddl_vidc_decode_init_codec(ddl);
+				ret_status = false;
+			} else
+				ddl_decoder_eos_done_callback(ddl);
 		} else {
 			struct vidc_1080p_dec_frame_start_param dec_param;
 			if (dec_disp_info->display_status ==
@@ -635,26 +645,23 @@ static u32 ddl_eos_frame_done_callback(
 				DDL_MSG_ERROR("EOS-STATE-CRITICAL-"
 					"WRONG-DISP-STATUS");
 
-			ddl_decoder_dpb_transact(decoder, NULL,
-				DDL_DPB_OP_SET_MASK);
-			ddl->cmd_state = DDL_CMD_EOS;
+				dec_param.cmd_seq_num =
+					++ddl_context->cmd_seq_num;
+				dec_param.inst_id = ddl->instance_id;
+				dec_param.shared_mem_addr_offset =
+					DDL_ADDR_OFFSET(
+					ddl_context->dram_base_a,
+					ddl->shared_mem[ddl->command_channel]);
+				dec_param.release_dpb_bit_mask =
+					dpb_mask->hw_mask;
+				dec_param.decode =
+					(decoder->reconfig_detected) ?\
+					VIDC_1080P_DEC_TYPE_FRAME_DATA :\
+					VIDC_1080P_DEC_TYPE_LAST_FRAME_DATA;
 
-			memset(&dec_param, 0, sizeof(dec_param));
-
-			dec_param.cmd_seq_num =
-				++ddl_context->cmd_seq_num;
-			dec_param.inst_id = ddl->instance_id;
-			dec_param.shared_mem_addr_offset =
-				DDL_ADDR_OFFSET(ddl_context->dram_base_a,
-				ddl->shared_mem[ddl->command_channel]);
-			dec_param.release_dpb_bit_mask =
-				dpb_mask->hw_mask;
-			dec_param.decode =
-				VIDC_1080P_DEC_TYPE_LAST_FRAME_DATA;
-
-			ddl_context->vidc_decode_frame_start[ddl->\
-				command_channel](&dec_param);
-			ret_status = false;
+				ddl_context->vidc_decode_frame_start[ddl->\
+					command_channel](&dec_param);
+			}
 		}
 	}
 	return ret_status;
