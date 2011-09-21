@@ -232,8 +232,9 @@ struct __attribute__((packed)) smem_batt_chg_t
 
 static struct smem_batt_chg_t rep_batt_chg;
 
+#if defined(CONFIG_MACH_BLADE)
 static long last_resume_secs;
-static int in_suspend;
+#endif
 
 struct msm_battery_info
 {
@@ -1027,15 +1028,18 @@ void msm_batt_update_psy_status_v1(void)
     msm_batt_info.battery_level = rep_batt_chg.battery_level;
     msm_batt_info.battery_voltage = rep_batt_chg.battery_voltage;
     msm_batt_info.battery_capacity = rep_batt_chg.battery_capacity;
-    /* Battery temperature measurements are unreliable up to about 120 seconds after resume. */
+    /* Battery temperature measurements on blade are unreliable for some time after resume. */
+    /* Ignore high battery temp if battery status is still good. 0=good 1=bad temp. */
     /* Android shuts down if any one temperature reading is above 68 C (see BatteryService.java). */
     /* Blade temperature readings are especially high after using GPS. */
-    if((((current_kernel_time().tv_sec - last_resume_secs) < 120) || in_suspend) && rep_batt_chg.battery_temp > BATTERY_MAX_TEMP)
+#if defined(CONFIG_MACH_BLADE)
+    if(!rep_batt_chg.battery_status && rep_batt_chg.battery_temp > BATTERY_MAX_TEMP)
     {
-        printk("%s(): ignoring battery temperature reading (%u) - too early after resume.\n", __func__, rep_batt_chg.battery_temp);
+        printk("%s(): ignoring battery temperature reading (%u) - status is still good. Time since resume is %li seconds. status=%u.\n", __func__, rep_batt_chg.battery_temp,current_kernel_time().tv_sec - last_resume_secs, rep_batt_chg.battery_status);
         msm_batt_info.battery_temp = BATTERY_MAX_TEMP;
     }
     else
+#endif
         msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
 
     msm_batt_info.chg_fulled = rep_batt_chg.chg_fulled;
@@ -1096,14 +1100,14 @@ void msm_batt_force_update(void)
 
 static int msm_batt_handle_suspend(void)
 {
-    in_suspend = 1;
     return 0;
 }
 
 static int msm_batt_handle_resume(void)
 {
+#if defined(CONFIG_MACH_BLADE)
     last_resume_secs = current_kernel_time().tv_sec;
-    in_suspend = 0;
+#endif
     msm_batt_update_psy_status_v1();
     return 0;
 }
