@@ -461,6 +461,36 @@ static void ddl_vidc_encode_set_profile_level(
 	vidc_1080p_set_encode_profile_level(encode_profile, level);
 }
 
+static void ddl_vidc_encode_set_multi_slice_info(
+	struct ddl_encoder_data *encoder)
+{
+	enum vidc_1080p_MSlice_selection m_slice_sel;
+	u32 i_multi_slice_size = 0, i_multi_slice_byte = 0;
+
+	if (!encoder) {
+		DDL_MSG_ERROR("Invalid Parameter");
+		return;
+	}
+
+	switch (encoder->multi_slice.m_slice_sel) {
+	default:
+	case VCD_MSLICE_OFF:
+		m_slice_sel = VIDC_1080P_MSLICE_DISABLE;
+	break;
+	case VCD_MSLICE_BY_GOB:
+	case VCD_MSLICE_BY_MB_COUNT:
+		m_slice_sel = VIDC_1080P_MSLICE_BY_MB_COUNT;
+		i_multi_slice_size = encoder->multi_slice.m_slice_size;
+	break;
+	case VCD_MSLICE_BY_BYTE_COUNT:
+		m_slice_sel = VIDC_1080P_MSLICE_BY_BYTE_COUNT;
+		i_multi_slice_byte = encoder->multi_slice.m_slice_size;
+	break;
+	}
+	vidc_1080p_set_encode_multi_slice_control(m_slice_sel,
+		i_multi_slice_size, i_multi_slice_byte);
+}
+
 void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 {
 	struct ddl_context *ddl_context = ddl->ddl_context;
