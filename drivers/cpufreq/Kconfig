@@ -138,6 +138,13 @@ config CPU_FREQ_GOV_INTERACTIVEX
 	help
 	  'InteractiveX' - Modified version of interactive with sleep+wake code.
 
+config CPU_FREQ_GOV_SAVAGEDZEN
+	tristate "'savagedzen' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'Savaged-Zen' - a "smartass" based governor
+	  If in doubt, say N.
+
 config CPU_FREQ_GOV_PERFORMANCE
 	tristate "'performance' governor"
 	help
