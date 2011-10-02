@@ -356,7 +356,7 @@ static int __init cpufreq_interactivex_init(void)
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
-pure_initcall(cpufreq_interactivex_init);
+fs_initcall(cpufreq_interactivex_init);
 #else
 module_init(cpufreq_interactivex_init);
 #endif
