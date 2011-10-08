@@ -26,12 +26,24 @@ config LEDS_88PM860X
 	  This option enables support for on-chip LED drivers found on Marvell
 	  Semiconductor 88PM8606 PMIC.
 
+choice
+       optional
+       default n
+       prompt "LED suspend behaviour"
+
 config ZTE_NLED_BLINK_WHILE_APP_SUSPEND
 	bool "Enable Modem blink NLED while APP sleep"
-	default n
 	help
 	  Modem will blink NLEDs after APP sleep if need
 
+config LED_ON_AFTER_SUSPEND
+       bool "Allow use of notification LED while device sleeps"
+       help
+         LEDs will remain on during suspend.
+	 If the LED is set to blink it will be set on solid at suspend
+	 but should return to its original state on wake.
+
+endchoice
 
 config LEDS_ATMEL_PWM
 	tristate "LED Support using Atmel PWM outputs"

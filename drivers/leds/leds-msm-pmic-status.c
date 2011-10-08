@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <mach/pmic.h>
+#include <linux/delay.h>
 
 #define ZYF_BL_TAG "[ZYF@pmic-leds]"
 
@@ -23,7 +24,11 @@
 
 struct BLINK_LED_data{
        int blink_flag;
-	int blink_led_flag;  // 0: off, 1:0n
+       int blink_led_flag;  // 0: off, 1:0n
+#ifdef CONFIG_LED_ON_AFTER_SUSPEND
+        int restore_blink_flag;
+        int restore_brightness;
+#endif
 	int blink_on_time;  //ms
 	int blink_off_time;  //ms
 	struct timer_list timer;
@@ -384,7 +389,7 @@ err_out_attr_grppwm:
 	for (j = 0; j < i; j++)
 		device_remove_file(STATUS_LED->blink_led[i].led.dev, &dev_attr_blink);
 	i = 2;
-	
+
 err_out_attr_blink:
 	for (j = 0; j < i; j++)
 		device_remove_file(STATUS_LED->blink_led[i].led.dev, &dev_attr_blink);
@@ -446,26 +451,50 @@ static int msm_pmic_led_suspend(struct platform_device *dev,
 		pm_message_t state)
 {
        int i;
-	   #ifdef CONFIG_ZTE_NLED_BLINK_WHILE_APP_SUSPEND
-	   //blink_led[0] red,blink_led[1] green
-	   msm_pmic_led_config_while_app2sleep( STATUS_LED->blink_led[0].led.brightness,//red
-	   										STATUS_LED->blink_led[1].led.brightness, ZTE_PROC_COMM_CMD3_NLED_BLINK_ENABLE);//green
-	   #endif
+#ifdef CONFIG_ZTE_NLED_BLINK_WHILE_APP_SUSPEND
+       //blink_led[0] red,blink_led[1] green
+       msm_pmic_led_config_while_app2sleep( STATUS_LED->blink_led[0].led.brightness,//red
+					    STATUS_LED->blink_led[1].led.brightness, ZTE_PROC_COMM_CMD3_NLED_BLINK_ENABLE);//green
+#endif
+#ifdef CONFIG_LED_ON_AFTER_SUSPEND
+       for (i = 0; i < 2; i++){
+	    STATUS_LED->blink_led[i].restore_brightness = STATUS_LED->blink_led[i].led.brightness;
+	    STATUS_LED->blink_led[i].restore_blink_flag = STATUS_LED->blink_led[i].blink_flag;
+            pr_crit(ZYF_BL_TAG "Setting %s led for suspend. brightness=%i blink=%s",i?"green":"red", STATUS_LED->blink_led[i].led.brightness, STATUS_LED->blink_led[i].blink_flag ? "true":"false");
+            if(STATUS_LED->blink_led[i].led.brightness)
+                STATUS_LED->blink_led[i].led.brightness = 32;
+            STATUS_LED->blink_led[i].blink_flag = 0;
+       }
+       msleep(1000);
+#endif
+#ifndef CONFIG_LED_ON_AFTER_SUSPEND
        for (i = 0; i < 2; i++)
 		led_classdev_suspend(&STATUS_LED->blink_led[i].led);
+#endif
 
-	return 0;
+       return 0;
 }
 
 static int msm_pmic_led_resume(struct platform_device *dev)
 {
        int i;
-	#ifdef CONFIG_ZTE_NLED_BLINK_WHILE_APP_SUSPEND
+#ifdef CONFIG_ZTE_NLED_BLINK_WHILE_APP_SUSPEND
 	   msm_pmic_led_config_while_app2sleep( 0,0, ZTE_PROC_COMM_CMD3_NLED_BLINK_DISABLE);
-	#endif
+#endif
+#ifdef CONFIG_LED_ON_AFTER_SUSPEND
+       for (i = 0; i < 2; i++){
+           pr_crit(ZYF_BL_TAG "Setting %s led for wake. brightness=%i blink=%s",i?"green":"red", STATUS_LED->blink_led[i].restore_brightness, STATUS_LED->blink_led[i].restore_blink_flag ? "true":"false");
+           STATUS_LED->blink_led[i].led.brightness = STATUS_LED->blink_led[i].restore_brightness;
+           if(STATUS_LED->blink_led[i].restore_blink_flag)
+               led_blink_solid_store(STATUS_LED->blink_led[i].led.dev, &dev_attr_blink, "1", 1);
+       }
+#endif
+
+
+#ifndef CONFIG_LED_ON_AFTER_SUSPEND
        for (i = 0; i < 2; i++)
 		led_classdev_resume(&STATUS_LED->blink_led[i].led);
-	
+#endif
 
 	return 0;
 }
