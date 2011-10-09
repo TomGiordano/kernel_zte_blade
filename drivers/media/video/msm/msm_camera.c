@@ -59,6 +59,52 @@ int g_v4l2_opencnt;
 static int camera_node;
 static enum msm_camera_type camera_type[MSM_MAX_CAMERA_SENSORS];
 
+char * vfe_config_cmd[] = {
+    "CMD_GENERAL",
+    "CMD_AXI_CFG_OUT1",
+    "CMD_AXI_CFG_SNAP_O1_AND_O2",
+    "CMD_AXI_CFG_OUT2",
+    "CMD_PICT_T_AXI_CFG",
+    "CMD_PICT_M_AXI_CFG",
+    "CMD_RAW_PICT_AXI_CFG",
+    "CMD_FRAME_BUF_RELEASE",
+    "CMD_PREV_BUF_CFG",
+    "CMD_SNAP_BUF_RELEASE",
+    "CMD_SNAP_BUF_CFG",
+    "CMD_STATS_DISABLE",
+    "CMD_STATS_AEC_AWB_ENABLE",
+    "CMD_STATS_AF_ENABLE",
+    "CMD_STATS_AEC_ENABLE",
+    "CMD_STATS_AWB_ENABLE",
+    "CMD_STATS_ENABLE",
+    "CMD_STATS_AXI_CFG",
+    "CMD_STATS_AEC_AXI_CFG",
+    "CMD_STATS_AF_AXI_CFG",
+    "CMD_STATS_AWB_AXI_CFG",
+    "CMD_STATS_RS_AXI_CFG",
+    "CMD_STATS_CS_AXI_CFG",
+    "CMD_STATS_IHIST_AXI_CFG",
+    "CMD_STATS_SKIN_AXI_CFG",
+    "CMD_STATS_BUF_RELEASE",
+    "CMD_STATS_AEC_BUF_RELEASE",
+    "CMD_STATS_AF_BUF_RELEASE",
+    "CMD_STATS_AWB_BUF_RELEASE",
+    "CMD_STATS_RS_BUF_RELEASE",
+    "CMD_STATS_CS_BUF_RELEASE",
+    "CMD_STATS_IHIST_BUF_RELEASE",
+    "CMD_STATS_SKIN_BUF_RELEASE",
+    "UPDATE_STATS_INVALID",
+    "CMD_AXI_CFG_SNAP_GEMINI",
+    "CMD_AXI_CFG_SNAP",
+    "CMD_AXI_CFG_PREVIEW",
+    "CMD_AXI_CFG_VIDEO",
+    "CMD_STATS_IHIST_ENABLE",
+    "CMD_STATS_RS_ENABLE",
+    "CMD_STATS_CS_ENABLE",
+    "CMD_VPE",
+    "CMD_AXI_CFG_VPE",
+    NULL
+};
 
 static uint32_t sensor_mount_angle[MSM_MAX_CAMERA_SENSORS];
 
@@ -3395,6 +3441,7 @@ int msm_camera_drv_start(struct platform_device *dev,
 	CDBG("%s: setting camera node %d\n", __func__, camera_node);
 	rc = msm_device_init(pmsm, sync, camera_node);
 	if (rc < 0) {
+		CDBG("%s: failed setting camera node", __func__);
 		msm_sync_destroy(sync);
 		kfree(pmsm);
         goto drv_start_failed;
@@ -3407,6 +3454,7 @@ int msm_camera_drv_start(struct platform_device *dev,
 	if (camera_node == 1) {
 		rc = add_axi_qos();
 		if (rc < 0) {
+			CDBG("%s: failed add_axi_qos. rc=%d", __func__, rc);
 			msm_sync_destroy(sync);
 			kfree(pmsm);
 			return rc;
