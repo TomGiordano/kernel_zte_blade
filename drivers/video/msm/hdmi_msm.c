@@ -2861,7 +2861,7 @@ static int hdmi_msm_power_off(struct platform_device *pdev)
 	hdmi_msm_audio_off();
 	hdmi_msm_hpd_off();
 	hdmi_msm_dump_regs("HDMI-OFF: ");
-	hdmi_msm_hpd_on(false);
+	hdmi_msm_hpd_on(true);
 
 	mutex_lock(&hdmi_msm_state_mutex);
 	if (!hdmi_msm_state->hpd_on_feature) {
