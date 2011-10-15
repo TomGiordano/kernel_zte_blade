@@ -88,6 +88,9 @@ struct workqueue_struct *mdp_vsync_wq;	/*mdp vsync wq */
 static struct workqueue_struct *mdp_pipe_ctrl_wq; /* mdp mdp pipe ctrl wq */
 static struct delayed_work mdp_pipe_ctrl_worker;
 
+static boolean mdp_suspended = FALSE;
+DEFINE_MUTEX(mdp_suspend_mutex);
+
 #ifdef CONFIG_FB_MSM_MDP40
 struct mdp_dma_data dma2_data;
 struct mdp_dma_data dma_s_data;
@@ -663,6 +666,7 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		}
 
 		if ((mdp_all_blocks_off) && (mdp_current_clk_on)) {
+                        mutex_lock(&mdp_suspend_mutex);
 			if (block == MDP_MASTER_BLOCK) {
 				mdp_current_clk_on = FALSE;
 				if (footswitch != NULL)
@@ -691,6 +695,7 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 						   &mdp_pipe_ctrl_worker,
 						   mdp_timer_duration);
 			}
+                        mutex_unlock(&mdp_suspend_mutex);
 		} else if ((!mdp_all_blocks_off) && (!mdp_current_clk_on)) {
 			mdp_current_clk_on = TRUE;
 			/* turn on MDP clks */
@@ -1363,6 +1368,7 @@ static int mdp_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 	case MIPI_VIDEO_PANEL:
+#ifndef CONFIG_FB_MSM_MDP303
 		pdata->on = mdp4_dsi_video_on;
 		pdata->off = mdp4_dsi_video_off;
 		mfd->hw_refresh = TRUE;
@@ -1479,6 +1485,15 @@ static int mdp_probe(struct platform_device *pdev)
 #endif
 		break;
 
+#ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
+	case WRITEBACK_PANEL:
+		pdata->on = mdp4_overlay_writeback_on;
+		pdata->off = mdp4_overlay_writeback_off;
+		mfd->dma_fnc = mdp4_writeback_overlay;
+		mfd->dma = &dma_e_data;
+		mdp4_display_intf_sel(EXTERNAL_INTF_SEL, DTV_INTF);
+		break;
+#endif
 	default:
 		printk(KERN_ERR "mdp_probe: unknown device type!\n");
 		rc = -ENODEV;
@@ -1543,6 +1558,10 @@ static void mdp_suspend_sub(void)
 
 	/* try to power down */
 	mdp_pipe_ctrl(MDP_MASTER_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+
+        mutex_lock(&mdp_suspend_mutex);
+        mdp_suspended = TRUE;
+        mutex_unlock(&mdp_suspend_mutex);
 }
 #endif
 
@@ -1595,6 +1614,7 @@ static int mdp_register_driver(void)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 1;
 	early_suspend.suspend = mdp_early_suspend;
+        early_suspend.resume = mdp_early_resume;
 	register_early_suspend(&early_suspend);
 #endif
 

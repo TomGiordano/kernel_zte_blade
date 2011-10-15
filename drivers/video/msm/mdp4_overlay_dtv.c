@@ -297,6 +297,16 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	if (dtv_pipe)
 		mdp4_mixer_stage_down(dtv_pipe);
 
+	/*
+	 * wait for another vsync == 16.6 ms to make sure
+	 * rgb2 dis-engaged
+	*/
+	msleep(20);
+	if (dtv_pipe) {
+		mdp4_overlay_pipe_free(dtv_pipe);
+		dtv_pipe = NULL;
+	}
+
 	return ret;
 }
 
