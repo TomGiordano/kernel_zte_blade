@@ -473,6 +473,43 @@ static struct platform_driver this_driver = {
 static struct msm_fb_panel_data novatek_panel_data = {
 	.on		= mipi_novatek_lcd_on,
 	.off		= mipi_novatek_lcd_off,
+	.set_backlight = mipi_novatek_set_backlight,
+};
+
+static ssize_t mipi_dsi_3d_barrier_read(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	return snprintf((char *)buf, sizeof(buf), "%u\n", barrier_mode);
+}
+
+static ssize_t mipi_dsi_3d_barrier_write(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf,
+				size_t count)
+{
+	int ret = -1;
+	u32 data = 0;
+
+	if (sscanf((char *)buf, "%u", &data) != 1) {
+		dev_err(dev, "%s\n", __func__);
+		ret = -EINVAL;
+	} else {
+		barrier_mode = data;
+		if (data == 1)
+			mipi_dsi_enable_3d_barrier(LANDSCAPE);
+		else if (data == 2)
+			mipi_dsi_enable_3d_barrier(PORTRAIT);
+		else
+			mipi_dsi_enable_3d_barrier(0);
+	}
+
+	return count;
+}
+
+static struct device_attribute mipi_dsi_3d_barrier_attributes[] = {
+	__ATTR(enable_3d_barrier, 0664, mipi_dsi_3d_barrier_read,
+					 mipi_dsi_3d_barrier_write),
 };
 
 static int ch_used[3];
