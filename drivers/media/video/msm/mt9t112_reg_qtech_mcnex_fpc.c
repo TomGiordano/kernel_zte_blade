@@ -1490,13 +1490,16 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x3094, 0x4949, WORD_LEN, 0}, 	// DAC_LD_20_21
     {0x3096, 0x4950, WORD_LEN, 5}, 	// DAC_LD_22_23
     
+#ifndef CONFIG_MACH_V9
     {0x3C20, 0x0000, WORD_LEN, 0}, 	// TX_SS_CONTROL
-
+#endif
   
 #if defined (CONFIG_MACH_SAILBOAT)
     {0x001E, 0x0701, WORD_LEN, 5}, 	// PAD_SLEW_PAD_CONFIG
 #else
+#ifndef CONFIG_MACH_V9
     {0x001E, 0x0777, WORD_LEN, 5}, 	// PAD_SLEW_PAD_CONFIG
+#endif
 #endif
     
     {0x0018, 0x002A, WORD_LEN, 20}, 	// STANDBY_CONTROL_AND_STATUS=
