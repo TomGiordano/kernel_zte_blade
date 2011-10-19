@@ -3,7 +3,7 @@ config DHD
 	depends on WIRELESS_EXT && MMC
 	---help---
 	  This module adds support for wireless adapters based on
-	  Broadcom 4329 chipset.
+	  Broadcom 4319 chipset.
 
 	  This driver uses the kernel's wireless extensions subsystem.
 
