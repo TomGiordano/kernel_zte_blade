@@ -619,3 +619,17 @@ void res_trk_init(struct device *device, u32 irq)
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
 }
+
+u32 res_trk_get_mem_type(void){
+	return resource_context.memtype;
+}
+
+u32 res_trk_get_enable_ion(void)
+{
+	return 0;
+}
+
+struct ion_client *res_trk_get_ion_client(void)
+{
+	return NULL;
+}

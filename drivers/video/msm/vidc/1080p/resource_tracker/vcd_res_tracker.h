@@ -30,6 +30,7 @@
 #define _VIDEO_720P_RESOURCE_TRACKER_H_
 
 #include <linux/regulator/consumer.h>
+#include <linux/ion.h>
 #include "vcd_res_tracker_api.h"
 #ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
@@ -58,6 +59,7 @@ struct res_trk_context {
 #endif
 	u32 core_type;
 	struct ddl_buf_addr firmware_addr;
+	struct ion_client *res_ion_client;
 };
 
 #ifdef CONFIG_MSM_BUS_SCALING

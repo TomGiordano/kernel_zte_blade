@@ -42,5 +42,7 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 u32 res_trk_get_curr_perf_level(u32 *pn_perf_lvl);
 u32 res_trk_download_firmware(void);
 u32 res_trk_get_core_type(void);
-
+u32 res_trk_get_mem_type(void);
+u32 res_trk_get_enable_ion(void);
+struct ion_client *res_trk_get_ion_client(void);
 #endif
