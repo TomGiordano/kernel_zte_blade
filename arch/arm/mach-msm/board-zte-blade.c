@@ -2115,6 +2115,30 @@ static struct platform_device msm_camera_sensor_s5k3e2fx = {
 };
 #endif
 
+#ifdef CONFIG_S5K5CAGX
+static struct msm_camera_sensor_flash_data flash_s5k5cagx = {
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.flash_src  = &msm_flash_src
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_s5k5cagx_data = {
+	.sensor_name    = "s5k5cagx",
+	.sensor_reset   = 2,
+	.sensor_pwd     = 1,
+	.vcm_pwd        = 0,
+	.vcm_enable     = 0,
+	.pdata          = &msm_camera_device_data,
+	.flash_data     = &flash_s5k5cagx
+};
+
+static struct platform_device msm_camera_sensor_s5k5cagx = {
+	.name      = "msm_camera_s5k5cagx",
+	.dev       = {
+		.platform_data = &msm_camera_sensor_s5k5cagx_data,
+	},
+};
+#endif
+
 #ifdef CONFIG_MT9P012
 static struct msm_camera_sensor_flash_data flash_mt9p012 = {
 	.flash_type = MSM_CAMERA_FLASH_LED,
@@ -2680,6 +2704,16 @@ static struct platform_device *devices[] __initdata = {
      * For OV5642: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
      */
     &msm_camera_sensor_ov5642,
+#endif
+
+#ifdef CONFIG_S5K5CAGX
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/s5k5cagx.c
+     * For S5K5CAGX: 3.1Mp, 1/5-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
+    &msm_camera_sensor_s5k5cagx,
 #endif
 
 	&hs_device,
