@@ -93,6 +93,14 @@ static int snddev_hdmi_close(struct msm_snddev_info *dev_info)
 	}
 	snddev_hdmi_active = 0;
 
+	if (snddev_hdmi_data->on_apps) {
+		pr_debug("%s Closed\n", dev_info->name);
+
+		mutex_unlock(&snddev_hdmi_lock);
+		return 0;
+	}
+
+
 	afe_close(HDMI_RX);
 
 	pr_debug("%s closed\n", dev_info->name);

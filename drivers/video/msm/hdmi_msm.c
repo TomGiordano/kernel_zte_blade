@@ -2649,7 +2649,73 @@ static void hdmi_msm_rmw32or(uint32 offset, uint32 data)
 	hdmi_msm_outpdw_chk(offset, reg_data | data);
 }
 
-/* Audio info packet parameters */
+
+#define HDMI_AUDIO_CFG				0x01D0
+#define HDMI_AUDIO_ENGINE_ENABLE		1
+#define HDMI_AUDIO_FIFO_MASK			0x000000F0
+#define HDMI_AUDIO_FIFO_WATERMARK_SHIFT		4
+#define HDMI_AUDIO_FIFO_MAX_WATER_MARK		8
+
+
+int hdmi_audio_enable(bool on , u32 fifo_water_mark)
+{
+	u32 hdmi_audio_config;
+
+	hdmi_audio_config = HDMI_INP(HDMI_AUDIO_CFG);
+
+	if (on) {
+
+		if (fifo_water_mark > HDMI_AUDIO_FIFO_MAX_WATER_MARK) {
+			pr_err("%s : HDMI audio fifo water mark can not be more"
+				" than %u\n", __func__,
+				HDMI_AUDIO_FIFO_MAX_WATER_MARK);
+			return -EINVAL;
+		}
+
+		/*
+		 *  Enable HDMI Audio engine.
+		 *  MUST be enabled after Audio DMA is enabled.
+		*/
+		hdmi_audio_config &= ~(HDMI_AUDIO_FIFO_MASK);
+
+		hdmi_audio_config |= (HDMI_AUDIO_ENGINE_ENABLE |
+			 (fifo_water_mark << HDMI_AUDIO_FIFO_WATERMARK_SHIFT));
+
+	} else
+		 hdmi_audio_config &= ~(HDMI_AUDIO_ENGINE_ENABLE);
+
+	HDMI_OUTP(HDMI_AUDIO_CFG, hdmi_audio_config);
+
+	mb();
+	pr_info("%s :HDMI_AUDIO_CFG 0x%08x\n", __func__,
+		HDMI_INP(HDMI_AUDIO_CFG));
+
+	return 0;
+}
+EXPORT_SYMBOL(hdmi_audio_enable);
+
+#define HDMI_AUDIO_PKT_CTRL			0x0020
+#define HDMI_AUDIO_SAMPLE_SEND_ENABLE		1
+
+int hdmi_audio_packet_enable(bool on)
+{
+	u32 hdmi_audio_pkt_ctrl;
+	hdmi_audio_pkt_ctrl = HDMI_INP(HDMI_AUDIO_PKT_CTRL);
+
+	if (on)
+		hdmi_audio_pkt_ctrl |= HDMI_AUDIO_SAMPLE_SEND_ENABLE;
+	else
+		hdmi_audio_pkt_ctrl &= ~(HDMI_AUDIO_SAMPLE_SEND_ENABLE);
+
+	HDMI_OUTP(HDMI_AUDIO_PKT_CTRL, hdmi_audio_pkt_ctrl);
+
+	mb();
+	pr_info("%s : HDMI_AUDIO_PKT_CTRL 0x%08x\n", __func__,
+	HDMI_INP(HDMI_AUDIO_PKT_CTRL));
+	return 0;
+}
+EXPORT_SYMBOL(hdmi_audio_packet_enable);
+
 static void hdmi_msm_audio_info_setup(boolean enabled, int num_of_channels,
 	int level_shift, boolean down_mix)
 {
@@ -2851,7 +2917,8 @@ static void hdmi_msm_audio_setup(void)
 		external_common_state->video_resolution,
 		MSM_HDMI_SAMPLE_RATE_48KHZ, channels);
 	hdmi_msm_audio_info_setup(TRUE, channels, 0, FALSE);
-	hdmi_msm_audio_ctrl_setup(TRUE, 1);
+
+	hdmi_msm_audio_ctrl_setup(FALSE, 1);
 
 	/* Turn on Audio FIFO and SAM DROP ISR */
 	HDMI_OUTP(0x02CC, HDMI_INP(0x02CC) | BIT(1) | BIT(3));
