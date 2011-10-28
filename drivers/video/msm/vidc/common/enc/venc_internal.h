@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -159,7 +159,8 @@ u32 vid_enc_fill_output_buffer(struct video_client_ctx *client_ctx,
 u32 vid_enc_set_recon_buffers(struct video_client_ctx *client_ctx,
 		struct venc_recon_addr *venc_recon);
 
-u32 vid_enc_free_recon_buffers(struct video_client_ctx *client_ctx);
+u32 vid_enc_free_recon_buffers(struct video_client_ctx *client_ctx,
+		struct venc_recon_addr *venc_recon);
 
 u32 vid_enc_get_recon_buffer_size(struct video_client_ctx *client_ctx,
 		struct venc_recon_buff_size *venc_recon_size);
