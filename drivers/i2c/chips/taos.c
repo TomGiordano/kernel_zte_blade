@@ -221,14 +221,18 @@ static struct file_operations taos_fops = {
 // device configuration
 struct taos_cfg *taos_cfgp;
 static u32 calibrate_target_param = 300000;
+#if defined(CONFIG_MACH_BLADE)
+static u16 als_time_param = 100;
+#else
 static u16 als_time_param = 27;
+#endif
 static u16 scale_factor_param = 1;
 static u8 filter_history_param = 3;
 static u8 filter_count_param = 1;
 static u8 gain_param = 1;
 
 #if defined(CONFIG_MACH_BLADE)
-static u16 gain_trim_param = 25;
+static u16 gain_trim_param = 512;
 #elif defined(CONFIG_MACH_JOE)
 static u16 gain_trim_param = 25;
 #elif defined(CONFIG_MACH_SKATE)
@@ -242,8 +246,8 @@ static u16 gain_trim_param = 25; //this value is set according to specific devic
 #endif
 
 #if defined(CONFIG_MACH_BLADE)
-static u16 prox_threshold_hi_param = 800;
-static u16 prox_threshold_lo_param = 250;
+static u16 prox_threshold_hi_param = 8000;
+static u16 prox_threshold_lo_param = 8500;
 #elif defined(CONFIG_MACH_SKATE)
 static u16 prox_threshold_hi_param = 600;
 static u16 prox_threshold_lo_param = 500;
@@ -251,9 +255,15 @@ static u16 prox_threshold_lo_param = 500;
 static u16 prox_threshold_hi_param = 1023; 
 static u16 prox_threshold_lo_param = 1023;
 #endif
+#if defined(CONFIG_MACH_BLADE)
+static u8 prox_int_time_param = 0xEE;
+static u8 prox_adc_time_param = 0xEE;
+static u8 prox_wait_time_param = 0xF6;
+#else
 static u8 prox_int_time_param = 0xF6;
 static u8 prox_adc_time_param = 0xFF;
 static u8 prox_wait_time_param = 0xFF;
+#endif
 static u8 prox_intr_filter_param = 0x00;
 static u8 prox_config_param = 0x00;
 
