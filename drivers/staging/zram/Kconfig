@@ -1,18 +1,25 @@
 config ZRAM
-	tristate "Compressed in-memory block devices (zram)"
-	depends on SWAP
+	tristate "Compressed RAM block device support"
+	depends on BLOCK && SYSFS
 	select LZO_COMPRESS
 	select LZO_DECOMPRESS
 	default n
 	help
-          Creates RAM based block devices named /dev/zram<id> (<id> = 0, 
-          1, ...). Pages written to these disks are compressed and stored
-          in memory itself. These disks allow very fast I/O and compression 
-          provides good amounts of memory savings. Some of the usecases 
-          include /tmp storage, use as swap disks, various caches under 
-          /var and maybe many more :)
+	  Creates virtual block devices called /dev/zramX (X = 0, 1, ...).
+	  Pages written to these disks are compressed and stored in memory
+	  itself. These disks allow very fast I/O and compression provides
+	  good amounts of memory savings.
 
-          Statistics for individual zram devices are exported through sysfs 
-          nodes at /sys/block/zram<id>/
+	  It has several use cases, for example: /tmp storage, use as swap
+	  disks and maybe many more.
 
-          Project home: http://compcache.googlecode.com/
+	  See zram.txt for more information.
+	  Project home: http://compcache.googlecode.com/
+
+config ZRAM_DEBUG
+	bool "Compressed RAM block device debug support"
+	depends on ZRAM
+	default n
+	help
+	  This option adds additional debugging code to the compressed
+	  RAM block device driver.

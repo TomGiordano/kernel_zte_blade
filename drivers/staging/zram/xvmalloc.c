@@ -10,6 +10,10 @@
  * Released under the terms of GNU General Public License Version 2.0
  */
 
+#ifdef CONFIG_ZRAM_DEBUG
+#define DEBUG
+#endif
+
 #include <linux/bitops.h>
 #include <linux/errno.h>
 #include <linux/highmem.h>
@@ -19,6 +23,16 @@
 
 #include "xvmalloc.h"
 #include "xvmalloc_int.h"
+
+static void stat_inc(u64 *value)
+{
+	*value = *value + 1;
+}
+
+static void stat_dec(u64 *value)
+{
+	*value = *value - 1;
+}
 
 static int test_flag(struct block_header *block, enum blockflags flag)
 {
@@ -36,7 +50,7 @@ static void clear_flag(struct block_header *block, enum blockflags flag)
 }
 
 /*
- * Given <page, offset> pair, provide a derefrencable pointer.
+ * Given <page, offset> pair, provide a dereferencable pointer.
  * This is called from xv_malloc/xv_free path, so it
  * needs to be fast.
  */
@@ -190,42 +204,12 @@ static void insert_block(struct xv_pool *pool, struct page *page, u32 offset,
 		nextblock->link.prev_page = page;
 		nextblock->link.prev_offset = offset;
 		put_ptr_atomic(nextblock, KM_USER1);
+		/* If there was a next page then the free bits are set. */
+		return;
 	}
 
 	__set_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
 	__set_bit(flindex, &pool->flbitmap);
-}
-
-/*
- * Remove block from head of freelist. Index 'slindex' identifies the freelist.
- */
-static void remove_block_head(struct xv_pool *pool,
-			struct block_header *block, u32 slindex)
-{
-	struct block_header *tmpblock;
-	u32 flindex = slindex / BITS_PER_LONG;
-
-	pool->freelist[slindex].page = block->link.next_page;
-	pool->freelist[slindex].offset = block->link.next_offset;
-	block->link.prev_page = NULL;
-	block->link.prev_offset = 0;
-
-	if (!pool->freelist[slindex].page) {
-		__clear_bit(slindex % BITS_PER_LONG, &pool->slbitmap[flindex]);
-		if (!pool->slbitmap[flindex])
-			__clear_bit(flindex, &pool->flbitmap);
-	} else {
-		/*
-		 * DEBUG ONLY: We need not reinitialize freelist head previous
-		 * pointer to 0 - we never depend on its value. But just for
-		 * sanity, lets do it.
-		 */
-		tmpblock = get_ptr_atomic(pool->freelist[slindex].page,
-				pool->freelist[slindex].offset, KM_USER1);
-		tmpblock->link.prev_page = NULL;
-		tmpblock->link.prev_offset = 0;
-		put_ptr_atomic(tmpblock, KM_USER1);
-	}
 }
 
 /*
@@ -234,13 +218,8 @@ static void remove_block_head(struct xv_pool *pool,
 static void remove_block(struct xv_pool *pool, struct page *page, u32 offset,
 			struct block_header *block, u32 slindex)
 {
+	u32 flindex = slindex / BITS_PER_LONG;
 	struct block_header *tmpblock;
-
-	if (pool->freelist[slindex].page == page
-	   && pool->freelist[slindex].offset == offset) {
-		remove_block_head(pool, block, slindex);
-		return;
-	}
 
 	if (block->link.prev_page) {
 		tmpblock = get_ptr_atomic(block->link.prev_page,
@@ -257,6 +236,35 @@ static void remove_block(struct xv_pool *pool, struct page *page, u32 offset,
 		tmpblock->link.prev_offset = block->link.prev_offset;
 		put_ptr_atomic(tmpblock, KM_USER1);
 	}
+
+	/* Is this block is at the head of the freelist? */
+	if (pool->freelist[slindex].page == page
+	   && pool->freelist[slindex].offset == offset) {
+
+		pool->freelist[slindex].page = block->link.next_page;
+		pool->freelist[slindex].offset = block->link.next_offset;
+
+		if (pool->freelist[slindex].page) {
+			struct block_header *tmpblock;
+			tmpblock = get_ptr_atomic(pool->freelist[slindex].page,
+					pool->freelist[slindex].offset,
+					KM_USER1);
+			tmpblock->link.prev_page = NULL;
+			tmpblock->link.prev_offset = 0;
+			put_ptr_atomic(tmpblock, KM_USER1);
+		} else {
+			/* This freelist bucket is empty */
+			__clear_bit(slindex % BITS_PER_LONG,
+				    &pool->slbitmap[flindex]);
+			if (!pool->slbitmap[flindex])
+				__clear_bit(flindex, &pool->flbitmap);
+		}
+	}
+
+	block->link.prev_page = NULL;
+	block->link.prev_offset = 0;
+	block->link.next_page = NULL;
+	block->link.next_offset = 0;
 }
 
 /*
@@ -271,7 +279,7 @@ static int grow_pool(struct xv_pool *pool, gfp_t flags)
 	if (unlikely(!page))
 		return -ENOMEM;
 
-	pool->total_pages++;
+	stat_inc(&pool->total_pages);
 
 	spin_lock(&pool->lock);
 	block = get_ptr_atomic(page, 0, KM_USER0);
@@ -348,6 +356,8 @@ int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
 
 	if (!*page) {
 		spin_unlock(&pool->lock);
+		if (flags & GFP_NOWAIT)
+			return -ENOMEM;
 		error = grow_pool(pool, flags);
 		if (unlikely(error))
 			return error;
@@ -363,7 +373,7 @@ int xv_malloc(struct xv_pool *pool, u32 size, struct page **page,
 
 	block = get_ptr_atomic(*page, *offset, KM_USER0);
 
-	remove_block_head(pool, block, index);
+	remove_block(pool, *page, *offset, block, index);
 
 	/* Split the block if required */
 	tmpoffset = *offset + size + XV_ALIGN;
@@ -457,7 +467,7 @@ void xv_free(struct xv_pool *pool, struct page *page, u32 offset)
 		spin_unlock(&pool->lock);
 
 		__free_page(page);
-		pool->total_pages--;
+		stat_dec(&pool->total_pages);
 		return;
 	}
 

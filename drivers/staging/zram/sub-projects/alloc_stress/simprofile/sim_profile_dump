@@ -1,3 +1,0 @@
-#!/bin/bash
-
-LD_LIBRARY_PATH="." ./sim_profile_dump_bin "$@"

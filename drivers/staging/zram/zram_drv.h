@@ -18,7 +18,7 @@
 #include <linux/spinlock.h>
 #include <linux/mutex.h>
 
-#include "sub-projects/allocators/xvmalloc-kmod/xvmalloc.h"
+#include "xvmalloc.h"
 
 /*
  * Some arbitrary value. This is just to catch
@@ -120,7 +120,7 @@ struct zram {
 	struct zram_stats stats;
 };
 
-extern struct zram *devices;
+extern struct zram *zram_devices;
 extern unsigned int num_devices;
 #ifdef CONFIG_SYSFS
 extern struct attribute_group zram_disk_attr_group;

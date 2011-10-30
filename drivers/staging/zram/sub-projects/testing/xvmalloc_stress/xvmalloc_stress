@@ -1,3 +1,0 @@
-#!/bin/bash
-
-LD_LIBRARY_PATH="../../alloc_stress/simprofile" ./xvmalloc_stress_bin "$@"
