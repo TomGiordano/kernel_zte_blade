@@ -47,6 +47,11 @@ static int vsync_start_y_adjust = 4;
 #ifdef DSI_CLK_CTRL
 struct timer_list dsi_clock_timer;
 
+int mdp4_overlay_dsi_state_get(void)
+{
+	return dsi_state;
+}
+
 static void dsi_clock_tout(unsigned long data)
 {
 	if (mipi_dsi_clk_on) {
@@ -480,6 +485,7 @@ void mdp4_dsi_cmd_overlay_restore(void)
 	/* mutex holded by caller */
 	if (dsi_mfd && dsi_pipe) {
 		mdp4_dsi_cmd_dma_busy_wait(dsi_mfd);
+		mipi_dsi_mdp_busy_wait(dsi_mfd);
 		mdp4_overlay_update_dsi_cmd(dsi_mfd);
 		mdp4_dsi_cmd_overlay_kickoff(dsi_mfd, dsi_pipe);
 		dsi_mfd->dma_update_flag = 1;
