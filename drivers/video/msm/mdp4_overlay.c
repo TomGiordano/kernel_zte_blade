@@ -2063,6 +2063,21 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 
 	pipe->flags = req->flags;
 
+	if (pipe->flags & MDP_SHARPENING) {
+		bool test = ((pipe->req_data.dpp.sharp_strength > 0) &&
+			((req->src_rect.w > req->dst_rect.w) &&
+			 (req->src_rect.h > req->dst_rect.h)));
+		if (test) {
+			pr_warn("%s: No sharpening while downscaling.\n",
+								__func__);
+			pipe->flags &= ~MDP_SHARPENING;
+		}
+	}
+
+	/* precompute HSIC matrices */
+	if (req->flags & MDP_DPP_HSIC)
+		mdp4_hsic_set(pipe, &(req->dpp));
+
 	mdp4_stat.overlay_set[pipe->mixer_num]++;
 
 	if (ctrl->panel_mode & MDP4_PANEL_MDDI) {
@@ -2111,6 +2126,9 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdp4_overlay_pipe *pipe;
+	uint32 flags;
+	struct dpp_ctrl dpp;
+	int i;
 
 	if (mfd == NULL)
 		return -ENODEV;
@@ -2190,6 +2208,15 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 		}
 	}
 #endif
+
+	/* Reset any HSIC settings to default */
+	if (pipe->flags & MDP_DPP_HSIC) {
+		for (i = 0; i < NUM_HSIC_PARAM; i++)
+			dpp.hsic_params[i] = 0;
+
+		mdp4_hsic_set(pipe, &dpp);
+		mdp4_hsic_update(pipe);
+	}
 
 	mdp4_stat.overlay_unset[pipe->mixer_num]++;
 
@@ -2454,6 +2481,10 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 #endif
 		}
 	}
+
+	/* write out DPP HSIC registers */
+	if (pipe->flags & MDP_DPP_HSIC)
+		mdp4_hsic_update(pipe);
 
 	mdp4_stat.overlay_play[pipe->mixer_num]++;
 	mutex_unlock(&mfd->dma->ov_mutex);
