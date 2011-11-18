@@ -3200,9 +3200,11 @@ void hdmi_msm_audio_sample_rate_reset(int rate)
 {
 	msm_hdmi_sample_rate = rate;
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 	if (hdmi_msm_has_hdcp())
 		hdcp_deauthenticate();
 	else
+#endif
 		hdmi_msm_turn_on();
 }
 EXPORT_SYMBOL(hdmi_msm_audio_sample_rate_reset);
@@ -3949,7 +3951,24 @@ static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 	if (rc)
 		goto error;
 
-	schedule_work(&hdmi_msm_state->hpd_read_work);
+	if (hdmi_msm_has_hdcp()) {
+		/* Don't Set Encryption in case of non HDCP builds */
+		external_common_state->present_hdcp = FALSE;
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
+		external_common_state->present_hdcp = TRUE;
+#endif
+	} else {
+		external_common_state->present_hdcp = FALSE;
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
+		/*
+		 * If the device is not hdcp capable do
+		 * not start hdcp timer.
+		 */
+		del_timer(&hdmi_msm_state->hdcp_timer);
+#endif
+	}
+
+	queue_work(hdmi_work_queue, &hdmi_msm_state->hpd_read_work);
 	return 0;
 
 error:
