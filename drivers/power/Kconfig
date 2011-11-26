@@ -206,5 +206,13 @@ config TI_GAUGE
 	depends on BATTERY_MSM
 	default n
 	help
-	  Say Y to enable support for the battery in Qualcomm MSM.
+	  Say Y to enable support for TI Guage
+
+config TI_GAUGE_OPTIMIZE_FEATURE
+	tristate "ti fuel gauge optimize feature"
+	depends on TI_GAUGE
+	default n
+	help
+	  Say Y to enable support for TI Guage optimize feature
+
 endif # POWER_SUPPLY

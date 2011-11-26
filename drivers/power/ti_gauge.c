@@ -24,8 +24,6 @@ change record
 #include <linux/proc_fs.h>
 #include <linux/platform_device.h>
 #include <mach/gpio.h>
-#include <linux/mutex.h>
-
 
 #define GAUGE_UPDATE_FIRMWARE
 #ifdef GAUGE_UPDATE_FIRMWARE
@@ -120,7 +118,7 @@ static unsigned int gauge_fw_version= 0;
 static unsigned int gauge_hw_version= 0;
 static unsigned int gauge_cntl_status= 0;
 static unsigned int gauge_flags= 0;
-static struct mutex g_mutex;
+
 static volatile unsigned int gauge_enable=1; // 1:enable bat read from gauge; 0:forbidden
 static unsigned int smartupdate= 0;//当echo smartup时使能，之后更新固件的话会判断固件与文件版本，还会区别处理bqfs和dffs
 
@@ -151,8 +149,6 @@ static int gauge_i2c_read(int reg, u8 * buf, int count)
         printk("%s():%d,ti_gauge_td==0\n", __func__,__LINE__);
         return -1;
     }
-
-    mutex_lock(&g_mutex);	//chenchongbao.2011.6.7	//chenchongbao.20110713_1 restore
     client=ti_gauge_td->client;
     buf[0] = reg;
 
@@ -172,7 +168,6 @@ static int gauge_i2c_read(int reg, u8 * buf, int count)
     }
 
 gauge_i2c_rd_exit:
-    mutex_unlock(&g_mutex);
     return ret;
 }
 
@@ -191,20 +186,16 @@ static int gauge_i2c_write(u8* data,int size)
         printk("%s():%d,ti_gauge_td==0\n", __func__,__LINE__);
         return -1;
     }
-
-    //mutex_lock(&g_mutex);	//chenchongbao.2011.6.7
     client=ti_gauge_td->client;
 
     rc = i2c_master_send(client, data, size);
     if (rc != size)
     {
-        dev_err(&client->dev, "gauge_i2c_write FAILED: writing to reg %d; %d data has been written\n", data[0],rc);	//chenchongbao.20110713_1
+        dev_err(&client->dev, "gauge_i2c_write FAILED: writing to reg %d\n", data[0]);
         ret = -1;
     }
-    //mutex_unlock(&g_mutex);
     return ret;
 }
-
 
 /*
 function:gauge_mode
@@ -259,15 +250,11 @@ static int gauge_standard_read(int reg,unsigned int* readvalue)
 function:bat_read_gauge,export to bat driver to read gauge reg
 return value: 0 ok; other err;
 */
-#define ABSM(a,b)	  ((a)>(b)?((a)-(b)):((b)-(a)))
 int bat_read_gauge(int reg,unsigned int* readvalue)
 {
     int rc=-1;
-    //unsigned int voltage;
-    static unsigned int normal_voltage=5000;
-    static unsigned int normal_soc=1000;
-
-    if(gauge_enable && (!testbit(0)) && gauge_initialized)//only when gauge_enabled and guage is not in update mode, bat can operate gauge!
+	unsigned int voltage;
+    if(gauge_enable && (!testbit(0)))//only when gauge_enabled and guage is not in update mode, bat can operate gauge!
     {
         /*
         由于P730A10电量计能检测到电池是否存在，当用电源供电时应该
@@ -280,7 +267,6 @@ int bat_read_gauge(int reg,unsigned int* readvalue)
             {
                 if(!(gauge_flags&0x08))//电池不存在
                 {
-                    printk( "%s,battery not exist!\n", __func__);
                     rc=1;
                 }
             }
@@ -290,60 +276,24 @@ int bat_read_gauge(int reg,unsigned int* readvalue)
             rc=gauge_standard_read(reg,readvalue);
             if(rc==0)
             {
-                if(REGADDR_VOLT==reg)
+                if((REGADDR_VOLT==reg) && (*readvalue<3000 ||4500<*readvalue))
                 {
-                    if(*readvalue<3200 ||4300<*readvalue)
-                {
-                        printk( "%s,voltage=%u out of range! old_voltage is %u\n", __func__,*readvalue, normal_voltage);
-                        //gauge_enable=0;//遇到了电压读回来175mv，容量1%,那就应该禁止电池来读了
-                        if(normal_voltage >=3200 && normal_voltage<=4300)
-                        {
-                            printk( "%s,voltage replace by old value=%u\n", __func__,normal_voltage);
-                            *readvalue=normal_voltage;
-                        }
+                    gauge_enable=0;//遇到了电压读回来175mv，容量1%,那就应该禁止电池来读了
+                    rc=-1;
                 }
-                    else
-                    {
-                        if(ABSM(*readvalue,normal_voltage)>400)//400mv
-                        {
-                            printk( "%s,voltage change too much from %u to %u\n", __func__,normal_voltage,*readvalue);
-                        }
-                        normal_voltage=*readvalue;
-                    }
-                }
-                else if(REGADDR_SOC==reg)  // 4v高电压出现0%的情况，应该是开机测开路电压时有电流造成的，如果没有保障2s的等待时间，在这里优化一下
+                if((REGADDR_SOC==reg) && (*readvalue==0)) // 4v高电压出现0%的情况，应该是开机测开路电压时有电流造成的，如果没有保障2s的等待时间，在这里优化一下
                 {//如果容量为0，则看看电压是否高于3.4v，高于则使用modem侧的容量
-                    if(*readvalue > 100)
+                    rc=gauge_standard_read(REGADDR_VOLT,&voltage);
+                    if(rc==0)
                     {
-                        printk( "%s,soc=%u out of range\n", __func__,*readvalue);
-                        if(normal_soc<=100)
+                        if(voltage>3400)
                         {
-                            printk( "%s,soc replace by old value=%u\n", __func__,normal_soc);
-                            *readvalue=normal_soc;
-                        }
-                    }
-                    else
-                    {
-                        if(ABSM(*readvalue,normal_soc)>5)//突然跳变了5%
-                        {
-                            printk( "%s,soc change too much from %u to %u\n", __func__,normal_soc,*readvalue);
-			//*readvalue=normal_soc;		//chenchongbao.20110713_1
-			if(normal_soc != 1000)			//chenchongbao.20110713_1		7.14 add
-				*readvalue=normal_soc;
-                        }//else						//chenchongbao.20110713_1		7.14: else will cause normal_soc == 1000 always! 1000(0x3E8) E8=232% !!!
-                        normal_soc=*readvalue;
-                    }
+                            rc=-1;
                         }
                     }
                 }
             }
-    else
-    {
-        printk( "%s, bat can't gauge!enable=%u,updating=%u,gauge_initialized=%u\n", __func__,gauge_enable,testbit(0),gauge_initialized);
         }
-    if(rc)
-    {
-        printk( "%s, ===bat read gauge failed!\n", __func__);
     }
     return rc;
 }
@@ -364,21 +314,18 @@ int gauge_cntlsub_read(int reg,unsigned int* readvalue)
         i2c_buf[1]=reg&0x00ff;//实践证明先写cntldata低8bit或者高8bit都没有问题，结果是一致的
         i2c_buf[2]=(reg&0xff00)>>8;
         //printk("%s():i2c write buf:%02x %02x %02x\n", __func__,i2c_buf[0],i2c_buf[1],i2c_buf[2]);
-		mdelay(1);
-	mutex_lock(&g_mutex);	//chenchongbao.2011.6.7
+        mdelay(1);
         rc = gauge_i2c_write( i2c_buf,3);
         if(rc)// -1 err; 0 ok;
         {
             printk("%s():i2c write failed!buf:%02x %02x %02x\n", __func__,i2c_buf[0],i2c_buf[1],i2c_buf[2]);
             return rc;
         }
-	mdelay(2);
+        mdelay(2);
 
         //read result from cntl reg
         memset(i2c_buf,0,16);
-	mutex_unlock(&g_mutex);	//chenchongbao.20110713_1
         rc=gauge_i2c_read( REGADDR_CNTL, i2c_buf, 2);
-	//mutex_unlock(&g_mutex);	//chenchongbao.2011.6.7
         if(rc==0)
         {
             *readvalue=(i2c_buf[1]<<8)|i2c_buf[0];
@@ -389,7 +336,7 @@ int gauge_cntlsub_read(int reg,unsigned int* readvalue)
 
 //yintianci_bqfs_20100930_1
 /*
-function:gauge_enabel_it, called only after updating in this .c file
+function:gauge_enabel_it, export to bat driver to enable IT feature when find battery is ok
 flag:0 disable,1 enable
 return value: 0 ok; other err;
 */
@@ -398,7 +345,7 @@ int gauge_enabel_it(int flag)
     unsigned int value=0;
     int rc=-1;
     printk("%s():enter\n", __func__);
-    if(!testbit(0))//
+    if(gauge_enable && (!testbit(0)))//only when gauge_enabled and guage is not in update mode, bat can operate gauge!
     {
     #if 0
         //使能前先判断电池是否存在
@@ -526,8 +473,7 @@ static ssize_t gauge_store_enable(struct device_driver *driver,
 static ssize_t gauge_show_Control(struct device_driver *driver, char *buf)
 {
     unsigned int readvalue=0;
-    // int rc=gauge_standard_read(REGADDR_CNTL,&readvalue);
-    int rc=gauge_cntlsub_read( CNTLSUB_CONTROL_STATUS,&readvalue);
+    int rc=gauge_standard_read(REGADDR_CNTL,&readvalue);
     printk("%s(): rc:%d, readvalue:%d,line:%d\n", __func__,rc,readvalue,__LINE__);
     if(rc==0)
     {
@@ -786,15 +732,9 @@ static ssize_t gauge_show_StateOfCharge(struct device_driver *driver, char *buf)
         return snprintf(buf, PAGE_SIZE, "read failed,rc=%d\n",rc);
     }
 }
-#if 0		/* chenchongbao.2011.7.8 for google CTS test */
 static DRIVER_ATTR(enable, S_IRWXUGO, gauge_show_enable, gauge_store_enable);	//can read write execute
 static DRIVER_ATTR(upmode, S_IRWXUGO, gauge_show_upmode, gauge_store_upmode);	//can read write execute
 static DRIVER_ATTR(Control, S_IRWXUGO, gauge_show_Control, gauge_store_Control);	//can read write execute
-#else
-static DRIVER_ATTR(enable, S_IRWXU|S_IRWXG, gauge_show_enable, gauge_store_enable);	//can read write execute
-static DRIVER_ATTR(upmode, S_IRWXU|S_IRWXG, gauge_show_upmode, gauge_store_upmode);	//can read write execute
-static DRIVER_ATTR(Control, S_IRWXU|S_IRWXG, gauge_show_Control, gauge_store_Control);	//can read write execute
-#endif
 static DRIVER_ATTR(batTemperature, S_IRUGO, gauge_show_temperature, NULL); //显示实时电流
 static DRIVER_ATTR(batVoltage, S_IRUGO, gauge_show_voltage, NULL);
 static DRIVER_ATTR(Flags, S_IRUGO, gauge_show_flag, NULL);
@@ -874,21 +814,21 @@ int ParseAValidateLine(char** ppwalk,int* cmd,u8 *data,unsigned int size)
     rc=0;
     printk("\n");
 #endif
+    //remove invalidate ' ' and 'enter' line before "W: R: C: X:"
 #if 0//YINTIANCI_GAUGE_20101214
+
     tempstr=strstr(pwalk,": ");
 #else
+
     tempstr=pwalk;
-    while(!(((*tempstr) == ':') && ((*(tempstr+1)) == ' ')))
+    //while((*tempstr) != ':')
+		while(!(((*tempstr) == ':') && ((*(tempstr+1)) == ' ')))
     {
         tempstr++;
-	if( (tempstr - pwalk) > 12 )	//chenchongbao.20110713_1 it will cause dead loop! unsightned int max is 0xFFFFFFFF(4294967295) 10bit !
-	{
-		*ppwalk=tempstr;
-		*cmd=0;
-		return 0;
-	}
     }
 #endif
+
+
     if(tempstr)
     {
         pwalk=tempstr-1;
@@ -1300,7 +1240,8 @@ static void TI_gauge_update_work_func(struct work_struct *work)
         goto set_fs_exit;
     }
 mode_raise_point:
-	#define retry_times 300
+#define retry_times 300
+
     if(smartupdate)
     {
         for(i=0;i<retry_times;i++)
@@ -1635,7 +1576,7 @@ static int TI_gauge_probe(
     client->driver = &TI_gauge_driver;
 
     ti_gauge_td = pgauge_data;
-    mutex_init(&g_mutex);
+
 
     if(gauge_cntlsub_read( CNTLSUB_CONTROL_STATUS,&gauge_cntl_status))
     {//failed
@@ -1705,8 +1646,7 @@ void  TI_gauge_shutdown(struct i2c_client * pclient)
 {
     unsigned int regValue=0;
     printk( "%s:enter\n", __func__);
-    //if(!gauge_cntlsub_read( CNTLSUB_SET_HIBERNATE,&regValue))
-    if(!gauge_cntlsub_read( CNTLSUB_SET_SLEEPp,&regValue))		//chenchongbao.2011.6.7
+    if(!gauge_cntlsub_read( CNTLSUB_SET_HIBERNATE,&regValue))
     {
         if(!gauge_cntlsub_read( CNTLSUB_CONTROL_STATUS,&regValue))
         {
@@ -1772,11 +1712,9 @@ static int __init ti_gauge_init(void)
         i2c_del_driver(&TI_gauge_driver);
         return rc;
     }
-
     gauge_update_state=0;
     gauge_initialized = 1;
-
-    printk( "%s:  exit ,enable=%d\n", __func__,gauge_enable);
+    printk( "%s:  exit \n", __func__);
     return 0;
 }
 
