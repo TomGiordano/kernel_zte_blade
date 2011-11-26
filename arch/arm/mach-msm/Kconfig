@@ -1123,7 +1123,7 @@ config MSM_CPU_FREQ_MIN
 
 config MSM_CPU_FREQ_OVERCLOCK
 	bool "Overclock the CPU frequency (ZTE Blade & v9)"
-	depends on (MACH_BLADE || MACH_V9 )
+	depends on (MACH_BLADE || MACH_V9)
 	depends on MSM_CPU_FREQ_SET_MIN_MAX
 	default n
 	help
@@ -1131,17 +1131,17 @@ config MSM_CPU_FREQ_OVERCLOCK
 	  If unsure, choose N.
 
 config MSM_CPU_FREQ_OVERCLOCK_800
-	bool "Overclock the CPU frequency (ZTE Skate)"
-	depends on MACH_SKATE
+	bool "Overclock the CPU frequency (ZTE Blade2 & ZTE Skate)"
+	depends on (MACH_BLADE2 || MACH_SKATE)
 	depends on MSM_CPU_FREQ_SET_MIN_MAX
 	default n
 	help
-	  Adds a number of overclocked frequencies for the 800MHz ZTE Skate.
+	  Adds a number of overclocked frequencies for the 800MHz ZTE Blade2 and ZTE Skate.
 	  If unsure, choose N.
 
 config MSM_CPU_FREQ_OVERCLOCK_AHB
 	bool "Overclock the AHB-bus with 50% for all frequencies from 400MHz and above."
-	depends on (MACH_BLADE || MACH_V9 || MACH_SKATE)
+	depends on (MACH_BLADE || MACH_BLADE2 || MACH_V9 || MACH_SKATE)
 	default n
 	help
 	  Increases the speed of memory read/writes but can cause instability.
