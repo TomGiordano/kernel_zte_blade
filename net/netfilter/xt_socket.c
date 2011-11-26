@@ -26,6 +26,7 @@
 #define XT_SOCKET_HAVE_IPV6 1
 #include <linux/netfilter_ipv6/ip6_tables.h>
 #include <net/netfilter/ipv6/nf_defrag_ipv6.h>
+#include <net/ipv6.h>
 #endif
 
 #include <linux/netfilter/xt_socket.h>
@@ -365,7 +366,7 @@ static struct xt_match socket_mt_reg[] __read_mostly = {
 				  (1 << NF_INET_LOCAL_IN),
 		.me		= THIS_MODULE,
 	},
-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+#ifdef XT_SOCKET_HAVE_IPV6
        {
 	        .name           = "socket",
 		.revision       = 1,
