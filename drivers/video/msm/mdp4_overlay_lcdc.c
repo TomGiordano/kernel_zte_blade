@@ -131,14 +131,9 @@ int mdp_lcdc_on(struct platform_device *pdev)
 		lcdc_pipe = pipe; /* keep it */
 		init_completion(&lcdc_comp);
 
-		writeback_offset = mdp4_writeback_offset();
+		pipe->blt_base = (ulong) mfd->writeback_overlay0_phys;
+		pipe->blt_addr = 0;
 
-		if (writeback_offset > 0) {
-			pipe->blt_base = (ulong)fbi->fix.smem_start;
-			pipe->blt_base += writeback_offset;
-		} else {
-			pipe->blt_base  = 0;
-		}
 	} else {
 		pipe = lcdc_pipe;
 	}
@@ -509,7 +504,7 @@ static void mdp4_lcdc_do_blt(struct msm_fb_data_type *mfd, int enable)
 int mdp4_lcdc_overlay_blt_offset(struct msm_fb_data_type *mfd,
 					struct msmfb_overlay_blt *req)
 {
-	req->offset = writeback_offset;
+	req->offset = 0;
 	req->width = lcdc_pipe->src_width;
 	req->height = lcdc_pipe->src_height;
 	req->bpp = lcdc_pipe->bpp;
