@@ -470,6 +470,8 @@ static void mdp4_overlay_dtv_wait4_ov_done(struct msm_fb_data_type *mfd,
 void mdp4_overlay_dtv_ov_done_push(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe)
 {
+
+	mdp4_overlay_reg_flush(pipe, 1);
 	mdp4_overlay_dtv_ov_start(mfd);
 
 	if (pipe->flags & MDP_OV_PLAY_NOWAIT)
@@ -594,11 +596,13 @@ static void mdp4_dtv_do_blt(struct msm_fb_data_type *mfd, int enable)
 
 void mdp4_dtv_overlay_blt_start(struct msm_fb_data_type *mfd)
 {
+	mdp4_allocate_writeback_buf(mfd, MDP4_MIXER1);
 	mdp4_dtv_do_blt(mfd, 1);
 }
 
 void mdp4_dtv_overlay_blt_stop(struct msm_fb_data_type *mfd)
 {
+	mdp4_free_writeback_buf(mfd, MDP4_MIXER1);
 	mdp4_dtv_do_blt(mfd, 0);
 }
 
