@@ -2610,7 +2610,10 @@ static int msmfb_overlay_play_enable(struct fb_info *info, unsigned long *argp)
 	return 0;
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 34c5f95... msm_fb: display: cleanup overlay0 writeback funcs and config flags
 static int msmfb_overlay_blt(struct fb_info *info, unsigned long *argp)
 {
 	int     ret;
