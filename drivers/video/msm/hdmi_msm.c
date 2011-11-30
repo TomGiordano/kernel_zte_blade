@@ -1947,7 +1947,60 @@ static int hdcp_authentication_part1(void)
 	}
 	DEV_DBG("HDCP: Bcaps=%02x\n", bcaps);
 
-	/* HDCP setup prior to HDCP enabled */
+		/*
+		 * A small delay is needed here to avoid device crash observed
+		 * during reauthentication in MSM8960
+		 */
+		msleep(20);
+
+		/* 0x0168 HDCP_RCVPORT_DATA12
+		   [23:8] BSTATUS
+		   [7:0] BCAPS */
+		HDMI_OUTP(0x0168, bcaps);
+
+		/* 0x014C HDCP_RCVPORT_DATA5
+		   [31:0] LINK0_AN_0 */
+		/* read an0 calculation */
+		link0_an_0 = HDMI_INP(0x014C);
+
+		/* 0x0150 HDCP_RCVPORT_DATA6
+		   [31:0] LINK0_AN_1 */
+		/* read an1 calculation */
+		link0_an_1 = HDMI_INP(0x0150);
+
+		/* three bits 28..30 */
+		hdcp_key_state((HDMI_INP(0x011C) >> 28) & 0x7);
+
+		/* 0x0144 HDCP_RCVPORT_DATA3
+		[31:0] LINK0_AKSV_0 public key
+		0x0148 HDCP_RCVPORT_DATA4
+		[15:8] LINK0_AINFO
+		[7:0]  LINK0_AKSV_1 public key */
+		link0_aksv_0 = HDMI_INP(0x0144);
+		link0_aksv_1 = HDMI_INP(0x0148);
+
+		/* copy an and aksv to byte arrays for transmission */
+		aksv[0] =  link0_aksv_0        & 0xFF;
+		aksv[1] = (link0_aksv_0 >> 8)  & 0xFF;
+		aksv[2] = (link0_aksv_0 >> 16) & 0xFF;
+		aksv[3] = (link0_aksv_0 >> 24) & 0xFF;
+		aksv[4] =  link0_aksv_1        & 0xFF;
+
+		an[0] =  link0_an_0        & 0xFF;
+		an[1] = (link0_an_0 >> 8)  & 0xFF;
+		an[2] = (link0_an_0 >> 16) & 0xFF;
+		an[3] = (link0_an_0 >> 24) & 0xFF;
+		an[4] =  link0_an_1        & 0xFF;
+		an[5] = (link0_an_1 >> 8)  & 0xFF;
+		an[6] = (link0_an_1 >> 16) & 0xFF;
+		an[7] = (link0_an_1 >> 24) & 0xFF;
+
+		/* Write An 8 bytes to offset 0x18 */
+		ret = hdmi_msm_ddc_write(0x74, 0x18, an, 8, "An");
+		if (ret) {
+			DEV_ERR("%s(%d): Write An failed", __func__, __LINE__);
+			goto error;
+		}
 
 	/* 0x0148 HDCP_RCVPORT_DATA4
 	     [15:8] LINK0_AINFO
