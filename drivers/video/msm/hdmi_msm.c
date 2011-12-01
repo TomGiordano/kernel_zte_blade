@@ -1046,7 +1046,34 @@ static irqreturn_t hdmi_msm_isr(int irq, void *dev_id)
 			& ~((1 << 6) | (1 << 4)));
 		DEV_INFO("HDCP: AUTH_FAIL_INT received, LINK0_STATUS=0x%08x\n",
 			HDMI_INP_ND(0x011C));
-		schedule_work(&hdmi_msm_state->hdcp_reauth_work);
+		if (hdmi_msm_state->full_auth_done) {
+			envp[0] = "HDCP_STATE=FAIL";
+			envp[1] = NULL;
+			DEV_INFO("HDMI HPD:QDSP OFF\n");
+			kobject_uevent_env(external_common_state->uevent_kobj,
+			KOBJ_CHANGE, envp);
+			mutex_lock(&hdcp_auth_state_mutex);
+			hdmi_msm_state->full_auth_done = FALSE;
+			mutex_unlock(&hdcp_auth_state_mutex);
+			/* Calling reauth only when authentication
+			 * is sucessful or else we always go into
+			 * the reauth loop
+			 */
+			queue_work(hdmi_work_queue,
+			    &hdmi_msm_state->hdcp_reauth_work);
+		}
+		mutex_lock(&hdcp_auth_state_mutex);
+		/* This flag prevents other threads from re-authenticating
+		 * after we've just authenticated (i.e., finished part3)
+		 */
+		hdmi_msm_state->full_auth_done = FALSE;
+
+		mutex_unlock(&hdcp_auth_state_mutex);
+		DEV_DBG("calling reauthenticate from %s HDCP FAIL INT ",
+		    __func__);
+
+		/* Clear AUTH_FAIL_INFO as well */
+		HDMI_OUTP(0x0118, (hdcp_int_val | (1 << 7)));
 		return IRQ_HANDLED;
 	}
 	/*    [8] DDC_XFER_REQ_INT	[R]	HDCP DDC Transfer Request
@@ -1861,6 +1888,9 @@ static void hdcp_deauthenticate(void)
 
 	if (hdcp_link_status & 0x00000004)
 		hdcp_auth_info((hdcp_link_status & 0x000000F0) >> 4);
+
+	/* Disable HDCP interrupts */
+	HDMI_OUTP(0x0118, 0x0);
 }
 
 static int hdcp_authentication_part1(void)
