@@ -308,6 +308,7 @@ struct ddl_decoder_data {
 	u32  prev_ip_frm_tag;
 	u32  cont_mode;
 	u32  reconfig_detected;
+	u32  dmx_disable;
 };
 union ddl_codec_data{
 	struct ddl_codec_data_hdr  hdr;
@@ -445,6 +446,11 @@ u32 ddl_get_input_frame_from_pool(struct ddl_client_context *ddl,
 	u8 *input_buffer_address);
 u32 ddl_insert_input_frame_to_pool(struct ddl_client_context *ddl,
 	struct ddl_frame_data_tag *ddl_input_frame);
+
+void ddl_decoder_chroma_dpb_change(struct ddl_client_context *ddl);
+u32  ddl_check_reconfig(struct ddl_client_context *ddl);
+void ddl_handle_reconfig(u32 res_change, struct ddl_client_context *ddl);
+void ddl_fill_dec_desc_buffer(struct ddl_client_context *ddl);
 
 #ifdef DDL_BUF_LOG
 void ddl_list_buffers(struct ddl_client_context *ddl);

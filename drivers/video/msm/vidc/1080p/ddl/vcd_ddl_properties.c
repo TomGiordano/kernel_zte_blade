@@ -18,6 +18,7 @@
 
 #include "vcd_ddl.h"
 #include "vcd_ddl_metadata.h"
+#include "vcd_res_tracker_api.h"
 
 static u32 ddl_set_dec_property(struct ddl_client_context *pddl,
 	struct vcd_property_hdr *property_hdr, void *property_value);
@@ -384,6 +385,34 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 	case VCD_I_FRAME_RATE:
 		vcd_status = VCD_S_SUCCESS;
 		break;
+	case VCD_I_CONT_ON_RECONFIG:
+	{
+		DDL_MSG_LOW("Set property VCD_I_CONT_ON_RECONFIG\n");
+		if (sizeof(u32) == property_hdr->sz &&
+			DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_OPEN)) {
+				decoder->cont_mode = *(u32 *)property_value;
+				vcd_status = VCD_S_SUCCESS;
+		}
+	}
+	break;
+	case VCD_I_DISABLE_DMX:
+	{
+		int disable_dmx_allowed = 0;
+		DDL_MSG_LOW("Set property VCD_I_DISABLE_DMX\n");
+		if (res_trk_get_disable_dmx() &&
+			((decoder->codec.codec == VCD_CODEC_H264) ||
+			 (decoder->codec.codec == VCD_CODEC_VC1) ||
+			 (decoder->codec.codec == VCD_CODEC_VC1_RCV)))
+			disable_dmx_allowed = 1;
+
+		if (sizeof(u32) == property_hdr->sz &&
+			DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_OPEN) &&
+			disable_dmx_allowed) {
+				decoder->dmx_disable = *(u32 *)property_value;
+				vcd_status = VCD_S_SUCCESS;
+		}
+	}
+	break;
 	default:
 		vcd_status = VCD_ERR_ILLEGAL_OP;
 		break;
@@ -1012,6 +1041,24 @@ static u32 ddl_get_dec_property(struct ddl_client_context *ddl,
 			property_value);
 		vcd_status = VCD_S_SUCCESS;
 	break;
+	case VCD_I_CONT_ON_RECONFIG:
+		if (sizeof(u32) == property_hdr->sz) {
+			*(u32 *)property_value = decoder->cont_mode;
+			vcd_status = VCD_S_SUCCESS;
+		}
+	break;
+	case VCD_I_DISABLE_DMX_SUPPORT:
+		if (sizeof(u32) == property_hdr->sz) {
+			*(u32 *)property_value = res_trk_get_disable_dmx();
+			vcd_status = VCD_S_SUCCESS;
+		}
+	break;
+	case VCD_I_DISABLE_DMX:
+		if (sizeof(u32) == property_hdr->sz) {
+			*(u32 *)property_value = decoder->dmx_disable;
+			vcd_status = VCD_S_SUCCESS;
+		}
+	break;
 	default:
 		vcd_status = VCD_ERR_ILLEGAL_OP;
 	break;
@@ -1416,6 +1463,7 @@ void ddl_set_default_dec_property(struct ddl_client_context *ddl)
 	decoder->field_needed_for_prev_ip = 0;
 	decoder->cont_mode = 0;
 	decoder->reconfig_detected = false;
+	decoder->dmx_disable = false;
 	ddl_set_default_metadata_flag(ddl);
 	ddl_set_default_decoder_buffer_req(decoder, true);
 }
