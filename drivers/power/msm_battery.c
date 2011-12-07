@@ -592,7 +592,9 @@ static DRIVER_ATTR(usb_chg_enable, S_IRWXUGO, zte_usb_chg_show_enable, zte_usb_c
 //#if defined(CONFIG_MACH_JOE) || defined(CONFIG_MACH_V9) || defined(CONFIG_MACH_V9)//YINTIANCI_GAUGE_20100926 
 #if defined(CONFIG_TI_GAUGE)
 #define ZTE_GAUGE_FEATURE
+#if defined(CONFIG_TI_GAUGE_OPTIMIZE_FEATURE)
 #define ZTE_GAUGE_OPTIMIZE_FEATURE 
+#endif
 #endif
 #ifdef ZTE_GAUGE_FEATURE
 #define REGADDR_TEMP 		0x06//temperature
@@ -656,12 +658,13 @@ static int msm_batt_get_batt_chg_status_v1(void)
             rep_batt_chg.battery_voltage=gaugereadvalue&0xffff;
 #endif
         }
+#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
 	 else	//chenchongbao.20110713_1  如果读电量计出错，则采用上次电量计数据
 	{
 		gauge_voltage = gauge_old_voltage;
 		rep_batt_chg.battery_voltage=gauge_voltage;
 	}
-	 
+#endif
         gaugereadvalue=0;
         if(!bat_read_gauge(REGADDR_SOC,&gaugereadvalue))
         {
@@ -691,12 +694,13 @@ static int msm_batt_get_batt_chg_status_v1(void)
             rep_batt_chg.battery_capacity=gaugereadvalue&0xff;
 #endif
         }
+#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
 	else	//chenchongbao.20110713_1  如果读电量计出错，则采用上次电量计数据
 	{
 		gauge_capacity = gauge_old_capacity;
 		rep_batt_chg.battery_capacity=gauge_capacity;
 	}
-	
+#endif
         gaugereadvalue=0;
         if(!bat_read_gauge(REGADDR_AI,&gaugereadvalue))
                {
