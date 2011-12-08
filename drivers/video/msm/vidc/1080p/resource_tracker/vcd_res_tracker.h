@@ -54,6 +54,10 @@ struct res_trk_context {
 	unsigned int clock_enabled;
 	unsigned int perf_level;
 	struct regulator *footswitch;
+	struct msm_vidc_platform_data *vidc_platform_data;
+	int memtype;
+	int fw_mem_type;
+	int cmd_mem_type;
 #ifdef CONFIG_MSM_BUS_SCALING
 	uint32_t     pcl;
 #endif
@@ -61,6 +65,7 @@ struct res_trk_context {
 	struct ddl_buf_addr firmware_addr;
 	struct ion_client *res_ion_client;
 	u32 disable_dmx;
+	enum ddl_mem_area res_mem_type;
 };
 
 #ifdef CONFIG_MSM_BUS_SCALING
