@@ -482,7 +482,7 @@ static void synaptics_rmi4_work_func(struct work_struct *work)
 					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);//default 10
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
-					input_mt_sync(ts->input_dev);
+					//input_mt_sync(ts->input_dev);
 				}break;
 				default:break;
 			}
