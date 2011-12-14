@@ -221,18 +221,14 @@ static struct file_operations taos_fops = {
 // device configuration
 struct taos_cfg *taos_cfgp;
 static u32 calibrate_target_param = 300000;
-#if defined(CONFIG_MACH_BLADE)
-static u16 als_time_param = 100;
-#else
 static u16 als_time_param = 27;
-#endif
 static u16 scale_factor_param = 1;
 static u8 filter_history_param = 3;
 static u8 filter_count_param = 1;
 static u8 gain_param = 1;
 
 #if defined(CONFIG_MACH_BLADE)
-static u16 gain_trim_param = 512;
+static u16 gain_trim_param = 25;
 #elif defined(CONFIG_MACH_JOE)
 static u16 gain_trim_param = 25;
 #elif defined(CONFIG_MACH_SKATE)

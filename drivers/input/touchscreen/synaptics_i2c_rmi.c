@@ -504,24 +504,18 @@ static void synaptics_ts_work_func(struct work_struct *work)
 #endif
 			
  			 //ZTE_WLY_CRDB00517999,begin 
-			input_report_abs(ts->input_dev, ABS_MT_SLOT, 1);
-			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 1);
-//			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, pressure);//ZTE_PRESS_WLY_0524
-//			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);//ZTE_PRESS_WLY_0524
+			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, pressure);//ZTE_PRESS_WLY_0524
+			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);//ZTE_PRESS_WLY_0524
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
-			input_report_abs(ts->input_dev, ABS_MT_PRESSURE, pressure);
 			input_mt_sync(ts->input_dev);
 
 			if(finger2)
 			{
-				input_report_abs(ts->input_dev, ABS_MT_SLOT, 2);
-				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, 2);
-//				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, pressure2);//ZTE_PRESS_WLY_0524
-//				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);//ZTE_PRESS_WLY_0524
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, pressure2);//ZTE_PRESS_WLY_0524
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);//ZTE_PRESS_WLY_0524
 				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x2);
 				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y2);
-				input_report_abs(ts->input_dev, ABS_MT_PRESSURE, pressure2);
 				input_mt_sync(ts->input_dev);
 			}
 #if defined(CONFIG_MACH_SKATE)
@@ -776,8 +770,6 @@ err_detect_failed:
 	printk("xuke:dup_threshold %d\n", ts->dup_threshold);
 	#endif
 	
-        __set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
-
 	//ZTE_SET_BIT_WLY_0518,BEGIN
 	/*
 	ts->input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
@@ -787,14 +779,11 @@ err_detect_failed:
 	*/
 	//ZTE_SET_BIT_WLY_0518,END
 	/*ZTE_WLY_RESUME_001,2010-3-18 START*/
-/*
 	set_bit(EV_SYN, ts->input_dev->evbit);
 	set_bit(EV_KEY, ts->input_dev->evbit);
 	set_bit(BTN_TOUCH, ts->input_dev->keybit);
-*/
 	set_bit(EV_ABS, ts->input_dev->evbit);
 	//ZTE_SET_BIT_WLY_0518,BEGIN
-/*
 	set_bit(ABS_SINGLE_TAP, ts->input_dev->absbit);
 	set_bit(ABS_TAP_HOLD, ts->input_dev->absbit);
 	set_bit(ABS_EARLY_TAP, ts->input_dev->absbit);
@@ -804,14 +793,10 @@ err_detect_failed:
 	set_bit(ABS_PINCH, ts->input_dev->absbit);
 	//set_bit(ABS_X, ts->input_dev->absbit);
 	//set_bit(ABS_Y, ts->input_dev->absbit);
-        */
-//	set_bit(ABS_MT_TOUCH_MAJOR, ts->input_dev->absbit);
+	set_bit(ABS_MT_TOUCH_MAJOR, ts->input_dev->absbit);
 	set_bit(ABS_MT_POSITION_X, ts->input_dev->absbit);
 	set_bit(ABS_MT_POSITION_Y, ts->input_dev->absbit);
-//	set_bit(ABS_MT_WIDTH_MAJOR, ts->input_dev->absbit);
-	set_bit(ABS_MT_PRESSURE, ts->input_dev->absbit);
-	set_bit(ABS_MT_SLOT, ts->input_dev->absbit);
-	set_bit(ABS_MT_TRACKING_ID, ts->input_dev->absbit);
+	set_bit(ABS_MT_WIDTH_MAJOR, ts->input_dev->absbit);
 
 #ifdef TS_KEY_REPORT//ZTE_TS_ZT_20100513_002
 	max_y = 2739;
@@ -820,20 +805,18 @@ err_detect_failed:
 	//input_set_abs_params(ts->input_dev, ABS_X, 0, max_x, 0, 0);
 	//input_set_abs_params(ts->input_dev, ABS_Y, 0, max_y, 0, 0);
 	//ZTE_SET_BIT_WLY_0518,END
-//	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, max_x+1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, max_y+1, 0, 0);
-//	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
-/*	input_set_abs_params(ts->input_dev, ABS_SINGLE_TAP, 0, 5, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_SINGLE_TAP, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_TAP_HOLD, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_EARLY_TAP, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_FLICK, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESS, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_DOUBLE_TAP, 0, 5, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_PINCH, -255, 255, 0, 0); */
-	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_TRACKING_ID, 0, 5, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_SLOT, 0, 5, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_PINCH, -255, 255, 0, 0);
+	//input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, 0, 0);
 	/*ZTE_WLY_RESUME_001,2010-3-18 END*/
 	ret = input_register_device(ts->input_dev);
 	if (ret)
