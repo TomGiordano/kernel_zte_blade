@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2141,4 +2141,130 @@ void mdp4_rgb_igc_lut_setup(int num)
 uint32 mdp4_rgb_igc_lut_cvt(uint32 ndx)
 {
 	return igc_rgb_lut[ndx & 0x0ff];
+}
+
+uint32_t mdp4_ss_table_value(int8_t value, int8_t index)
+{
+	uint32_t out = 0x0;
+	int8_t level = -1;
+	uint32_t mask = 0xffffffff;
+
+	if (value < 0) {
+		if (value == -128)
+			value = 127;
+		else
+			value = -value;
+		out = 0x11111111;
+	} else {
+		out = 0x88888888;
+		mask = 0x0fffffff;
+	}
+
+	if (value == 0)
+		level = 0;
+	else {
+		while (value > 0 && level < 7) {
+			level++;
+			value -= 16;
+		}
+	}
+
+	if (level == 0) {
+		if (index == 0)
+			out = 0x0;
+		else
+			out = 0x20000000;
+	} else {
+		out += (0x11111111 * level);
+		if (index == 1)
+			out &= mask;
+	}
+
+	return out;
+}
+
+void mdp4_init_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num)
+{
+	struct mdp_buf_type *buf;
+
+	if (mix_num == MDP4_MIXER0)
+		buf = mfd->ov0_wb_buf;
+	else
+		buf = mfd->ov1_wb_buf;
+
+	buf->ihdl = NULL;
+	buf->phys_addr = 0;
+}
+
+u32 mdp4_allocate_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num)
+{
+	struct mdp_buf_type *buf;
+	ion_phys_addr_t	addr;
+	u32 len;
+
+	if (mix_num == MDP4_MIXER0)
+		buf = mfd->ov0_wb_buf;
+	else
+		buf = mfd->ov1_wb_buf;
+
+	if (buf->phys_addr || !IS_ERR_OR_NULL(buf->ihdl))
+		return 0;
+
+	if (!buf->size) {
+		pr_err("%s:%d In valid size", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (!IS_ERR_OR_NULL(mfd->iclient)) {
+		pr_info("%s:%d ion based allocation", __func__, __LINE__);
+		buf->ihdl = ion_alloc(mfd->iclient, buf->size, 4,
+			(1 << mfd->mem_hid));
+		if (!IS_ERR_OR_NULL(buf->ihdl)) {
+			if (ion_phys(mfd->iclient, buf->ihdl,
+				&addr, &len)) {
+				pr_err("%s:%d: ion_phys map failed",
+					__func__, __LINE__);
+				return -ENOMEM;
+			}
+		} else {
+			pr_err("%s:%d: ion_alloc failed", __func__,
+				__LINE__);
+			return -ENOMEM;
+		}
+	} else {
+		addr = allocate_contiguous_memory_nomap(buf->size,
+			mfd->mem_hid, 4);
+	}
+	if (addr) {
+		pr_info("allocating %d bytes at %x for mdp writeback\n",
+			buf->size, (u32) addr);
+		buf->phys_addr = addr;
+		return 0;
+	} else {
+		pr_err("%s cannot allocate memory for mdp writeback!\n",
+			 __func__);
+		return -ENOMEM;
+	}
+}
+
+void mdp4_free_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num)
+{
+	struct mdp_buf_type *buf;
+
+	if (mix_num == MDP4_MIXER0)
+		buf = mfd->ov0_wb_buf;
+	else
+		buf = mfd->ov1_wb_buf;
+
+	if (!IS_ERR_OR_NULL(mfd->iclient)) {
+		if (!IS_ERR_OR_NULL(buf->ihdl))
+			ion_free(mfd->iclient, buf->ihdl);
+		buf->ihdl = NULL;
+		pr_info("%s:%d free writeback imem", __func__, __LINE__);
+	} else {
+		if (buf->phys_addr)
+			free_contiguous_memory_by_paddr(buf->phys_addr);
+		pr_info("%s:%d free writeback pmem", __func__, __LINE__);
+	}
+	buf->phys_addr = 0;
 }
