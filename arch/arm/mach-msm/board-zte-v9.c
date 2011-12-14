@@ -112,7 +112,9 @@ when         who        what, where, why                             comment tag
 extern struct atmel_i2c_platform_data atmel_data;
 #endif
 
+#ifdef CONFIG_USB_EHCI_MSM
 static void msm_hsusb_vbus_power(unsigned phy_info, int on);
+#endif
 
 #ifdef CONFIG_ARCH_MSM7X25
 #define MSM_PMEM_MDP_SIZE	0xb21000
