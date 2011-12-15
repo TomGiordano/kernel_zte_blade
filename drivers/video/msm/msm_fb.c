@@ -201,7 +201,7 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (!bl_lvl && value)
 		bl_lvl = 1;
 
-	msm_fb_set_backlight(mfd, bl_lvl, 1);
+	msm_fb_set_backlight(mfd, bl_lvl);
 }
 
 static struct led_classdev backlight_led = {
@@ -703,24 +703,31 @@ static void msmfb_early_resume(struct early_suspend *h)
 }
 #endif
 
-void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl, u32 save)
+static int unset_bl_level, bl_updated;
+static int bl_level_old;
+
+void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 {
 	struct msm_fb_panel_data *pdata;
+
+	if (!mfd->panel_power_on || !bl_updated) {
+		unset_bl_level = bkl_lvl;
+		return;
+	} else {
+		unset_bl_level = 0;
+	}
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	if ((pdata) && (pdata->set_backlight)) {
 		down(&mfd->sem);
-		if ((bkl_lvl != mfd->bl_level) || (!save)) {
-			u32 old_lvl;
-
-			old_lvl = mfd->bl_level;
-			mfd->bl_level = bkl_lvl;
-			pdata->set_backlight(mfd);
-
-			if (!save)
-				mfd->bl_level = old_lvl;
+		if (bl_level_old == bkl_lvl) {
+			up(&mfd->sem);
+			return;
 		}
+		mfd->bl_level = bkl_lvl;
+		pdata->set_backlight(mfd);
+		bl_level_old = mfd->bl_level;
 		up(&mfd->sem);
 	}
 }
@@ -751,7 +758,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mfd->panel_power_on = TRUE;
 
 				msm_fb_set_backlight(mfd,
-						     mfd->bl_level, 0);
+						     mfd->bl_level);
 
 /* ToDo: possible conflict with android which doesn't expect sw refresher */
 /*
@@ -777,15 +784,16 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			msm_fb_set_backlight(mfd, 0, 0);		///ZTE_LCD_LUYA_20100201_001
+			msm_fb_set_backlight(mfd, 0);		///ZTE_LCD_LUYA_20100201_001
 			mfd->panel_power_on = FALSE;
+			bl_updated = 0;
 
 //			mdelay(100);				////ZTE_LCD_LUYA_20100629_001
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
             /* ZTE_BACKLIGHT_WLY_001 @2009-10-29 backlight go to dim, begin*/
-			/*msm_fb_set_backlight(mfd, 0, 0);*/
+			/*msm_fb_set_backlight(mfd, 0);*/
 			/* ZTE_BACKLIGHT_WLY_001 @2009-10-29 backlight go to dim, end*/
 			mfd->op_enable = TRUE;
 		}
@@ -1443,6 +1451,7 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 	struct mdp_dirty_region dirty;
 	struct mdp_dirty_region *dirtyPtr = NULL;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	struct msm_fb_panel_data *pdata;
 
 	if ((!mfd->op_enable) || (!mfd->panel_power_on))
 		return -EPERM;
@@ -1499,6 +1508,19 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 			     (var->activate == FB_ACTIVATE_VBL));
 	mdp_dma_pan_update(info);
 	up(&msm_fb_pan_sem);
+
+	if (unset_bl_level && !bl_updated) {
+		pdata = (struct msm_fb_panel_data *)mfd->pdev->
+			dev.platform_data;
+		if ((pdata) && (pdata->set_backlight)) {
+			down(&mfd->sem);
+			mfd->bl_level = unset_bl_level;
+			pdata->set_backlight(mfd);
+			bl_level_old = unset_bl_level;
+			up(&mfd->sem);
+		}
+		bl_updated = 1;
+	}
 
 	++mfd->panel_info.frame_count;
 	return 0;
