@@ -2213,11 +2213,24 @@ static int hdcp_authentication_part1(void)
 	   else default 0 */
 	HDMI_OUTP(0x0114, HDMI_INP(0x0114) & 0xFFFFFFFB);
 
-	/* 0x0110 HDCP_CTRL
-	     [8] ENCRYPTION_ENABLE
-	     [0] ENABLE */
-	/* encryption_enable | enable  */
-	HDMI_OUTP(0x0110, (1 << 8) | (1 << 0));
+		DEV_DBG("HDCP: R0'=%02x%02x\n", buf[1], buf[0]);
+		INIT_COMPLETION(hdmi_msm_state->hdcp_success_done);
+		/* 0x013C HDCP_RCVPORT_DATA2_0
+		[15:0] LINK0_RI */
+		HDMI_OUTP(0x013C, (((uint32)buf[1]) << 8) | buf[0]);
+
+		timeout_count = wait_for_completion_interruptible_timeout(
+			&hdmi_msm_state->hdcp_success_done, HZ*2);
+
+		if (!timeout_count) {
+			ret = -ETIMEDOUT;
+			is_match = HDMI_INP(0x011C) & BIT(12);
+			DEV_ERR("%s(%d): timedout, Link0=<%s>\n", __func__,
+			  __LINE__,
+			  is_match ? "RI_MATCH" : "No RI Match INTR in time");
+			if (!is_match)
+				goto error;
+		}
 
 	/* 0x0118 HDCP_INT_CTRL
 	 *    [2] AUTH_SUCCESS_MASK	[R/W]	Mask bit for HDCP Authentication
