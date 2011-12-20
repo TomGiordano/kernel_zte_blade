@@ -3534,7 +3534,29 @@ static struct platform_device *surf_devices[] __initdata = {
 };
 
 #ifdef CONFIG_ION_MSM
-struct ion_platform_data ion_pdata = {
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
+	.permission_type = IPT_TYPE_MM_CARVEOUT,
+	.request_region = request_smi_region,
+	.release_region = release_smi_region,
+	.setup_region = setup_smi_region,
+};
+
+static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
+	.permission_type = IPT_TYPE_MFC_SHAREDMEM,
+	.request_region = request_smi_region,
+	.release_region = release_smi_region,
+	.setup_region = setup_smi_region,
+};
+
+static struct ion_cp_heap_pdata cp_wb_ion_pdata = {
+	.permission_type = IPT_TYPE_MDP_WRITEBACK,
+};
+
+static struct ion_co_heap_pdata co_ion_pdata = {
+};
+#endif
+static struct ion_platform_data ion_pdata = {
 	.nr = MSM_ION_HEAP_NUM,
 	.heaps = {
 		{
@@ -3549,6 +3571,7 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_SF_HEAP_NAME,
 			.size	= MSM_ION_SF_SIZE,
 			.memory_type = ION_EBI_TYPE,
+			.extra_data = &co_ion_pdata,
 		},
 		{
 			.id	= ION_CP_MM_HEAP_ID,
@@ -3556,10 +3579,7 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_MM_HEAP_NAME,
 			.size	= MSM_ION_MM_SIZE,
 			.memory_type = ION_SMI_TYPE,
-			.request_region = request_smi_region,
-			.release_region = release_smi_region,
-			.setup_region = setup_smi_region,
-			.permission_type = IPT_TYPE_MM_CARVEOUT,
+			.extra_data = (void *) &cp_mm_ion_pdata,
 		},
 		{
 			.id	= ION_CAMERA_HEAP_ID,
@@ -3567,6 +3587,7 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_CAMERA_HEAP_NAME,
 			.size	= MSM_ION_CAMERA_SIZE,
 			.memory_type = ION_EBI_TYPE,
+			.extra_data = &co_ion_pdata,
 		},
 		{
 			.id	= ION_CP_MFC_HEAP_ID,
@@ -3574,10 +3595,7 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_MFC_HEAP_NAME,
 			.size	= MSM_ION_MFC_SIZE,
 			.memory_type = ION_SMI_TYPE,
-			.request_region = request_smi_region,
-			.release_region = release_smi_region,
-			.setup_region = setup_smi_region,
-			.permission_type = IPT_TYPE_MFC_SHAREDMEM,
+			.extra_data = (void *) &cp_mfc_ion_pdata,
 		},
 		{
 			.id	= ION_CP_WB_HEAP_ID,
@@ -3585,7 +3603,7 @@ struct ion_platform_data ion_pdata = {
 			.name	= ION_WB_HEAP_NAME,
 			.size	= MSM_ION_WB_SIZE,
 			.memory_type = ION_EBI_TYPE,
-			.permission_type = IPT_TYPE_MDP_WRITEBACK,
+			.extra_data = (void *) &cp_wb_ion_pdata,
 		},
 #endif
 	}
