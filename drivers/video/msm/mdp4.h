@@ -33,6 +33,7 @@
 extern struct mdp_dma_data dma2_data;
 extern struct mdp_dma_data dma_s_data;
 extern struct mdp_dma_data dma_e_data;
+extern struct mdp_dma_data dma_wb_data;
 extern unsigned int mdp_hist_frame_cnt;
 extern struct completion mdp_hist_comp;
 extern boolean mdp_is_hist_start;
@@ -44,6 +45,7 @@ extern uint32 mdp4_extn_disp;
 
 #define MDP4_OVERLAYPROC0_BASE	0x10000
 #define MDP4_OVERLAYPROC1_BASE	0x18000
+#define MDP4_OVERLAYPROC2_BASE	0x88000
 
 #define MDP4_VIDEO_BASE 0x20000
 #define MDP4_VIDEO_OFF 0x10000
@@ -141,6 +143,7 @@ enum {
 #define INTR_EXTERNAL_INTF_UDERRUN	BIT(10)
 #define INTR_PRIMARY_READ_PTR		BIT(11)
 #define INTR_DMA_P_HISTOGRAM		BIT(17)
+#define INTR_OVERLAY2_DONE		BIT(30)
 
 #ifdef CONFIG_FB_MSM_OVERLAY
 #define MDP4_ANY_INTR_MASK	(INTR_OVERLAY0_DONE|INTR_DMA_S_DONE | \
@@ -157,6 +160,7 @@ enum {
 	OVERLAY_PIPE_VG2,
 	OVERLAY_PIPE_RGB3,
 	OVERLAY_PIPE_VG3,
+	OVERLAY_PIPE_VG4,
 	OVERLAY_PIPE_MAX
 };
 
@@ -169,6 +173,7 @@ enum {
 enum {
 	MDP4_MIXER0,
 	MDP4_MIXER1,
+	MDP4_MIXER2,
 	MDP4_MIXER_MAX
 };
 
@@ -340,6 +345,7 @@ struct mdp4_statistic {
 	ulong intr_dma_e;
 	ulong intr_overlay0;
 	ulong intr_overlay1;
+	ulong intr_overlay2;
 	ulong intr_vsync_p;	/* Primary interface */
 	ulong intr_underrun_p;	/* Primary interface */
 	ulong intr_vsync_e;	/* external interface */
@@ -401,7 +407,7 @@ void mdp4_clear_lcdc(void);
 void mdp4_mixer_blend_init(int mixer_num);
 void mdp4_vg_qseed_init(int vg_num);
 void mdp4_vg_csc_setup(int vp_num);
-void mdp4_mixer1_csc_setup(void);
+void mdp4_mixer_csc_setup(uint32 mixer);
 void mdp4_vg_csc_update(struct mdp_csc *p);
 irqreturn_t mdp4_isr(int irq, void *ptr);
 void mdp4_overlay_format_to_pipe(uint32 format, struct mdp4_overlay_pipe *pipe);
