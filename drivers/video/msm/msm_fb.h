@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -217,8 +217,6 @@ struct msm_fb_data_type {
 	struct completion msmfb_update_notify;
 	struct completion msmfb_no_update_notify;
 	u32 ov_start, ov_end;
-	void *writeback_overlay0_phys;
-	void *writeback_overlay1_phys;
 	struct mutex writeback_mutex;
 	struct mutex unregister_mutex;
 	struct list_head writeback_busy_queue;

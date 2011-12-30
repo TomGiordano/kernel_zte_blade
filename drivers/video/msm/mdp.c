@@ -1,8 +1,13 @@
 /* Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
+ * MSM MDP Interface (used by framebuffer core)
+ *
+ * Copyright (c) 2007-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2007 Google Incorporated
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -1311,30 +1316,7 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 		mdp_hw_cursor_init();
 #endif
-
 		mdp_resource_initialized = 1;
-
-		if (!mdp_pdata)
-			return 0;
-
-		size = mdp_pdata->mdp_writeback_size_ov0 +
-			mdp_pdata->mdp_writeback_size_ov1;
-		if (size) {
-			mdp_pdata->mdp_writeback_phys =
-				(void *)allocate_contiguous_memory_nomap
-				(size,
-				 mdp_pdata->mdp_writeback_memtype,
-				 4); /* align to word size */
-			if (mdp_pdata->mdp_writeback_phys) {
-				pr_info("allocating %d bytes at %p for mdp writeback\n",
-					size, mdp_pdata->mdp_writeback_phys);
-			} else {
-				pr_err("%s cannot allocate memory for mdp writeback!\n",
-				       __func__);
-			}
-		} else {
-			mdp_pdata->mdp_writeback_phys = 0;
-		}
 		return 0;
 	}
 
@@ -1600,19 +1582,6 @@ static int mdp_probe(struct platform_device *pdev)
 		}
 	}
 #endif
-
-	if (mdp_pdata && mdp_pdata->mdp_writeback_phys) {
-		mfd->writeback_overlay0_phys =
-			(mdp_pdata->mdp_writeback_size_ov0) ?
-			mdp_pdata->mdp_writeback_phys : 0;
-		mfd->writeback_overlay1_phys =
-			(mdp_pdata->mdp_writeback_size_ov1) ?
-			(mdp_pdata->mdp_writeback_phys +
-			 mdp_pdata->mdp_writeback_size_ov0) : 0;
-	} else {
-		mfd->writeback_overlay0_phys = 0;
-		mfd->writeback_overlay1_phys = 0;
-	}
 
 	/* set driver data */
 	platform_set_drvdata(msm_fb_dev, mfd);
