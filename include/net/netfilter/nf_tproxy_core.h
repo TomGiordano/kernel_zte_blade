@@ -5,7 +5,8 @@
 #include <linux/in.h>
 #include <linux/skbuff.h>
 #include <net/sock.h>
-#include <net/inet_sock.h>
+#include <net/inet_hashtables.h>
+#include <net/inet6_hashtables.h>
 #include <net/tcp.h>
 
 #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
