@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -44,6 +44,7 @@ u32 res_trk_get_curr_perf_level(u32 *pn_perf_lvl);
 u32 res_trk_download_firmware(void);
 u32 res_trk_get_core_type(void);
 u32 res_trk_get_mem_type(void);
+u32 res_trk_get_disable_fullhd(void);
 u32 res_trk_get_enable_ion(void);
 struct ion_client *res_trk_get_ion_client(void);
 void res_trk_set_mem_type(enum ddl_mem_area mem_type);
