@@ -17,6 +17,7 @@
  */
 #ifndef __EXTERNAL_COMMON_H__
 #define __EXTERNAL_COMMON_H__
+#include <linux/switch.h>
 
 #ifdef DEBUG
 #ifndef DEV_DBG_PREFIX
@@ -207,6 +208,7 @@ struct external_common_state_type {
 	struct kobject *uevent_kobj;
 	uint32 video_resolution;
 	struct device *dev;
+	struct switch_dev sdev;
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	boolean format_3d;
 	void (*switch_3d)(boolean on);
