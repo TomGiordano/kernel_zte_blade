@@ -1362,31 +1362,56 @@ static void __init bt_power_init(void)
 #endif
 
 #ifdef CONFIG_ARCH_MSM7X27
-static struct resource kgsl_resources[] = {
-	{
-		.name = "kgsl_reg_memory",
-		.start = 0xA0000000,
-		.end = 0xA001ffff,
-		.flags = IORESOURCE_MEM,
+
+static struct resource kgsl_3d0_resources[] = {
+         {
+                 .name  = KGSL_3D0_REG_MEMORY,
+                 .start = 0xA0000000,
+                 .end = 0xA001ffff,
+                 .flags = IORESOURCE_MEM,
+         },
+         {
+                 .name = KGSL_3D0_IRQ,
+                 .start = INT_GRAPHICS,
+                 .end = INT_GRAPHICS,
+                 .flags = IORESOURCE_IRQ,
+         },
+};
+
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 128000000,
+				.bus_freq = 128000000,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 1,
+		.set_grp_async = NULL,
+		.idle_timeout = HZ/5,
+		.nap_allowed = true,
 	},
-	{
-		.name = "kgsl_yamato_irq",
-		.start = INT_GRAPHICS,
-		.end = INT_GRAPHICS,
-		.flags = IORESOURCE_IRQ,
+	.clk = {
+		.name = {
+			.clk = "grp_clk",
+			.pclk = "grp_pclk",
+		},
+	},
+	.imem_clk_name = {
+		.clk = "imem_clk",
+		.pclk = NULL,
 	},
 };
 
-static struct kgsl_platform_data kgsl_pdata;
-
-static struct platform_device msm_device_kgsl = {
-	.name = "kgsl",
-	.id = -1,
-	.num_resources = ARRAY_SIZE(kgsl_resources),
-	.resource = kgsl_resources,
-	.dev = {
-		.platform_data = &kgsl_pdata,
-	},
+struct platform_device msm_kgsl_3d0 = {
+         .name = "kgsl-3d0",
+         .id = 0,
+         .num_resources = ARRAY_SIZE(kgsl_3d0_resources),
+         .resource = kgsl_3d0_resources,
+         .dev = {
+                 .platform_data = &kgsl_3d0_pdata,
+         },
 };
 #endif
 
@@ -2805,7 +2830,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_bluesleep_device,
 	&msm_bcmsleep_device,     //compatible of qualcomm and broadcomm bluetooth chip  
 #ifdef CONFIG_ARCH_MSM7X27
-	&msm_device_kgsl,	
+	&msm_kgsl_3d0,	
 #endif
 #ifdef CONFIG_MT9P111
 
@@ -3459,33 +3484,6 @@ static void __init msm7x2x_init(void)
 	msm_acpu_clock_init(&msm7x2x_clock_data);
 #ifdef CONFIG_ZTE_PLATFORM
 	init_usb3v3();
-	#endif
-#ifdef CONFIG_ARCH_MSM7X27
-	/* This value has been set to 160000 for power savings. */
-	/* OEMs may modify the value at their discretion for performance */
-	/* The appropriate maximum replacement for 160000 is: */
-	/* clk_get_max_axi_khz() */
-	kgsl_pdata.high_axi_3d = 160000;
-
-	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */
-	/* the AXI bus */
-	kgsl_pdata.max_grp2d_freq = 0;
-	kgsl_pdata.min_grp2d_freq = 0;
-	kgsl_pdata.set_grp2d_async = NULL;
-	kgsl_pdata.max_grp3d_freq = 0;
-	kgsl_pdata.min_grp3d_freq = 0;
-	kgsl_pdata.set_grp3d_async = NULL;
-	kgsl_pdata.imem_clk_name = "imem_clk";
-	kgsl_pdata.grp3d_clk_name = "grp_clk";
-	kgsl_pdata.grp3d_pclk_name = "grp_pclk";
-	kgsl_pdata.grp2d0_clk_name = NULL;
-	kgsl_pdata.idle_timeout_3d = HZ/5;
-	kgsl_pdata.idle_timeout_2d = 0;
-#ifdef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
-	kgsl_pdata.pt_va_size = SZ_32M;
-#else
-	kgsl_pdata.pt_va_size = SZ_128M;
-#endif
 #endif
 
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY) || defined( CONFIG_TOUCHSCREEN_MSM)

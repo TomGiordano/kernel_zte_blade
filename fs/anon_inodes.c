@@ -88,7 +88,7 @@ struct file *anon_inode_getfile(const char *name,
 	struct qstr this;
 	struct path path;
 	struct file *file;
-	int error;
+	int error, fd;
 
 	if (IS_ERR(anon_inode_inode))
 		return ERR_PTR(-ENODEV);
@@ -96,6 +96,10 @@ struct file *anon_inode_getfile(const char *name,
 	if (fops->owner && !try_module_get(fops->owner))
 		return ERR_PTR(-ENOENT);
 
+        error = get_unused_fd_flags(flags);
+        if (error < 0)
+               goto err_module;
+        fd = error;
 	/*
 	 * Link the inode to a directory entry by creating a unique name
 	 * using the inode sequence number.
@@ -117,6 +121,8 @@ struct file *anon_inode_getfile(const char *name,
 	atomic_inc(&anon_inode_inode->i_count);
 
 	path.dentry->d_op = &anon_inodefs_dentry_operations;
+        /* Do not publish this dentry inside the global dentry hash table */
+        path.dentry->d_flags &= ~DCACHE_UNHASHED;
 	d_instantiate(path.dentry, anon_inode_inode);
 
 	error = -ENFILE;
@@ -126,9 +132,11 @@ struct file *anon_inode_getfile(const char *name,
 	file->f_mapping = anon_inode_inode->i_mapping;
 
 	file->f_pos = 0;
-	file->f_flags = flags & (O_ACCMODE | O_NONBLOCK);
+	file->f_flags = O_RDWR | ( flags & O_NONBLOCK);
 	file->f_version = 0;
 	file->private_data = priv;
+
+        fd_install(fd, file);
 
 	return file;
 
