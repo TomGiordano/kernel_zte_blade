@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -48,6 +48,8 @@ struct res_trk_context {
 	unsigned int clock_enabled;
 	unsigned int rail_enabled;
 	u32 core_type;
+	int memtype;
+	u32 secure_session;
 };
 
 #if DEBUG
