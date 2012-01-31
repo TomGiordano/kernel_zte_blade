@@ -72,6 +72,8 @@ DEFINE_MUTEX(hdmi_msm_state_mutex);
 EXPORT_SYMBOL(hdmi_msm_state_mutex);
 static DEFINE_MUTEX(hdcp_auth_state_mutex);
 
+static void hdmi_msm_dump_regs(const char *prefix);
+
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 	boolean hdcp_activating;
 	struct work_struct hdcp_reauth_work, hdcp_work;
@@ -2997,14 +2999,23 @@ int hdmi_audio_packet_enable(bool on)
 }
 EXPORT_SYMBOL(hdmi_audio_packet_enable);
 
-static void hdmi_msm_audio_info_setup(boolean enabled, int num_of_channels,
-	int level_shift, boolean down_mix)
+
+/* TO-DO: return -EINVAL when num_of_channels and channel_allocation
+ *  does not match CEA 861-D spec.
+*/
+int hdmi_msm_audio_info_setup(bool enabled, u32 num_of_channels,
+	u32 channel_allocation, u32 level_shift, bool down_mix)
 {
-	uint32 channel_allocation = 0;	/* Default to FR,FL */
 	uint32 channel_count = 1;	/* Default to 2 channels
 					   -> See Table 17 in CEA-D spec */
 	uint32 check_sum, audio_info_0_reg, audio_info_1_reg;
 	uint32 audio_info_ctrl_reg;
+	u32 aud_pck_ctrl_2_reg;
+	u32 layout;
+
+	layout = (MSM_HDMI_AUDIO_CHANNEL_2 == num_of_channels) ? 0 : 1;
+	aud_pck_ctrl_2_reg = 1 | (layout << 1);
+	HDMI_OUTP(0x00044, aud_pck_ctrl_2_reg);
 
 	/* Please see table 20 Audio InfoFrame in HDMI spec
 	   FL  = front left
@@ -3027,6 +3038,7 @@ static void hdmi_msm_audio_info_setup(boolean enabled, int num_of_channels,
 	if (enabled) {
 		switch (num_of_channels) {
 		case MSM_HDMI_AUDIO_CHANNEL_2:
+			channel_allocation = 0;	/* Default to FR,FL */
 			break;
 		case MSM_HDMI_AUDIO_CHANNEL_4:
 			channel_count = 3;
@@ -3044,6 +3056,9 @@ static void hdmi_msm_audio_info_setup(boolean enabled, int num_of_channels,
 			channel_allocation = 0x1f;
 			break;
 		default:
+			pr_err("%s(): Unsupported num_of_channels = %u\n",
+					__func__, num_of_channels);
+			return -EINVAL;
 			break;
 		}
 
@@ -3099,7 +3114,14 @@ static void hdmi_msm_audio_info_setup(boolean enabled, int num_of_channels,
 	}
 	/* HDMI_INFOFRAME_CTRL0[0x002C] */
 	HDMI_OUTP(0x002C, audio_info_ctrl_reg);
+
+
+	hdmi_msm_dump_regs("HDMI-AUDIO-ON: ");
+
+	return 0;
+
 }
+EXPORT_SYMBOL(hdmi_msm_audio_info_setup);
 
 static void hdmi_msm_en_gc_packet(boolean av_mute_is_requested)
 {
@@ -3204,7 +3226,7 @@ static void hdmi_msm_audio_setup(void)
 	hdmi_msm_audio_acr_setup(TRUE,
 		external_common_state->video_resolution,
 		msm_hdmi_sample_rate, channels);
-	hdmi_msm_audio_info_setup(TRUE, channels, 0, FALSE);
+	hdmi_msm_audio_info_setup(TRUE, channels, 0, 0, FALSE);
 
 	/* Turn on Audio FIFO and SAM DROP ISR */
 	HDMI_OUTP(0x02CC, HDMI_INP(0x02CC) | BIT(1) | BIT(3));
@@ -3213,7 +3235,29 @@ static void hdmi_msm_audio_setup(void)
 
 static void hdmi_msm_audio_off(void)
 {
-	hdmi_msm_audio_info_setup(FALSE, 0, 0, FALSE);
+	uint32 audio_pkt_ctrl, audio_cfg;
+	 /* Number of wait iterations */
+	int i = 10;
+	audio_pkt_ctrl = HDMI_INP_ND(0x0020);
+	audio_cfg = HDMI_INP_ND(0x01D0);
+
+	/* Checking BIT[0] of AUDIO PACKET CONTROL and */
+	/* AUDIO CONFIGURATION register */
+	while (((audio_pkt_ctrl & 0x00000001) || (audio_cfg & 0x00000001))
+		&& (i--)) {
+		audio_pkt_ctrl = HDMI_INP_ND(0x0020);
+		audio_cfg = HDMI_INP_ND(0x01D0);
+		DEV_DBG("%d times :: HDMI AUDIO PACKET is %08x and "
+		"AUDIO CFG is %08x", i, audio_pkt_ctrl, audio_cfg);
+		msleep(100);
+		if (!i) {
+			DEV_ERR("%s:failed to set BIT[0] AUDIO PACKET"
+			"CONTROL or AUDIO CONFIGURATION REGISTER\n",
+				__func__);
+			return -ETIMEDOUT;
+		}
+	}
+	hdmi_msm_audio_info_setup(FALSE, 0, 0, 0, FALSE);
 	hdmi_msm_audio_acr_setup(FALSE, 0, 0, 0);
 	DEV_INFO("HDMI Audio: Disabled\n");
 }
@@ -3715,7 +3759,8 @@ static int hdmi_msm_power_on(struct platform_device *pdev)
 			return rc;
 		}
 	}
-	hdmi_common_get_video_format_from_drv_data(mfd);
+	hdmi_msm_audio_info_setup(TRUE, 0, 0, 0, FALSE);
+
 	mutex_lock(&external_common_state_hpd_mutex);
 
 	hdmi_msm_state->panel_power_on = TRUE;
