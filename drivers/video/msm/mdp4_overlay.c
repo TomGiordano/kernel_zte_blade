@@ -2381,6 +2381,13 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 	mdp4_stat.overlay_unset[pipe->mixer_num]++;
 
 	mdp4_overlay_pipe_free(pipe);
+
+	if (!(ctrl->plist[OVERLAY_PIPE_VG1].pipe_used +
+	      ctrl->plist[OVERLAY_PIPE_VG2].pipe_used))
+		mdp4_update_perf_level(OVERLAY_PERF_LEVEL4);
+
+	mdp4_set_perf_level();
+
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	return 0;
