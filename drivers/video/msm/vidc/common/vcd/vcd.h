@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,10 +29,10 @@
 #ifndef _VCD_H_
 #define _VCD_H_
 
-#include "vcd_api.h"
+#include <media/msm/vcd_api.h>
+#include "vcd_util.h"
 #include "vcd_ddl_api.h"
 #include "vcd_res_tracker_api.h"
-#include "vcd_util.h"
 #include "vcd_client_sm.h"
 #include "vcd_core.h"
 #include "vcd_device_sm.h"

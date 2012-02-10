@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,7 +31,7 @@
 #define _VCD_DDL_UTILS_H_
 
 #include <linux/delay.h>
-#include "vidc_type.h"
+#include <media/msm/vidc_type.h>
 
 #ifdef DDL_MSG_LOG
 #define DDL_MSG_LOW(x...)    printk(KERN_INFO x)

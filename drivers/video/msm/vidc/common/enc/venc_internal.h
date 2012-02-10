@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -32,8 +32,7 @@
 
 #include <linux/msm_vidc_enc.h>
 #include <linux/cdev.h>
-
-#include "vidc_init.h"
+#include <media/msm/vidc_init.h>
 
 #define VID_ENC_MAX_NUM_OF_BUFF 100
 
