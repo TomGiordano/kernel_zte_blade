@@ -17,6 +17,13 @@
  *
  * Created by guoyanling
  */
+/*-----------------------------------------------------------------------------------------
+  when         who          what, where, why                         comment tag
+  --------     ----         -------------------------------------    ----------------------
+  2011-06-24   lijing       optimize adaptor flow                    ZTE_CAM_LJ_20110624 
+  2010-06-10   lijing       add sensor configuration                 ZTE_CAM_LJ_20110610
+  2011-05-24   wt           merge from froyo  5ca camera function    ZTE_CAM_WT20110524
+------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
 #include <linux/types.h>
@@ -232,7 +239,10 @@ static int s5k5cagx_hard_standby(const struct msm_camera_sensor_info *dev, uint3
 
     if(on == 1)
     {
-
+        /*
+         * ZTE_CAM_LJ_20110602
+         * fix bug of high current in sleep mode
+         */
         rc = s5k5cagx_i2c_write(s5k5cagx_client->addr, 0x0028, 0x7000, WORD_LEN);
         if(rc < 0)
         {
@@ -2358,7 +2368,10 @@ static int s5k5cagx_sensor_init(const struct msm_camera_sensor_info *data)
     }
     mdelay(10);
     
-
+/*
+ * ZTE_CAM_LJ_20110602
+ * fix bug of high current in sleep mode
+ */
     rc = s5k5cagx_i2c_write(s5k5cagx_client->addr, 0x0028, 0x7000, WORD_LEN);
     if(rc < 0)
     {
@@ -2754,7 +2767,10 @@ int s5k5cagx_sensor_probe(const struct msm_camera_sensor_info *info,
     */
     s5k5cagx_init_suspend();
 
-
+	/*
+	 * add sensor configuration
+	 * ZTE_CAM_LJ_20110610
+	 */ 
     s->s_mount_angle = 0;
     s->s_camera_type = BACK_CAMERA_2D;
 
@@ -2825,7 +2841,12 @@ static void s5k5cagx_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
-
+    /* 
+    * ZTE_JIA_CAM_20101209
+    * to avoid standby current exception problem
+    *
+    * ignore "rc"
+    */
     if(rc != -ENOINIT){
 	 	pr_err("%s: rc != -ENOINIT\n", __func__);
     	msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);

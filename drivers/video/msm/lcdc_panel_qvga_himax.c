@@ -210,6 +210,7 @@ static void lcdc_himax_init(void)
 
 	gpio_lcd_emuspi_write_one_para(0x31, 0x03); /* RGB interface control */
 	gpio_lcd_emuspi_write_one_para(0x32, 0xCE); 
+	msleep(150);                                     
 	pr_debug("lcd module himax init exit\n!");
 
 

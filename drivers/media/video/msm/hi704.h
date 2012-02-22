@@ -20,6 +20,8 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-04-15   lijing       add setting array                        ZTE_CAM_LJ_20100415
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #ifndef FI704_H
@@ -54,7 +56,10 @@ struct hi704_reg_t {
     struct hi704_i2c_reg_conf const *rftbl;
     uint16_t rftbl_size;
 
-   
+    /*
+     * ZTE_CAM_LJ_20100415
+     * add antibanding array
+     */
     struct hi704_i2c_reg_conf const *antibanding_auto_tbl;
     uint16_t antibanding_auto_tbl_size;
 

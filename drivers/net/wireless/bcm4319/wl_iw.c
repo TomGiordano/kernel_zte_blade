@@ -59,6 +59,9 @@ typedef const struct si_pub  si_t;
 #include <wl_iw.h>
 
 extern bool g_bSoftapRunning;
+extern bool g_bEarlySuspendMode;
+bool g_disableDhcpPktFilter = false;
+
 
 #ifndef IW_ENCODE_ALG_SM4
 #define IW_ENCODE_ALG_SM4 0x20
@@ -101,7 +104,7 @@ extern bool g_bSoftapRunning;
 #define WL_SOFTAP(x) printk x
 static struct net_device *priv_dev;
 static bool 	ap_cfg_running = FALSE;
-static bool 	ap_fw_loaded = FALSE;
+bool 	ap_fw_loaded = FALSE;
 struct net_device *ap_net_dev = NULL;
 struct semaphore  ap_eth_sema;
 static int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap);
@@ -705,6 +708,10 @@ wl_iw_set_power_mode(
 	return error;
 }
 #endif 
+
+extern void dhd_set_packet_filter(int value, dhd_pub_t *dhd);
+extern dhd_pub_t *pfn_dhd;
+
 static int
 wl_iw_set_btcoex_dhcp(
 	struct net_device *dev,
@@ -744,7 +751,7 @@ wl_iw_set_btcoex_dhcp(
 
 	if (strnicmp((char *)&powermode_val, "1", strlen("1")) == 0) {
 
-		WL_TRACE(("%s: DHCP session starts\n", __FUNCTION__));
+		WL_ERROR(("%s: DHCP session starts\n", __FUNCTION__));
 
 		
 		if ((saved_status == FALSE) &&
@@ -761,6 +768,17 @@ wl_iw_set_btcoex_dhcp(
 				
 #ifndef CUSTOMER_HW2
 				dev_wlc_ioctl(dev, WLC_SET_PM, &pm_local, sizeof(pm_local));
+				WL_ERROR(("DHCP start, g_disableDhcpPktFilter=%d, g_bEarlySuspendMode=%d\n", g_disableDhcpPktFilter, g_bEarlySuspendMode));
+				//if(1 == g_bEarlySuspendMode)
+				{
+					if(false == g_disableDhcpPktFilter)
+					{
+					    g_disableDhcpPktFilter = true;	//disbale the filter
+					    WL_ERROR(("Disable filter +\n"));
+					    dhd_set_packet_filter(0, pfn_dhd);	
+					    WL_ERROR(("Disable filter -\n"));	
+					}
+				}
 #endif
 
 				
@@ -802,11 +820,22 @@ wl_iw_set_btcoex_dhcp(
 	else if (strnicmp((char *)&powermode_val, "0", strlen("0")) == 0) {
 #endif
 
-		WL_TRACE(("%s: DHCP session done\n", __FUNCTION__));
+		WL_ERROR(("%s: DHCP session done\n", __FUNCTION__));
 
 		
 #ifndef CUSTOMER_HW2
 		dev_wlc_ioctl(dev, WLC_SET_PM, &pm, sizeof(pm));
+		WL_ERROR(("DHCP end, g_disableDhcpPktFilter=%d, g_bEarlySuspendMode=%d\n", g_disableDhcpPktFilter, g_bEarlySuspendMode));
+		if(true == g_disableDhcpPktFilter)
+		{					        
+			if(1 == g_bEarlySuspendMode)
+			{		
+			        WL_ERROR(("Enable filter +\n"));
+				dhd_set_packet_filter(1, pfn_dhd);					
+			        WL_ERROR(("Enable filter -\n"));				
+			}			
+			g_disableDhcpPktFilter = false;	//enable the filter
+		}
 #endif
 
 		
@@ -1552,11 +1581,11 @@ int init_ap_profile_from_string(char *param_str, struct ap_profile *ap_cfg)
 	ret |= get_parmeter_from_string(&str_ptr, "PREAMBLE=", PTYPE_INTDEC, &ap_cfg->preamble, 5);
 
 	ret |= get_parmeter_from_string(&str_ptr, "MAX_SCB=", PTYPE_INTDEC,  &ap_cfg->max_scb, 5);
-
+	//pengji 20110701 start
     get_parmeter_from_string(&str_ptr, "HIDDEN=", PTYPE_INTDEC,  &ap_cfg->closednet, 5);
 
     get_parmeter_from_string(&str_ptr, "COUNTRY=", PTYPE_STRING,  &ap_cfg->country_code, 3);
-						
+	//pengji 20110701 end							
 	return ret;
 }
 #endif 
@@ -2313,6 +2342,11 @@ wl_iw_set_wap(
 	
 	memset(&join_params, 0, sizeof(join_params));
 	join_params_size = sizeof(join_params.ssid);
+
+#ifdef WLAN_PFN
+        dhd_set_pfn_ssid(g_ssid.SSID, g_ssid.SSID_len);
+	 dhd_enable_pfn_ssid(0);
+#endif
 
 	memcpy(join_params.ssid.SSID, g_ssid.SSID, g_ssid.SSID_len);
 	join_params.ssid.SSID_len = htod32(g_ssid.SSID_len);
@@ -6157,7 +6191,7 @@ static int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
 	wlc_ssid_t ap_ssid;
 #endif
 	wl_wsec_key_t key;
-	int hidden_ssid = 0;
+	int hidden_ssid = 0;            //++++++++++++++++++++++++++++++++
 
 	WL_SOFTAP(("\nsetting SOFTAP security mode:\n"));
 	WL_SOFTAP(("wl_iw: set ap profile:\n"));
@@ -6320,13 +6354,13 @@ static int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
 		}
 #endif
 
-
+//++++++++++++++++++++++++++++++++
 		 hidden_ssid = ap->closednet;
 		 if ((res = dev_wlc_intvar_set(dev, "closednet", hidden_ssid))) {
 		 		 WL_ERROR(("%s fail to set hidden\n", __FUNCTION__));
 		 }
 		 printk("%s success set hidden %d\n", __func__, hidden_ssid);
-
+//++++++++++++++++++++++++++++++++
 
 	return res;
 }
@@ -7411,6 +7445,23 @@ wl_iw_check_conn_fail(wl_event_msg_t *e, char* stringBuf, uint buflen)
 #define IW_CUSTOM_MAX 256 
 #endif 
 
+#ifdef WLAN_PFN
+#include <linux/wakelock.h>
+static struct wake_lock wl_pfn_wake;
+extern int need_pfn;
+
+
+static void wl_iw_set_pfn(struct work_struct * work)
+{
+	msleep(10);
+	need_pfn = 1;
+	dhd_enable_pfn_ssid(1);
+	dhd_clear_pfn_ssid();
+}
+
+DECLARE_WORK(set_pfn_work, wl_iw_set_pfn);
+#endif
+
 void
 wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 {
@@ -7484,6 +7535,14 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 	case WLC_E_REASSOC_IND:
 #if defined(SOFTAP)
 		WL_SOFTAP(("STA connect received %d\n", event_type));
+
+#ifdef WLAN_PFN
+		if(wake_lock_active(&wl_pfn_wake)){
+			wake_unlock(&wl_pfn_wake);
+			printk("LINK UP, give up the PFN wake lock\n");
+		}
+#endif  //#ifdef WLAN_PFN		
+
 		if (ap_cfg_running) {
 			wl_iw_send_priv_event(priv_dev, "STA_JOIN");
 			return;
@@ -7520,7 +7579,7 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 	case WLC_E_DEAUTH_IND:
 	case WLC_E_DISASSOC_IND:
 #if defined(SOFTAP)
-		WL_SOFTAP(("STA disconnect received %d\n", event_type));
+		WL_SOFTAP(("STA disconnect received %d\n", event_type));		
 		if (ap_cfg_running) {
 			wl_iw_send_priv_event(priv_dev, "STA_LEAVE");
 			return;
@@ -7549,6 +7608,11 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 		} else {
 			WL_TRACE(("STA_Link Down\n"));
 			g_ss_cache_ctrl.m_link_down = 1;
+			
+#ifdef WLAN_PFN
+			schedule_work(&set_pfn_work);
+#endif	
+
 		}
 #else		
 		g_ss_cache_ctrl.m_link_down = 1;
@@ -7683,6 +7747,12 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 		WL_ERROR(("%s Event WLC_E_PFN_NET_FOUND, send %s up : find %s len=%d\n", \
 			__FUNCTION__, PNO_EVENT_UP, ssid->SSID, ssid->SSID_len));
 			WAKE_LOCK_TIMEOUT(iw->pub, WAKE_LOCK_PNO_FIND_TMOUT, 20 * HZ);
+		
+#ifdef WLAN_PFN
+		wake_lock_timeout(&wl_pfn_wake, 30*HZ);  /* must wake to 20 secs to make sure ip ready */
+                printk("PFN found, set 30s PFN wake lock");
+#endif
+
 		cmd = IWEVCUSTOM;
 		memset(&wrqu, 0, sizeof(wrqu));
 		strcpy(extra, PNO_EVENT_UP);
@@ -7956,7 +8026,7 @@ int wl_iw_attach(struct net_device *dev, void * dhdp)
 	
 	memset(&g_wl_iw_params, 0, sizeof(wl_iw_extra_params_t));
 
-	
+	g_disableDhcpPktFilter = false;
 #ifdef CSCAN
 	params_size = (WL_SCAN_PARAMS_FIXED_SIZE + OFFSETOF(wl_iscan_params_t, params)) +
 	    (WL_NUMCHANNELS * sizeof(uint16)) + WL_SCAN_PARAMS_SSID_MAX * sizeof(wlc_ssid_t);
@@ -8022,6 +8092,9 @@ int wl_iw_attach(struct net_device *dev, void * dhdp)
 	
 	wl_iw_bt_init(dev);
 
+#ifdef WLAN_PFN
+	wake_lock_init(&wl_pfn_wake, WAKE_LOCK_SUSPEND, "dhd_wake_lock_pfn_find_event");
+#endif
 
 	return 0;
 }
@@ -8032,6 +8105,8 @@ void wl_iw_detach(void)
 	iscan_buf_t  *buf;
 	iscan_info_t *iscan = g_iscan;
 
+        g_disableDhcpPktFilter = false;
+		
 	if (!iscan)
 		return;
 	if (iscan->sysioc_pid >= 0) {
@@ -8065,6 +8140,10 @@ void wl_iw_detach(void)
 		
 		wl_iw_send_priv_event(priv_dev, "AP_DOWN");
 	}
+#endif
+
+#ifdef WLAN_PFN
+	wake_lock_destroy(&wl_pfn_wake);
 #endif
 
 }

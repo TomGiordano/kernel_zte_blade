@@ -20,7 +20,12 @@
  * with interface to power management device
  */
 
-
+ /*-----------------------------------------------------------------------------------------
+  when         who              what, where, why                        comment tag
+  ----------   -------------    -------------------------------------   -------------------                             
+2011-01-26     xumei    modified according to bluetooth-power of kernel 2.6.35     ZTE_BT_QXX_20101207
+2010-12-07     qxx      compatible of qualcomm and broadcomm bluetooth chip        ZTE_BT_QXX_20101207  
+------------------------------------------------------------------------------------------*/
 
 #include <linux/init.h>
 #include <linux/module.h>

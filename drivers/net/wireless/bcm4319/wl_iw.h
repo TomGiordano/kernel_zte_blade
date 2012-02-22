@@ -163,10 +163,10 @@ struct ap_profile {
 	uint32	channel; 
 	uint32	preamble;
 	uint32	max_scb;	
-
+	//pengji 20110701 start
     uint32  closednet;  
     char country_code[WLC_CNTRY_BUF_SZ];
-
+	//pengji 20110701 end	
 };
 
 

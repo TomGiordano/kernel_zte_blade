@@ -20,7 +20,12 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
- 
+  2010-12-15   jia.jia      Add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-12-03   lijing       Add support for reading EEPROM LSC       ZTE_LJ_CAM_20101203
+  2010-06-22   ye.ganlin    Add config for loading LSC config        YGL_CAM_20100622
+                            from OTP memory
+  2010-06-13   ye.ganlin    Add sensor config definition             YGL_CAM_20100613
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #ifndef MT9P111_H

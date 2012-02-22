@@ -17,7 +17,12 @@
  *  
  * Created by guoyanling
  */  
-
+/*-----------------------------------------------------------------------------------------
+  when         who          what, where, why                         comment tag
+  --------     ----         -------------------------------------    ----------------------
+  2011-07-14   lijing       modify af table                          ZTE_CAM_LJ_20110714
+  2011-06-02   lijing       fix bug of high current in sleep mode    ZTE_CAM_LJ_20110602
+------------------------------------------------------------------------------------------*/
 
 #include "s5k5cagx_mcnex_qtech.h"
 
@@ -1227,8 +1232,18 @@ static struct s5k5cagx_mcnex_qtech_i2c_reg_conf const prev_snap_tbl[] = {
 // AF Lens Position Table Settings 
 
     {0x002A, 0x1074, WORD_LEN, 0},
+/*
+ * ZTE_CAM_LJ_20110714
+ * Modify af table,else it will cause AF fail.
+ */
+#if 0
     {0x0F12, 0x0012, WORD_LEN, 0},  //JK Kim, AF fine tuning
     {0x0F12, 0x001E, WORD_LEN, 0},
+#else
+    {0x0F12, 0x0013, WORD_LEN, 0},  //JK Kim, AF fine tuning
+    {0x0F12, 0x0000, WORD_LEN, 0},
+    {0x0F12, 0x0015, WORD_LEN, 0},
+#endif
     {0x0F12, 0x0024, WORD_LEN, 0},
     {0x0F12, 0x002A, WORD_LEN, 0},
     {0x0F12, 0x0030, WORD_LEN, 0},
@@ -3377,7 +3392,10 @@ static struct s5k5cagx_mcnex_qtech_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0F12, 0x0000, WORD_LEN, 1000},
 
 //===============================================================
-
+/*
+ * ZTE_CAM_LJ_20110602
+ * fix bug of high current in sleep mode
+ */
 #if 0
     {0xFCFC, 0xD000, WORD_LEN, 0},    
     {0x0028, 0x7000, WORD_LEN, 0},

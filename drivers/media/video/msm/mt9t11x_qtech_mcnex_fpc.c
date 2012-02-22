@@ -21,8 +21,118 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
-
+  2011-07-07   wangtao       add front camera for 727d40             ZTE_CAM_LJ_20110707
+  2011-06-24   lijing       optimize adaptor flow                    ZTE_CAM_LJ_20110624
+  2011-05-25   wangtao      modified for 727ad40 dual camera         ZTE_WT_CAM_20110525 
+  2011-01-19   zt           modify the configuration before sensor   ZTE_ZT_CAM_20110119 
+                            go into standby mode for abnormal MCNEX 
+                            camera sleep current
+  2010-12-20   zt           add macro definition for V9 to           ZTE_ZT_CAM_20101220
+                            disable the AF motor in standby mode
+  2010-12-16   zt           increase time delay for AF trigger;      ZTE_ZT_CAM_20101216
+                            remove the process of sharpness
+                            which is decided by brightness value
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_CAM_JIA_20101215
+  2010-12-09   jia          add failure process to avoid standby     ZTE_JIA_CAM_20101209
+                            current exception problem
+  2010-12-06   jia          add support for exposure compensation    ZTE_CAM_JIA_20101206
+  2010-11-29   lijing       add refresh result judgement for         ZTE_CAM_LJ_20101129
+                            parameters that need to refresh(at the
+                            end of setting write 0x8400 register to
+                            refresh)
+  2010-11-22   zt           disable the AF motor control IC before   ZTE_ZT_CAM_20101122
+                            entering the standby status
+  2010-09-08   jia          add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-09-06   jia          add support of CAM_CLK_SWT for MCLK      JIA_CAM_20100906
+                            switch between back-end and front-end
+                            camera
+  2010-08-25   zt           reduce the sleep current                 ZT_CAM_20100825
+                            for CONFIG_SENSOR_ADAPTER
+  2010-08-19   jia          add support for CONFIG_SENSOR_ADAPTER    JIA_CAM_20100819
+  2010-08-09   jia          use lens_for_indoor as default setting   JIA_CAM_20100809
+                            of lensshading
+  2010-08-04   jia          using lens_for_outdoor instead of        JIA_CAM_20100804
+                            lens_for_indoor_tbl for Lensshading
+  2010-07-05   jia          improve effect of ISO                    JIA_CAM_20100705
+  2010-06-10   lijing       add interface for getting sensor info    LIJING_CAM_20100610
+  2010-05-20   jia          add process of wake lock                 ZTE_MSM_CAMERA_JIA_001
+  2010-05-15   jia          ignore "rc" of queue_work                ZTE_MSM_CAMERA_JIA_001
+  2010-04-29   zh.shj       Get FTM flag to adjust the               ZTE_MSM_CAMERA_ZHSHJ_001
+                            initialize process of camera
+  2010-04-17   jia          Add process of MCLK switch for different ZTE_MSM_CAMERA_JIA_001
+                            board types
+  2010-04-15   zh.shj       Add process for different sensors,       ZTE_MSM_CAMERA_ZHSHJ_001
+                            e.g., MT9T111 and MT9T112
+  2010-04-13   chg          optimize autofocus, avoid compiler       CHG_CAM_20100413
+                            optimization exception when loop is little.
+  2010-04-06   jia          Enable MT9T11X_SENSOR_PROBE_INIT         ZTE_MSM_CAMERA_JIA_001
+  2010-03-11   jia          Set the process of time delay for switch ZTE_MSM_CAMERA_JIA_001
+                            to preview mode after the process of
+                            setting manual mode for autofocus in
+                            order to avoid display exception during
+                            sensor initialization.
+  2010-03-03   zh.shj       Add process of lens shading before       ZTE_MSM_CAMERA_ZHSHJ_001
+                            preview and snapshot
+  2010-02-21   zh.shj       Increase MCLK to maximum value (54MHz);  ZTE_MSM_CAMERA_ZHSHJ_001
+                            Set sharpness value according to
+                            brightness level
+  2010-02-11   zh.shj       Change the value of register to fix      ZTE_MSM_CAMERA_ZHSHJ_001
+                            the bug of flicker under ISO800 and
+                            ISO400
+  2010-02-06   zh.shj       Change the value of register to fix      ZTE_MSM_CAMERA_ZHSHJ_001
+                            the bug of flicker under ISO800 and
+                            ISO400
+  2010-02-04   jia.jia      Increase time delay for AF               ZTE_MSM_CAMERA_ZHSHJ_001
+  2010-02-01   zh.shj       Change the value of register to fix      ZTE_MSM_CAMERA_ZHSHJ_001
+                            the bug of flicker under ISO800
+  2010-01-27   jia.jia      Increase time delay to wait the          ZTE_MSM_CAMERA_JIA_001
+                            resumming of len after auto focus
+  2010-01-21   jia.jia      Add time delay to wait the resumming     ZTE_MSM_CAMERA_JIA_001
+                            of len after auto focus
+  2010-01-06   zh.shj       set MCLK as 48MHz                        ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-25   zh.shj       fix bug of no effect of sepia            ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-24   zh.shj       add time delay to fix bug of no effect   ZTE_MSM_CAMERA_ZHSHJ_001
+                            when Effect setting is selected
+  2009-12-21   zh.shj       add macro judgment of                    ZTE_MSM_CAMERA_ZHSHJ_001
+                            MT9T111_SENSOR_PROBE_INIT for init
+                            throught I2C
+  2009-12-21   zh.shj       improve effects of saturation, iso,      ZTE_MSM_CAMERA_ZHSHJ_001
+                            sharpness, antibanding
+  2009-12-21   zh.shj       modify register value for setting of     ZTE_MSM_CAMERA_ZHSHJ_001
+                            saturation
+  2009-12-19   zh.shj       add register configurations for contrast ZTE_MSM_CAMERA_ZHSHJ_001
+                            , brightness, saturation, sharpness,
+                            iso, antibanding, and effect
+  2009-12-17   jia.jia      add process of brightness, saturation    ZTE_MSM_CAMERA_JIA_001
+                            contrast, and sharpness
+  2009-12-14   jia.jia      add functions of WB, ISO,                ZTE_MSM_CAMERA_JIA_001
+                            and Antibanding
+  2009-12-11   jia.jia      rename file with mt9t111_qtech           ZTE_MSM_CAMERA_JIA_001
+  2009-12-11   jia.jia      decrease time delay during AF trigger,   ZTE_MSM_CAMERA_JIA_001
+                            switch between preview and snapshot     
+  2009-12-03   jia.jia      Improve efficiency of switch between     ZTE_MSM_CAMERA_JIA_001
+                            preview and snapshot mode
+  2009-12-01   jia.jia      Add function of AF with keypress         ZTE_MSM_CAMERA_JIA_001
+  2009-12-01   jia.jia      Replace sensor init during system        ZTE_MSM_CAMERA_JIA_001
+                            startup with that during camera app
+                            startup;
+                            Refactor code for sensor init
+  2009-11-21   jia.jia      Add process for time out of AF during    ZTE_MSM_CAMERA_JIA_001
+                            snapshot;
+                            Refactor code for AF, AWB and LSC;
+  2009-11-26   zh.shj       improve effects of AF, AWB and LSC;      ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-11-21   jia.jia      Refactor code for initializaton;         ZTE_MSM_CAMERA_JIA_001
+  2009-11-12   jia.jia      Roll code back;                          ZTE_MSM_CAMERA_JIA_001
+  2009-11-12   jia.jia      Disable MT9T111_PROBE_WORKQUEUE;         ZTE_MSM_CAMERA_JIA_001
+                            Comment 1ms time delay during sensor
+                            register initialization which is disused;
+                            Refactor code for initialization
+  2009-11-09   jia.jia      add config for saving values of other    ZTE_MSM_CAMERA_ZHSHJ_001
+                            registers before enterring hard standby
+                            mode
+  2009-11-06   h.qh         mt9t111 parallel init process implementedZTE_MSM_CAMERA_HQH_001
+  2009-11-05   zh.shj       mt9t111 preview function implemented     ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -572,7 +682,9 @@ static int32_t mt9t11x_af_trigger(void)
             return 0;
         }
 
-       
+        /* ZTE_ZT_CAM_20101216
+         * increase time delay from 20ms to 70ms
+         */
         mdelay(70);
     }
 
@@ -857,7 +969,10 @@ static int32_t mt9t11x_set_sharpness(int8_t sharpness)
         return rc;
     }
 
-   
+    /* ZTE_ZT_CAM_20101216
+     * The judgment of brightness is disused,
+     * therefore, current level of sharpness is total 5 level(0~4).
+     */
 #if 0
     rc = mt9t11x_i2c_read(mt9t11x_client->addr, 0x0990, &brightness_lev, WORD_LEN);
     if (rc < 0)
@@ -971,6 +1086,12 @@ static int32_t mt9t11x_set_iso(int8_t iso_val)
 {
     int32_t rc = 0;
 
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     * 0x0 means sucessful
+     */
     uint32_t i = 0;
     uint16_t value = 0x0006;
 
@@ -1226,7 +1347,14 @@ static int32_t mt9t11x_set_iso(int8_t iso_val)
         }     
     }
 
- 
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     *
+     * 0x0000: sucessful
+     * others: failed
+     */
     mdelay(50);
     for (i = 0; i < 8; ++i)
     {       
@@ -1260,7 +1388,12 @@ static int32_t  mt9t11x_set_antibanding(int8_t antibanding)
 {
     int32_t rc = 0;
 
-
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     * 0x0 means sucessful
+     */
     uint32_t i = 0;
     uint16_t value = 0x0005;
 
@@ -1386,7 +1519,14 @@ static int32_t  mt9t11x_set_antibanding(int8_t antibanding)
         }     
     }
 
-  
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     *
+     * 0x0000: sucessful
+     * others: failed
+     */
     mdelay(50);
     for (i = 0; i < 8; ++i)
     {       
@@ -1851,7 +1991,12 @@ static long mt9t11x_set_effect(int32_t mode, int32_t effect)
     uint16_t __attribute__((unused)) reg_val;
     long rc = 0;
 
-
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     * 0x0 means sucessful
+     */
     uint32_t i = 0;
     uint16_t value = 0x0006;
 
@@ -2121,7 +2266,14 @@ static long mt9t11x_set_effect(int32_t mode, int32_t effect)
         }
     }
 
-    
+    /*
+     * ZTE_CAM_LJ_20101129
+     * add refresh result judgement for parameters that need to refresh
+     * read 0x8400 register to judge if setting is sucessfully changed
+     *
+     * 0x0000: sucessful
+     * others: failed
+     */
     mdelay(50);
     for (i = 0; i < 8; ++i)
     {       
@@ -2628,7 +2780,7 @@ static int mt9t11x_sensor_init(const struct msm_camera_sensor_info *data)
     {
         // Do nothing here
     }
-
+//ZTE_CAM_LJ_20110707
 #if defined(CONFIG_MACH_SAILBOAT)
     rc = msm_camera_clk_switch(mt9t11x_ctrl->sensordata, MT9T11X_GPIO_SWITCH_CTL, MT9T11X_GPIO_SWITCH_VAL);
     if (rc < 0)
@@ -2846,9 +2998,11 @@ static int mt9t11x_sensor_release_internal(void)
     }
     mdelay(1);
 
-   
+    /* ZTE_ZT_CAM_20101122 ZTE_ZT_CAM_20110119
+     * Disable the AF motor control IC before entering the standby status
+     */
     /* Pull down the GPIO 0 of mt9t11x IC to disable the AF motor control IC */
-#if defined(CONFIG_MACH_V9) || defined(CONFIG_MACH_ROAMER) || defined(CONFIG_MACH_SAILBOAT)
+//#if defined(CONFIG_MACH_V9) || defined(CONFIG_MACH_ROAMER) || defined(CONFIG_MACH_SAILBOAT)
     rc = mt9t11x_i2c_write(mt9t11x_client->addr, 0x098E, 0x3003, WORD_LEN);
     if (rc < 0)
     {
@@ -2900,7 +3054,7 @@ static int mt9t11x_sensor_release_internal(void)
         return rc;
     }
     mdelay(150);
-#endif
+//#endif
 
     /*
       * mt9t11x_ctrl's memory is allocated in mt9t11x_sensor_probe_init
@@ -3108,7 +3262,10 @@ int mt9t11x_sensor_probe(const struct msm_camera_sensor_info *info,
      */
     mt9t11x_init_suspend();
 
-
+	/*
+	 * add sensor configuration
+	 * ZTE_CAM_LJ_20110413
+	 */ 
     s->s_mount_angle = 0;
     s->s_camera_type = BACK_CAMERA_2D;
 
@@ -3168,7 +3325,10 @@ static void mt9t11x_workqueue(struct work_struct *work)
         CCRT("%s: msm_camera_dev_start failed!\n", __func__);
         goto probe_failed;
     }
-   
+    /*
+     * ZTE_CAM_LJ_20110608
+     * fix bug of high current
+     */
 #if defined(CONFIG_MACH_BLADE)
     else {
         msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);
@@ -3185,7 +3345,12 @@ static void mt9t11x_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
-  
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
       if(rc != -ENOINIT){
 	 	pr_err("%s: rc != -ENOINIT\n", __func__);
     	msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);

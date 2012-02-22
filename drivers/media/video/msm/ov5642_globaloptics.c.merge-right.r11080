@@ -20,7 +20,68 @@
 /*-----------------------------------------------------------------------------------------
   when         who      what, where, why                         comment tag
   --------     ----     -------------------------------------    --------------------------
- 
+  2010-12-15   ygl      add the interface of touch AF for froyo  ZTE_YGL_CAM_20101214                        
+  2010-12-09   jia      add failure process to avoid standby     ZTE_JIA_CAM_20101209
+                        current exception problem
+  2010-12-07   zt       set gain no mater value of               ZTE_ZT_CAM_20101203
+                        g_preview_exposure under normal light or backlight
+  2010-12-03   zt       modified for capturing under backlight   ZTE_ZT_CAM_20101203
+  2010-11-23   ygl      add time delay of 400ms after sensor     ZTE_YGL_CAM_20101123
+                        init to avoid green display when preview
+                        mode is resumed after snapshot or review
+  2010-10-26   lijing   fix bug of no preview image after        ZTE_LJ_CAM_20101026
+                        changing effect mode repeatedly
+  2010-10-26   zt       add the interface of exposure            ZTE_ZT_CAM_20101026_04
+                        compensation for foryo
+  2010-10-26   zt       update the config of saturation          ZTE_ZT_CAM_20101026
+  2010-10-26   zt       update the config of MWB cloudy          ZTE_ZT_CAM_20101026
+  2010-10-18   ygl      decrease time delay in                   ZTE_YGL_CAM_20101018
+                        "ov5642_sensor_init" to pass CTS
+  2010-09-29   zt       update the saturation parameter          ZTE_ZT_CAM_20100929
+  2010-09-21   zt       update the saturation parameter          ZTE_ZT_CAM_20100921
+  2010-09-14   zt       solve the problem that exit the          ZTE_ZT_CAM_20100914
+                        camera application when adjusting 
+                        the brightness due to register 0x5580;
+                        modify setting of register 0x5580 for
+                        contrast, saturation, and effect
+  2010-09-08   jia      add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-09-07   jia      add process for variable initialization  JIA_CAM_20100907
+  2010-09-06   zt       add the register configuration of        ZT_CAM_20100906
+                        ISO, sharpness, antibanding and effect,
+                        update the brightness configuration
+  2010-08-31   jia      add functions of ISO, sharpness, and     JIA_CAM_20100831
+                        antibanding
+  2010-08-20   zt       modified the configuration               ZT_CAM_20100820
+                        parameter of brightness
+  2010-08-19   jia      fix slave address error for              JIA_CAM_20100819
+                        CONFIG_SENSOR_ADAPTER
+  2010-08-18   jia      refactor code for support of             JIA_CAM_20100818
+                        CONFIG_SENSOR_ADAPTER,
+                        add support for CONFIG_SENSOR_INFO,
+                        add support for OV5642_PROBE_WORKQUEUE
+  2010-08-13   zt       modified the frequency of MCLK           ZT_CAM_20100813_002
+  2010-08-13   zt       modified the value of wb configration    ZT_CAM_20100813_001
+  2010-06-08   jia      refactor process of                      JIA_CAM_20100608
+                        "CONFIG_SENSOR_ADAPTER"
+  2009-04-30   lijing   add for mt9t11x and ov5642 adapter       LIJING_CAM_20100430
+  2010-04-29   zh.shj   Get FTM flag to adjust the               ZTE_MSM_CAMERA_ZHSHJ_001
+                        initialize process of camera  
+  2010-01-28   lijing   modify brighness for snapshot            ZTE_MSM_CAMERA_LIJING_001
+  2010-01-28   lijing   adjust MCLK switch setting               ZTE_MSM_CAMERA_LIJING_001
+    
+  2009-12-11   jia.jia  decrease time delay during AF trigger,   ZTE_MSM_CAMERA_JIA_001
+                        switch between preview and snapshot     
+  2009-12-07   jia.jia  Remove functions called for              ZTE_CAMERA_JIA_001
+                        turning on/off FLASH LED, which is
+                        moved to 
+                        vfe_process_QDSP_VFETASK_MSG_VFE_RESET_ACK
+                        in HAL
+  2009-12-02   jia.jia  Add function of AF with keypress         ZTE_CAMERA_JIA_001
+                        Improve effects of preview and
+                        snapshot
+  2009-11-12   jia.jia  Refactor code for initialization         ZTE_MSM_CAMERA_JIA_001
+  2009-11-02   zh.shj   Add AF,AWB & Brightness settings         ZTE_MSM_CAMERA_ZHSHJ_001 
+  2009-10-24   jia.jia  Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -94,7 +155,9 @@ static DECLARE_WORK(ov5642_cb_work, ov5642_workqueue);
 #define CAPTURE_FRAMERATE 375
 #define PREVIEW_FRAMERATE 1500
 
-
+/* ZTE_YGL_CAM_20101214
+ * add the interface of touch AF for froyo
+ */
 #define OV5642_AF_WINDOW_FULL_WIDTH  64
 #define OV5642_AF_WINDOW_FULL_HEIGHT 48
 /* 
@@ -130,7 +193,7 @@ static uint32_t g_preview_line_width;
 static uint16_t g_preview_gain;
 static uint32_t g_preview_frame_rate = 0;
 
-#if 0 
+#if 0 //ZTE_ZT_CAM_20101203
 static uint16_t temp_l,temp_m,temp_h;
 #endif
 
@@ -1367,7 +1430,9 @@ static long ov5642_set_wb(int8_t wb_mode)
     return rc;
 }
 
-
+ /* ZTE_YGL_CAM_20101214
+  * add the interface of touch AF for froyo
+  */
 static int32_t ov5642_set_aec_rio(aec_rio_cfg position)
 {
     int32_t rc = 0;
@@ -1860,7 +1925,9 @@ static int32_t ov5642_set_sharpness(int8_t sharpness)
 	return rc;
 } 
 
-
+/* ZTE_ZT_CAM_20101026_04
+ * add the interface of exposure compensation for foryo
+ */
 static long ov5642_set_exposure_compensation(int8_t exposure)
 {
     long rc = 0;
@@ -2251,7 +2318,7 @@ static long ov5642_hw_ae_transfer(void)
      * g_preview_exposure > 4: for normal light
      * g_preview_exposure <= 4: under backlight
      */
-#if 0 
+#if 0 //ZTE_ZT_CAM_20101203
     if (g_preview_exposure > 4)
 #endif
     {    
@@ -2386,7 +2453,7 @@ static long ov5642_hw_ae_transfer(void)
             return rc;
         }
     }
-#if 0 
+#if 0 //ZTE_ZT_CAM_20101203
     else
     {
         if (g_preview_exposure > 1)
@@ -2496,7 +2563,10 @@ static long ov5642_set_effect(int32_t mode, int32_t effect)
                return rc;
             }
 
-          
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5642_i2c_write(ov5642_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -3226,8 +3296,16 @@ static int ov5642_sensor_init(const struct msm_camera_sensor_info *data)
         goto sensor_init_fail;
     }
 
-   
-  
+    /*
+      * To avoid green display when preview mode is resumed
+      * after snapshot or review.
+      * The action of pulling STANDBY GPIO down is the key which
+      * generates the problem mentioned above,
+      * So time delay is added to avoid this problem.
+      *
+      * ZTE_YGL_CAM_20101018, ZTE_YGL_CAM_20101123
+      * Decrease time delay from 700ms to 400ms in order to pass CTS
+      */
     mdelay(400);
 
     return 0;
@@ -3327,13 +3405,15 @@ static int ov5642_sensor_config(void __user *argp)
         }
         break;
 
-        case CFG_SET_EXPOSURE_COMPENSATION:
+        case CFG_SET_EXPOSURE_COMPENSATION://ZTE_ZT_CAM_20101026_04
         {
             rc = ov5642_set_exposure_compensation(cfg_data.cfg.exposure);
         }
         break;
 
-     
+        /* ZTE_YGL_CAM_20101214
+         * add the interface of touch AF for froyo
+         */
         case CFG_SET_AEC_RIO:
         {
             rc = ov5642_set_aec_rio(cfg_data.cfg.aec_rio);
@@ -3552,7 +3632,12 @@ static int __ov5642_probe_internal(struct platform_device *pdev)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
-   
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
     msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);
     return rc;
 #endif

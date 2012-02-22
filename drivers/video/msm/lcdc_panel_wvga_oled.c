@@ -1996,7 +1996,7 @@ void lcdc_leadcmi_init(void)
     SPI_Start();                                    
 	//Set_CYC  
 	gpio_lcd_truly_emuspi_write_one_index(0xB4);    
-	gpio_lcd_truly_emuspi_write_one_data(0x08);                
+	gpio_lcd_truly_emuspi_write_one_data(0x00);                
 	gpio_lcd_truly_emuspi_write_one_data(0x12);                
 	gpio_lcd_truly_emuspi_write_one_data(0x72);                
 	gpio_lcd_truly_emuspi_write_one_data(0x12);                
@@ -2228,7 +2228,7 @@ void lcdc_leadcasio_init(void)
 
     SPI_Start();                                    
     gpio_lcd_truly_emuspi_write_one_index(0xB4);   //Set_CYC
-    gpio_lcd_truly_emuspi_write_one_data(0x08);          //
+    gpio_lcd_truly_emuspi_write_one_data(0x00);          //
     gpio_lcd_truly_emuspi_write_one_data(0x08); //03
     gpio_lcd_truly_emuspi_write_one_data(0x6E);
     gpio_lcd_truly_emuspi_write_one_data(0x07);
@@ -2574,7 +2574,7 @@ void lcdc_trulylg_init(void)
 
 		SPI_Start();
 		gpio_lcd_truly_emuspi_write_one_index(0xb4);  // set display  480x800 
-        gpio_lcd_truly_emuspi_write_one_data(0x01);   
+        gpio_lcd_truly_emuspi_write_one_data(0x00);   
         gpio_lcd_truly_emuspi_write_one_data(0x0c);   
         gpio_lcd_truly_emuspi_write_one_data(0xa0); 
         gpio_lcd_truly_emuspi_write_one_data(0x0e);   

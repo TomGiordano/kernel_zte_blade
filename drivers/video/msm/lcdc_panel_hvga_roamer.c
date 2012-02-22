@@ -64,11 +64,12 @@ static int spi_sdo;
 static int panel_reset;
 static bool onewiremode = true;
 
+
 static struct msm_panel_common_pdata * lcdc_tft_pdata;
 static void gpio_lcd_9bit_emuspi_write_one_index(unsigned short addr);
 static void gpio_lcd_9bit_emuspi_write_one_data(unsigned short data);
 static void gpio_lcd_eR61581_emuspi_read_id_para(unsigned short addr, unsigned int *data1);
-//static void gpio_lcd_ILI9481_emuspi_read_id_para(unsigned short addr, unsigned int *data1);	
+static void gpio_lcd_ILI9481_emuspi_read_id_para(unsigned short addr, unsigned int *data1);	
 static void lcdc_lead_init(void);
 static void lcdc_truly_er_init(void);
 static void lcdc_truly_ili_init(void);
@@ -294,7 +295,7 @@ static void gpio_lcd_eR61581_emuspi_read_id_para(unsigned short addr, unsigned i
 		
 }
 
-/*
+
 static void gpio_lcd_ILI9481_emuspi_read_id_para(unsigned short addr, unsigned int *data1)					
 {
 			
@@ -315,7 +316,7 @@ static void gpio_lcd_ILI9481_emuspi_read_id_para(unsigned short addr, unsigned i
 				i <<= 1;
 			}
 			bits1=0;	
-			for (j = 0; j < 33; j++) {//read 4 byte
+			for (j = 0; j < 8; j++) {//read 4 byte
 	
 				gpio_direction_output(GPIO_SPI_SCLK, 0); 
 				dbit=gpio_get_value(GPIO_SPI_SDI);
@@ -327,30 +328,32 @@ static void gpio_lcd_ILI9481_emuspi_read_id_para(unsigned short addr, unsigned i
 			printk("read_lcd ili9481 PID:0x%x\n!",bits1);
 		
 }
-*/
+
 static void lcdc_lead_init(void)
 {
-	gpio_lcd_9bit_emuspi_write_one_index(0x11);
-	msleep(120);
+       unsigned int id1,id2;
+ 
+	gpio_lcd_9bit_emuspi_write_one_index(0xB4);
+	gpio_lcd_9bit_emuspi_write_one_data(0x11); 
 	gpio_lcd_9bit_emuspi_write_one_index(0xC6);
-	gpio_lcd_9bit_emuspi_write_one_data(0x9B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x1B);   //0x9B
 
 	gpio_lcd_9bit_emuspi_write_one_index(0xD0);
 	gpio_lcd_9bit_emuspi_write_one_data(0x07);
-	gpio_lcd_9bit_emuspi_write_one_data(0x47);
+	gpio_lcd_9bit_emuspi_write_one_data(0x41);  //0x47
 	gpio_lcd_9bit_emuspi_write_one_data(0x1D);
 	
 	gpio_lcd_9bit_emuspi_write_one_index(0xD1);
 	gpio_lcd_9bit_emuspi_write_one_data(0x00);
-	gpio_lcd_9bit_emuspi_write_one_data(0x3F);//10
+	gpio_lcd_9bit_emuspi_write_one_data(0x39);//10
 	gpio_lcd_9bit_emuspi_write_one_data(0x14);
 	
 	gpio_lcd_9bit_emuspi_write_one_index(0xD2);
 	gpio_lcd_9bit_emuspi_write_one_data(0x01);
-	gpio_lcd_9bit_emuspi_write_one_data(0x11);
+	gpio_lcd_9bit_emuspi_write_one_data(0x22);
 	
 	gpio_lcd_9bit_emuspi_write_one_index(0xC0);
-	gpio_lcd_9bit_emuspi_write_one_data(0x00);//04
+	gpio_lcd_9bit_emuspi_write_one_data(0x10);//04  //0x00
 	gpio_lcd_9bit_emuspi_write_one_data(0x3B);
 	gpio_lcd_9bit_emuspi_write_one_data(0x00);
 	gpio_lcd_9bit_emuspi_write_one_data(0x02);
@@ -377,30 +380,111 @@ static void lcdc_lead_init(void)
 	gpio_lcd_9bit_emuspi_write_one_data(0x09); // MX,MY0x88ZTE_LCD_LKEJ_20110225_001,ZTE_LCD_LKEJ_20110307_001
 	gpio_lcd_9bit_emuspi_write_one_index(0x3A);
 	gpio_lcd_9bit_emuspi_write_one_data(0x66); //18bit
-	gpio_lcd_9bit_emuspi_write_one_index(0x2A);
-	gpio_lcd_9bit_emuspi_write_one_data(0x00);
-	gpio_lcd_9bit_emuspi_write_one_data(0x00);
-	gpio_lcd_9bit_emuspi_write_one_data(0x01);
-	gpio_lcd_9bit_emuspi_write_one_data(0x3F);
-	gpio_lcd_9bit_emuspi_write_one_index(0x2B);
-	gpio_lcd_9bit_emuspi_write_one_data(0x00);
-	gpio_lcd_9bit_emuspi_write_one_data(0x00);
-	gpio_lcd_9bit_emuspi_write_one_data(0x01);
-	gpio_lcd_9bit_emuspi_write_one_data(0xDF);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xF6);
+	gpio_lcd_9bit_emuspi_write_one_data(0xC0);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xF3);
+	gpio_lcd_9bit_emuspi_write_one_data(0x24);
+
+	gpio_lcd_9bit_emuspi_write_one_index(0xF4);
+	gpio_lcd_9bit_emuspi_write_one_data(0x24);
+
+	msleep(120);
+	gpio_lcd_9bit_emuspi_write_one_index(0x11);   //display_on
+       msleep(120);
+	gpio_lcd_9bit_emuspi_write_one_index(0x29);   //display_on
+       msleep(100); 
+	gpio_lcd_9bit_emuspi_write_one_index(0x10);   //display_on
+       msleep(120);
+	gpio_lcd_9bit_emuspi_write_one_index(0x11);   //display_on
+       msleep(120); 
+	printk("lcd module TFT LEAD init finish\n!");
+	return;
+	
+	gpio_lcd_ILI9481_emuspi_read_id_para(0x0A,&id1);
+	printk("gequn lead kernel after inital :0x%x\n!",id1);
+	if((id1&0xFF) != 0x1C)
+  {
+      	gpio_direction_output(panel_reset, 1);
+	msleep(10);						
+	gpio_direction_output(panel_reset, 0);
+	msleep(20);						
+	gpio_direction_output(panel_reset, 1);
+	msleep(120);	
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0x11);
 	msleep(120);
 	gpio_lcd_9bit_emuspi_write_one_index(0xB4);
-	gpio_lcd_9bit_emuspi_write_one_data(0x11);  //DPI Interface (RGB),Internal system clock,ZTE_LCD_LKEJ_20110307_001
+	gpio_lcd_9bit_emuspi_write_one_data(0x11); 
+	gpio_lcd_9bit_emuspi_write_one_index(0xC6);
+	gpio_lcd_9bit_emuspi_write_one_data(0x1B);   //0x9B
 
-	gpio_lcd_9bit_emuspi_write_one_index(0x29);   //display_on
-	gpio_lcd_9bit_emuspi_write_one_index(0x21);   //Enter_invert_mode//0x20
-	gpio_lcd_9bit_emuspi_write_one_index(0x2C);   //Write_memory_start
-    msleep(100); 
+	gpio_lcd_9bit_emuspi_write_one_index(0xD0);
+	gpio_lcd_9bit_emuspi_write_one_data(0x07);
+	gpio_lcd_9bit_emuspi_write_one_data(0x44);  //0x47
+	gpio_lcd_9bit_emuspi_write_one_data(0x1D);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xD1);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x39);//10
+	gpio_lcd_9bit_emuspi_write_one_data(0x14);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xD2);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01);
+	gpio_lcd_9bit_emuspi_write_one_data(0x22);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xC0);
+	gpio_lcd_9bit_emuspi_write_one_data(0x10);//04  //0x00
+	gpio_lcd_9bit_emuspi_write_one_data(0x3B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x02);
+	gpio_lcd_9bit_emuspi_write_one_data(0x11);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xC5);
+	gpio_lcd_9bit_emuspi_write_one_data(0x03);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xC8);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x53);
+	gpio_lcd_9bit_emuspi_write_one_data(0x17);
+	gpio_lcd_9bit_emuspi_write_one_data(0x45);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x1A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x06);
+	gpio_lcd_9bit_emuspi_write_one_data(0x42);
+	gpio_lcd_9bit_emuspi_write_one_data(0x77);
+	gpio_lcd_9bit_emuspi_write_one_data(0x54);
+	gpio_lcd_9bit_emuspi_write_one_data(0x12);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0C);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0x36);
+	gpio_lcd_9bit_emuspi_write_one_data(0x09); // MX,MY0x88ZTE_LCD_LKEJ_20110225_001,ZTE_LCD_LKEJ_20110307_001
+	gpio_lcd_9bit_emuspi_write_one_index(0x3A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x66); //18bit
+	msleep(120);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0x29);
+	 msleep(100); 
 
 	printk("lcd module TFT LEAD init finish\n!");
+	gpio_lcd_ILI9481_emuspi_read_id_para(0x0A,&id2);
+	printk("gequn lead  kernel twice  after inital :0x%x\n!",id2);
+  }
+	
 }
 //ZTE_LCD_LKEJ_20110127_001,start
 static void lcdc_boe_init(void)
 {	
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      mdelay(5);
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      gpio_lcd_9bit_emuspi_write_one_index(0xFF);
+      mdelay(10);
+
 	gpio_lcd_9bit_emuspi_write_one_index(0xB0);
 	gpio_lcd_9bit_emuspi_write_one_data(0x00);
 	gpio_lcd_9bit_emuspi_write_one_index(0xB3);
@@ -422,7 +506,106 @@ static void lcdc_boe_init(void)
 	gpio_lcd_9bit_emuspi_write_one_data(0x43);
 	gpio_lcd_9bit_emuspi_write_one_index(0xC1);
 	gpio_lcd_9bit_emuspi_write_one_data(0x08);
+	gpio_lcd_9bit_emuspi_write_one_data(0x12); //0x15
+	gpio_lcd_9bit_emuspi_write_one_data(0x08);
+	gpio_lcd_9bit_emuspi_write_one_data(0x08);
+	gpio_lcd_9bit_emuspi_write_one_index(0xC4);
 	gpio_lcd_9bit_emuspi_write_one_data(0x15);
+	gpio_lcd_9bit_emuspi_write_one_data(0x03);
+	gpio_lcd_9bit_emuspi_write_one_data(0x03);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01);
+	gpio_lcd_9bit_emuspi_write_one_index(0xC6);
+	gpio_lcd_9bit_emuspi_write_one_data(0x33);//0x02
+
+	gpio_lcd_9bit_emuspi_write_one_index(0xC8);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0C);
+	gpio_lcd_9bit_emuspi_write_one_data(0x05);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x6B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x04);
+	gpio_lcd_9bit_emuspi_write_one_data(0x06);
+	gpio_lcd_9bit_emuspi_write_one_data(0x15);
+	gpio_lcd_9bit_emuspi_write_one_data(0x10);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x31);
+	gpio_lcd_9bit_emuspi_write_one_data(0x10);
+	gpio_lcd_9bit_emuspi_write_one_data(0x15);
+	gpio_lcd_9bit_emuspi_write_one_data(0x06);
+	gpio_lcd_9bit_emuspi_write_one_data(0x64);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x05);
+	gpio_lcd_9bit_emuspi_write_one_data(0x0C);
+	gpio_lcd_9bit_emuspi_write_one_data(0x31);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	mdelay(100);
+
+	gpio_lcd_9bit_emuspi_write_one_index(0x2A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01);
+	gpio_lcd_9bit_emuspi_write_one_data(0x3F);
+	gpio_lcd_9bit_emuspi_write_one_index(0x2B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01);
+	gpio_lcd_9bit_emuspi_write_one_data(0xDF);
+
+	gpio_lcd_9bit_emuspi_write_one_index(0x35);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);//00
+	gpio_lcd_9bit_emuspi_write_one_index(0x36);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00); //set_address_modeZTE_LCD_LKEJ_20110225_001,ZTE_LCD_LKEJ_20110307_001
+	gpio_lcd_9bit_emuspi_write_one_index(0x3A);
+	gpio_lcd_9bit_emuspi_write_one_data(0x66); //18bit
+	gpio_lcd_9bit_emuspi_write_one_index(0x44);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01); //01
+
+	gpio_lcd_9bit_emuspi_write_one_index(0x11);
+	mdelay(150);
+	
+	gpio_lcd_9bit_emuspi_write_one_index(0xD0);
+	gpio_lcd_9bit_emuspi_write_one_data(0x07);
+	gpio_lcd_9bit_emuspi_write_one_data(0x07);
+	gpio_lcd_9bit_emuspi_write_one_data(0x14);
+	gpio_lcd_9bit_emuspi_write_one_data(0xA2);
+	gpio_lcd_9bit_emuspi_write_one_index(0xD1);
+	gpio_lcd_9bit_emuspi_write_one_data(0x03);
+	gpio_lcd_9bit_emuspi_write_one_data(0x2D);   //0x39  //0x35  //0x2D
+	gpio_lcd_9bit_emuspi_write_one_data(0x0A);
+	gpio_lcd_9bit_emuspi_write_one_index(0xD2);
+	gpio_lcd_9bit_emuspi_write_one_data(0x03);
+	gpio_lcd_9bit_emuspi_write_one_data(0x04);
+	gpio_lcd_9bit_emuspi_write_one_data(0x04);
+
+	gpio_lcd_9bit_emuspi_write_one_index(0x29);
+       gpio_lcd_9bit_emuspi_write_one_index(0x2C);
+
+	printk("[hp@lcd&fb]:lcd module BOE init exit\n!");
+      
+#if 0
+	gpio_lcd_9bit_emuspi_write_one_index(0xB0);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_index(0xB3);
+	gpio_lcd_9bit_emuspi_write_one_data(0x02);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x10);
+
+	gpio_lcd_9bit_emuspi_write_one_index(0xB4);
+	gpio_lcd_9bit_emuspi_write_one_data(0x11);
+	gpio_lcd_9bit_emuspi_write_one_index(0xC0);	//Panel Driving Setting
+	gpio_lcd_9bit_emuspi_write_one_data(0x16); //13
+	gpio_lcd_9bit_emuspi_write_one_data(0x3B);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x01);
+	gpio_lcd_9bit_emuspi_write_one_data(0x00);
+	gpio_lcd_9bit_emuspi_write_one_data(0x43);
+	gpio_lcd_9bit_emuspi_write_one_index(0xC1);
+	gpio_lcd_9bit_emuspi_write_one_data(0x08);
+	gpio_lcd_9bit_emuspi_write_one_data(0x12);  //0x15
 	gpio_lcd_9bit_emuspi_write_one_data(0x08);
 	gpio_lcd_9bit_emuspi_write_one_data(0x08);
 	gpio_lcd_9bit_emuspi_write_one_index(0xC4);
@@ -484,7 +667,7 @@ static void lcdc_boe_init(void)
 	gpio_lcd_9bit_emuspi_write_one_data(0xA2);
 	gpio_lcd_9bit_emuspi_write_one_index(0xD1);
 	gpio_lcd_9bit_emuspi_write_one_data(0x03);
-	gpio_lcd_9bit_emuspi_write_one_data(0x39);
+	gpio_lcd_9bit_emuspi_write_one_data(0x35);   //0x39
 	gpio_lcd_9bit_emuspi_write_one_data(0x0A);
 	gpio_lcd_9bit_emuspi_write_one_index(0xD2);
 	gpio_lcd_9bit_emuspi_write_one_data(0x03);
@@ -499,6 +682,7 @@ static void lcdc_boe_init(void)
 	msleep(100);
 
 	printk("[hp@lcd&fb]:lcd module BOE init exit\n!");
+	#endif
 }
 void lcdc_truly_er_init(void)
 {	

@@ -20,6 +20,7 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "mt9v113.h"
@@ -290,6 +291,353 @@ static struct mt9v113_i2c_reg_conf const sequencer_tbl[] = {
     {0x0000, 0x0000, WORD_LEN, 0},
 };
 
+static struct mt9v113_i2c_reg_conf const contrast_tbl_0[] = {
+   
+	{0x098C, 0xAB3C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x0018,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x0041,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x0064,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x0083,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x0096,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x00A5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x00B1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00BC,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00C5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00CE,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00D6,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00DD,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00E3,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00E9,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00EF,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00FA,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF,WORD_LEN,0}, 	// MCU_DATA_0
+};
+static struct mt9v113_i2c_reg_conf const contrast_tbl_1[] = {
+
+	{0x098C, 0xAB3C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x000F,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x002A,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x0049,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x0069,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x007E,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x008F,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x009D,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00AA,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00B5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00C0,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00C9,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00D2,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00DB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00E3,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00EA,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00F8,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF,WORD_LEN,0}, 	// MCU_DATA_0
+};
+static struct mt9v113_i2c_reg_conf const contrast_tbl_2[] = {
+    
+	{0x098C, 0xAB3C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x000A,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x001D,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x0037,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x0058,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x0071,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x0086,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x0098,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00A7,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00B5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00C0,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00CB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00D4,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00DD,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00E4,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00EC,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F3,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00F9,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF,WORD_LEN,0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const contrast_tbl_3[] = {
+    
+	{0x098C, 0xAB3C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x0007,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x0016,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x002D,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x004E,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x006C,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x0088,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x009F,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00B1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00BF,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00CB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00D5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00DD,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00E4,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00EB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00F1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F6,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00FB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF,WORD_LEN,0}, 	// MCU_DATA_0
+
+};
+
+static struct mt9v113_i2c_reg_conf const contrast_tbl_4[] = {
+	{0x098C, 0xAB3C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x0004,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x000C,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x001A,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x0032,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x004C,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x0068,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x0087,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00A1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00B5,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00C4,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00D1,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00DB,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00E3,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00EA,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00F0,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F6,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00FA,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E,WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF,WORD_LEN,0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const *contrast_tbl[] = {
+    contrast_tbl_0,
+    contrast_tbl_1,
+    contrast_tbl_2,
+    contrast_tbl_3,
+    contrast_tbl_4,
+};
+
+static uint16_t const contrast_tbl_sz[] = {
+    ARRAY_SIZE(contrast_tbl_0),
+    ARRAY_SIZE(contrast_tbl_1),
+    ARRAY_SIZE(contrast_tbl_2),
+    ARRAY_SIZE(contrast_tbl_3),
+    ARRAY_SIZE(contrast_tbl_4),
+};
+
+static struct mt9v113_i2c_reg_conf const saturation_tbl_0[] = {
+    {0x098C, 0xAB20, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0020, WORD_LEN, 0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const saturation_tbl_1[] = {
+    {0x098C, 0xAB20, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0040, WORD_LEN, 0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const saturation_tbl_2[] = {
+    {0x098C, 0xAB20, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0060, WORD_LEN, 0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const saturation_tbl_3[] = {
+    {0x098C, 0xAB20, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0080, WORD_LEN, 0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const saturation_tbl_4[] = {
+   {0x098C, 0xAB20, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x00A0, WORD_LEN, 0}, 	// MCU_DATA_0
+};
+
+static struct mt9v113_i2c_reg_conf const *saturation_tbl[] = {
+    saturation_tbl_0,
+    saturation_tbl_1,
+    saturation_tbl_2,
+    saturation_tbl_3,
+    saturation_tbl_4,
+};
+
+static uint16_t const saturation_tbl_sz[] = {
+    ARRAY_SIZE(saturation_tbl_0),
+    ARRAY_SIZE(saturation_tbl_1),
+    ARRAY_SIZE(saturation_tbl_2),
+    ARRAY_SIZE(saturation_tbl_3),
+    ARRAY_SIZE(saturation_tbl_4),
+};
+
+static struct mt9v113_i2c_reg_conf const wb_cloudy_tbl[] = {
+	{0x098C, 0xA11F,WORD_LEN,0},
+	{0x0990, 0x0000,WORD_LEN,0},
+	{0x098C, 0xA103,WORD_LEN,0},
+	{0x0990, 0x0005,WORD_LEN,0},              
+	{0x098C, 0xA355,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_MODE]
+	{0x0990, 0x0020,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA353,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_CCM_POSITION]
+	{0x0990, 0x007F,WORD_LEN,0}, 	// MCU_DATA_0              
+	{0x098C, 0xA34E,WORD_LEN,0},
+	{0x0990, 0x00DC,WORD_LEN,0},
+	{0x098C, 0xA34F,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA350,WORD_LEN,0},
+	{0x0990, 0x0078,WORD_LEN,0},
+};
+
+static struct mt9v113_i2c_reg_conf const wb_daylight_tbl[] = {
+	{0x098C, 0xA11F,WORD_LEN,0},
+	{0x0990, 0x0000,WORD_LEN,0},
+	{0x098C, 0xA103,WORD_LEN,0},
+	{0x0990, 0x0006,WORD_LEN,0},
+	{0x098C, 0xA355,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_MODE]
+	{0x0990, 0x0020,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA353,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_CCM_POSITION]
+	{0x0990, 0x007F,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA34E,WORD_LEN,0},
+	{0x0990, 0x00BC,WORD_LEN,0},
+	{0x098C, 0xA34F,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA350,WORD_LEN,0},
+	{0x0990, 0x007C,WORD_LEN,0},
+};
+
+static struct mt9v113_i2c_reg_conf const wb_flourescant_tbl[] = {
+       {0x098C, 0xA11F,WORD_LEN,0},
+	{0x0990, 0x0000,WORD_LEN,0},
+	{0x098C, 0xA103,WORD_LEN,0},
+	{0x0990, 0x0006,WORD_LEN,0},
+	{0x098C, 0xA355,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_MODE]
+	{0x0990, 0x0020,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA353,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_CCM_POSITION]
+	{0x0990, 0x003F,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA34E,WORD_LEN,0},
+	{0x0990, 0x00B8,WORD_LEN,0},
+	{0x098C, 0xA34F,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA350,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+};
+
+static struct mt9v113_i2c_reg_conf const wb_incandescent_tbl[] = {
+	{0x098C, 0xA11F,WORD_LEN,0},
+	{0x0990, 0x0000,WORD_LEN,0},
+	{0x098C, 0xA103,WORD_LEN,0},
+	{0x0990, 0x0006,WORD_LEN,0},
+	{0x098C, 0xA355,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_MODE]
+	{0x0990, 0x0020,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA353,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_CCM_POSITION]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA34E,WORD_LEN,0},
+	{0x0990, 0x00AC,WORD_LEN,0},
+	{0x098C, 0xA34F,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA350,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+};
+
+static struct mt9v113_i2c_reg_conf const wb_auto_tbl[] = {
+	{0x098C, 0xA11F,WORD_LEN,0},
+	{0x0990, 0x0001,WORD_LEN,0},
+	{0x098C, 0xA103,WORD_LEN,0},
+	{0x0990, 0x0006,WORD_LEN,0},
+	{0x098C, 0xA355,WORD_LEN,0}, 	// MCU_ADDRESS [AWB_MODE]
+	{0x0990, 0x0000,WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA34E,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA34F,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+	{0x098C, 0xA350,WORD_LEN,0},
+	{0x0990, 0x0080,WORD_LEN,0},
+};
 struct mt9v113_reg_t mt9v113_regs = {
     .prev_snap_reg_settings             = &preview_snapshot_mode_reg_settings_array[0],
     .prev_snap_reg_settings_size        = ARRAY_SIZE(preview_snapshot_mode_reg_settings_array),
@@ -305,6 +653,27 @@ struct mt9v113_reg_t mt9v113_regs = {
 
     .rftbl                               = &lens_roll_off_tbl[0],
     .rftbl_size                          =  0,  /* ARRAY_SIZE(lens_roll_off_tbl), */
+
+    .contrast_tbl                   = contrast_tbl,
+    .contrast_tbl_sz              = contrast_tbl_sz,
+
+    .saturation_tbl                = saturation_tbl,
+    .saturation_tbl_sz           = saturation_tbl_sz,
+
+    .wb_cloudy_tbl                = wb_cloudy_tbl,
+    .wb_cloudy_tbl_sz           = ARRAY_SIZE(wb_cloudy_tbl),
+
+    .wb_daylight_tbl              = wb_daylight_tbl,
+    .wb_daylight_tbl_sz          = ARRAY_SIZE(wb_daylight_tbl),
+
+    .wb_flourescant_tbl          = wb_flourescant_tbl,
+    .wb_flourescant_tbl_sz     = ARRAY_SIZE(wb_flourescant_tbl),
+
+    .wb_incandescent_tbl        = wb_incandescent_tbl,
+    .wb_incandescent_tbl_sz    = ARRAY_SIZE(wb_incandescent_tbl),
+
+    .wb_auto_tbl                    = wb_auto_tbl,
+    .wb_auto_tbl_sz               = ARRAY_SIZE(wb_auto_tbl),
 };
 
 

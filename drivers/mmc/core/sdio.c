@@ -371,7 +371,14 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
-#ifndef CONFIG_ATH_WIFI
+#ifdef CONFIG_ATH_WIFI
+		pr_info("CIS VID %x DEV %x\n", card->cis.vendor, card->cis.device);
+		if ((card->cis.device & 0xF00) == 0x300) {
+		    pr_info("AR6003 device\n");
+		    return 0;
+		} else
+		    pr_info("AR6002 device\n");
+#else		
 		return 0;
 #endif
 	}
@@ -488,6 +495,21 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 				break;
 		}
 	}
+	
+#ifdef CONFIG_ATH_WIFI
+        pr_info("%s () ret = %d\n", __func__, err);
+	if (err == -EBUSY) {
+		pr_info("%s () set keep power flag\n", __func__);
+		host->suspend_keep_power = 1;
+#if 0		
+		mmc_claim_host(host);
+		sdio_disable_wide(host->card);
+		mmc_release_host(host);
+#endif		
+		return err;
+	}
+#endif
+	
 	while (err && --i >= 0) {
 		struct sdio_func *func = host->card->sdio_func[i];
 		if (func && sdio_func_present(func) && func->dev.driver) {
@@ -512,17 +534,29 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+#ifdef CONFIG_ATH_WIFI	
+	if (!host->suspend_keep_power) {
+#endif	
 	/* Basic card reinitialization. */
 	mmc_claim_host(host);
 	err = mmc_sdio_init_card(host, host->ocr, host->card);
+#ifdef CONFIG_ATH_WIFI	
+	mmc_release_host(host);
+	} else {
+	       pr_info("%s keep power resume case\n", __func__);
+		err = 0;
+		host->suspend_keep_power = 0;
+	}
+#endif	
 
+#ifndef CONFIG_ATH_WIFI
 	if (!err)
 		/* We may have switched to 1-bit mode during suspend. */
 		err = sdio_enable_wide(host->card);
 	if (!err && host->sdio_irqs)
 		mmc_signal_sdio_irq(host);
 	mmc_release_host(host);
-
+#endif
 	/*
 	 * If the card looked to be the same as before suspending, then
 	 * we proceed to resume all card functions.  If one of them returns

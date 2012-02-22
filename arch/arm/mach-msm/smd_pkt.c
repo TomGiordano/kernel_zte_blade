@@ -43,7 +43,7 @@
 #include "modem_notifier.h"
 #include "smd_private.h"
 
-#define NUM_SMD_PKT_PORTS 11
+#define NUM_SMD_PKT_PORTS 12
 #define DEVICE_NAME "smdpkt"
 
 struct smd_pkt_dev {
@@ -458,6 +458,7 @@ static char *smd_pkt_dev_name[] = {
 	"smd22",
 	"smd_sns_dsps",
 	"smd_pkt_loopback",
+	"smdcsdata",
 };
 
 static char *smd_ch_name[] = {
@@ -472,6 +473,7 @@ static char *smd_ch_name[] = {
 	"DATA22",
 	"SENSOR",
 	"LOOPBACK",
+	"DATA11"
 };
 
 static uint32_t smd_ch_edge[] = {
@@ -486,6 +488,7 @@ static uint32_t smd_ch_edge[] = {
 	SMD_APPS_MODEM,
 	SMD_APPS_DSPS,
 	SMD_APPS_MODEM,
+    SMD_APPS_MODEM,
 };
 
 static int smd_pkt_dummy_probe(struct platform_device *pdev)

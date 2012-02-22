@@ -20,7 +20,11 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
+  2011-08-09   ygl          add the configurations of exposure &     ZTE_YGL_CAM_20110809
+                            brightness
+							merged from mt9d115
+  2010-09-02   jia          created                                  ZTE_CAMERA_LIJING_20100902
+                            merged from mt9d115.h
 ------------------------------------------------------------------------------------------*/
 
 #ifndef MT9D113_H
@@ -88,6 +92,9 @@ struct mt9d113_reg_t {
 
     struct mt9d113_i2c_reg_conf const *lens_for_indoor_tbl;
     uint16_t const lens_for_indoor_tbl_sz;
+	
+    struct mt9d113_i2c_reg_conf const **brightness_exposure_tbl;
+    uint16_t const *brightness_exposure_tbl_sz;
 };
 
 #endif /* MT9D113_H */

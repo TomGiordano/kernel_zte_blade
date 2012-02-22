@@ -55,6 +55,8 @@ when         who        what, where, why                         comment tag
 #define GPIO_TOUCH_EN_OUT  31
 #elif defined(CONFIG_MACH_R750)//R750 touchscreen enable
 #define GPIO_TOUCH_EN_OUT  33
+#elif defined(CONFIG_MACH_TURIES)
+#define GPIO_TOUCH_EN_OUT 89  	//ZTE_TS_ZFJ_20110315
 #else//other projects
 #define GPIO_TOUCH_EN_OUT  31
 #endif

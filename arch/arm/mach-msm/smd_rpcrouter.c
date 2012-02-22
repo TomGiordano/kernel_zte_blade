@@ -1270,6 +1270,17 @@ static int msm_rpc_write_pkt(
 		spin_unlock_irqrestore(&r_ept->quota_lock, flags);
 
 	xprt_info = rpcrouter_get_xprt_info(hdr->dst_pid);
+	/* 
+	 * xprt_info is null when called smd_rpcrouter_close()
+	 * Must have a check to fix this NULL pointer problem.
+	 * ZHENGCHAO_PM_20110726
+	 *
+	 * */
+	if (!xprt_info){
+		                printk(KERN_ERR"xprt_info is NULL\n");
+				return 0;
+	
+	}
 
 	spin_lock_irqsave(&xprt_info->lock, flags);
 	spin_lock(&ept->restart_lock);
@@ -2079,6 +2090,11 @@ int msm_rpcrouter_close(void)
 		rpcrouter_send_control_msg(xprt_info, &ctl);
 		xprt_info->xprt->close();
 		list_del(&xprt_info->list);
+		/*
+		ZHENGCHAO_PM_20110726
+		Must do this.Wakelock must be destroyed before kfree
+		*/
+		wake_lock_destroy(&xprt_info->wakelock);
 		kfree(xprt_info);
 	}
 	mutex_unlock(&xprt_info_list_lock);

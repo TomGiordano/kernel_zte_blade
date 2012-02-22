@@ -16,6 +16,7 @@ obj-$(CONFIG_SN12M0PZ) += sn12m0pz.o sn12m0pz_reg.o
 obj-$(CONFIG_MT9P111_MCNEX) += mt9p111_mcnex.o mt9p111_reg_mcnex.o
 obj-$(CONFIG_MT9P111_SAMSUNG_FPC) += mt9p111_samsung_fpc.o mt9p111_reg_samsung_fpc.o
 obj-$(CONFIG_MT9P111_SAMSUNG_SOCKET) += mt9p111_samsung_socket.o mt9p111_reg_samsung_socket.o
+obj-$(CONFIG_OVM7690_GLOBALOPTICS)  += ovm7690_fpc.o ovm7690_reg_fpc.o
 obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg.o
 obj-$(CONFIG_MT9T11X_QTECH_MCNEX_FPC) += mt9t11x_qtech_mcnex_fpc.o mt9t112_reg_qtech_mcnex_fpc.o mt9t111_reg_qtech_mcnex_fpc.o
 obj-$(CONFIG_MT9T11X_QTECH_MCNEX_SOCKET) += mt9t11x_qtech_mcnex_socket.o mt9t111_reg_qtech_mcnex_socket.o mt9t112_reg_qtech_mcnex_socket.o

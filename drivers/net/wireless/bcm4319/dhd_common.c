@@ -68,6 +68,8 @@ extern int dhd_wl_ioctl(dhd_pub_t *dhd, uint cmd, char *buf, uint buflen);
 void dhd_iscan_lock(void);
 void dhd_iscan_unlock(void);
 
+extern bool ap_fw_loaded;
+
 /* Packet alignment for most efficient SDIO (can change based on platform) */
 #ifndef DHD_SDALIGN
 #define DHD_SDALIGN	32
@@ -1020,10 +1022,10 @@ dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_
 	rc = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, buf, buf_len);
 	rc = rc >= 0 ? 0 : rc;
 	if (rc)
-		DHD_TRACE(("%s: failed to add pktfilter %s, retcode = %d\n",
+		DHD_ERROR(("%s: failed to add pktfilter %s, retcode = %d\n",
 		__FUNCTION__, arg, rc));
 	else
-		DHD_TRACE(("%s: successfully added pktfilter %s\n",
+		DHD_ERROR(("%s: successfully added pktfilter %s\n",
 		__FUNCTION__, arg));
 
 	/* Contorl the master mode */
@@ -1031,7 +1033,7 @@ dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_
 	rc = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, buf, sizeof(buf));
 	rc = rc >= 0 ? 0 : rc;
 	if (rc)
-		DHD_TRACE(("%s: failed to add pktfilter %s, retcode = %d\n",
+		DHD_ERROR(("%s: failed to add pktfilter %s, retcode = %d\n",
 		__FUNCTION__, arg, rc));
 
 fail:
@@ -1173,6 +1175,7 @@ fail:
 		MFREE(dhd->osh, buf, BUF_SIZE);
 }
 
+#ifdef ARP_OFFLOAD_SUPPORT
 void
 dhd_arp_offload_set(dhd_pub_t * dhd, int arp_mode)
 {
@@ -1200,19 +1203,96 @@ dhd_arp_offload_enable(dhd_pub_t * dhd, int arp_enable)
 	retcode = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 	retcode = retcode >= 0 ? 0 : retcode;
 	if (retcode)
-		DHD_TRACE(("%s: failed to enabe ARP offload to %d, retcode = %d\n",
+		DHD_ERROR(("%s: failed to enabe ARP offload to %d, retcode = %d\n",
 		__FUNCTION__, arp_enable, retcode));
 	else
-		DHD_TRACE(("%s: successfully enabed ARP offload to %d\n",
+		DHD_ERROR(("%s: successfully enabed ARP offload to %d\n",
 		__FUNCTION__, arp_enable));
 }
+#endif
 
+
+
+void dhd_arp_cleanup(dhd_pub_t *dhd)
+{
+#ifdef ARP_OFFLOAD_SUPPORT
+	int ret = 0;
+	int iov_len = 0;
+	char iovbuf[128];
+
+	if (dhd == NULL) return;
+
+	dhd_os_proto_block(dhd);
+
+	iov_len = bcm_mkiovar("arp_hostip_clear", 0, 0, iovbuf, sizeof(iovbuf));
+	if ((ret  = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, iov_len)) < 0)
+		DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+
+	iov_len = bcm_mkiovar("arp_table_clear", 0, 0, iovbuf, sizeof(iovbuf));
+	if ((ret  = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, iov_len)) < 0)
+		DHD_ERROR(("%s failed code %d\n", __FUNCTION__, ret));
+
+	dhd_os_proto_unblock(dhd);
+
+#endif /* ARP_OFFLOAD_SUPPORT */
+}
+
+void dhd_arp_offload_add_ip(dhd_pub_t *dhd, u32 ipaddr)
+{
+#ifdef ARP_OFFLOAD_SUPPORT
+	int iov_len = 0;
+	char iovbuf[32];
+	int retcode;
+
+	dhd_os_proto_block(dhd);
+
+	iov_len = bcm_mkiovar("arp_hostip", (char *)&ipaddr, 4, iovbuf, sizeof(iovbuf));
+	retcode = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, iov_len);
+
+	dhd_os_proto_unblock(dhd);
+
+	if (retcode)
+		DHD_TRACE(("%s: ARP ip addr add failed, retcode = %d\n",
+		__FUNCTION__, retcode));
+	else
+		DHD_TRACE(("%s: ARP ipaddr entry added\n",
+		__FUNCTION__));
+#endif /* ARP_OFFLOAD_SUPPORT */
+}
+
+
+int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen)
+{
+#ifdef ARP_OFFLOAD_SUPPORT
+	int retcode;
+	int iov_len = 0;
+
+	if (!buf)
+		return -1;
+
+	dhd_os_proto_block(dhd);
+
+	iov_len = bcm_mkiovar("arp_hostip", 0, 0, buf, buflen);
+	retcode = dhdcdc_query_ioctl(dhd, 0, WLC_GET_VAR, buf, buflen);
+
+	dhd_os_proto_unblock(dhd);
+
+	if (retcode) {
+		DHD_TRACE(("%s: ioctl WLC_GET_VAR error %d\n",
+		__FUNCTION__, retcode));
+
+		return -1;
+	}
+#endif /* ARP_OFFLOAD_SUPPORT */
+	return 0;
+}
 int
 dhd_custom_get_mac_address(unsigned char *addr)
 {
 	int rc = 0;
 	unsigned int data1, data2;
 	
+	data2 = (1<<31);//for wifi mac   	
 	rc = msm_proc_comm(PCOM_CUSTOMER_CMD1, &data1, &data2);
 	
 	if(!rc) {
@@ -1248,18 +1328,21 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint32 bt_wire = 4;
 #ifdef CONFIG_MACH_SKATE	
 	uint bt_mode = 1;
-	int qosinfo = 0x7;
+	int qosinfo = 0x0;
 #else
 	uint bt_mode = 1;
 	int qosinfo = 0x3;
 #endif
+
+	/* Listen Interval added PENGJI_20110926 */
+	uint32 listen_interval = LISTEN_INTERVAL; /* Default Listen Interval in Beacons */
 	
 #ifdef GET_CUSTOM_MAC_ENABLE
 	int ret = 0;
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
-	int infra = 1;
+	int infra = 1;					////// add for wapi issue
 
 	dhd_os_proto_block(dhd);
 
@@ -1288,6 +1371,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 			DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
 		}
 	}
+	
+	/* Listen Interval added PENGJI_20110926 */
+	/* Set Listen Interval */
+	bcm_mkiovar("assoc_listen", (char *)&listen_interval, 4, iovbuf, sizeof(iovbuf));
+	if ((ret = dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf))) < 0)
+		DHD_ERROR(("%s assoc_listen failed %d\n", __FUNCTION__, ret));
 
 	/* query for 'ver' to get version info from firmware */
 	memset(buf, 0, sizeof(buf));
@@ -1301,10 +1390,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Set PowerSave mode */
 	dhdcdc_set_ioctl(dhd, 0, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode));
 
-
+	////// add for wapi issue
         dhdcdc_set_ioctl(dhd, 0, WLC_SET_INFRA, (char *)&infra, sizeof(infra));
         printk("dhd reset infra mode 1 \n");
-
+	////// add for wapi issue
 
 	/* Match Host and Dongle rx alignment */
 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
@@ -1397,10 +1486,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Set and enable ARP offload feature */
 	if (dhd_arp_enable)
 		dhd_arp_offload_set(dhd, dhd_arp_mode);
-	dhd_arp_offload_enable(dhd, dhd_arp_enable);
+	dhd_arp_offload_enable(dhd, ap_fw_loaded ? 0 : 1);
 #endif /* ARP_OFFLOAD_SUPPORT */
 
-#ifdef PKT_FILTER_SUPPORT
+#if 0    //#ifdef PKT_FILTER_SUPPORT
 	{
 		int i;
 		/* Set up pkt filter */

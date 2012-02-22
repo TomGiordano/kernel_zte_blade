@@ -26,6 +26,8 @@ fw-shipped- += acenic/tg1.bin
 else
 acenic-objs := acenic/tg1.bin acenic/tg2.bin
 endif
+fw-shipped-$(CONFIG_ATMEL_FW_UPDATE_224) += mXT224C23_v1.1.09.enc 
+fw-shipped-$(CONFIG_ATMEL_FW_UPDATE_140) += mXT140C27_v1.0.01.enc
 fw-shipped-$(CONFIG_3C359) += 3com/3C359.bin
 fw-shipped-$(CONFIG_ACENIC) += $(acenic-objs)
 fw-shipped-$(CONFIG_ADAPTEC_STARFIRE) += adaptec/starfire_rx.bin \
@@ -199,6 +201,12 @@ $(objtree)/$$(%) $(objtree)/$(obj)/$$(%): $(firmware-dirs)
 
 $(patsubst %,$(obj)/%.gen.S, $(fw-shipped-y)): %: $(wordsize_deps) \
 		| $(objtree)/$$(dir %)
+ifdef CONFIG_ATMEL_FW_UPDATE_224
+	cp $(srctree)/$(src)/mXT224C23_v1.1.09.enc $(objtree)/$(obj)/mXT224C23_v1.1.09.enc
+endif
+ifdef CONFIG_ATMEL_FW_UPDATE_140
+	cp $(srctree)/$(src)/mXT140C27_v1.0.01.enc $(objtree)/$(obj)/mXT140C27_v1.0.01.enc
+endif
 	$(call cmd,fwbin,$(patsubst %.gen.S,%,$@))
 $(patsubst %,$(obj)/%.gen.S, $(fw-external-y)): %: $(wordsize_deps) \
 		include/config/extra/firmware/dir.h | $(objtree)/$$(dir %)

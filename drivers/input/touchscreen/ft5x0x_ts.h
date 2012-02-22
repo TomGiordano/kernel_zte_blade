@@ -1,6 +1,6 @@
 #ifndef __LINUX_FT5X0X_TS_H__
 #define __LINUX_FT5X0X_TS_H__
-
+/*
 #if defined(CONFIG_MACH_ROAMER)
 #define SCREEN_MAX_X    320 
 #define SCREEN_MAX_Y    480 
@@ -15,7 +15,7 @@
 #define SCREEN_MAX_Y    800
 #endif
 #define PRESS_MAX       255
-
+*/
 #define FT5X0X_NAME	"ft5x0x_ts"
 
 struct ft5x0x_ts_platform_data{

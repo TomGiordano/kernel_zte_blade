@@ -35,18 +35,37 @@
 #include <linux/earlysuspend.h>
 #include <linux/input/synaptics_i2c_rmi.h>
 #include <linux/proc_fs.h>
+#include <linux/fb.h>
+
 
 static struct workqueue_struct *synaptics_wq;
+static struct synaptics_rmi4_data *pgtsdata;
+
+
+#define NR_FINGERS	10
+DECLARE_BITMAP(pre_fingers, NR_FINGERS);
+typedef struct _report_data {
+	int z;
+	int w;
+	int x;
+	int y;
+} report_data;
+report_data old_report_data[NR_FINGERS];
+report_data new_report_data[NR_FINGERS];
+
+
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
+int update_result_flag_syna=0;
+extern void syna_fwupdate(void);
+extern void syna_fwupdate_init(struct i2c_client *client);
+extern int syna_fwupdate_deinit(struct i2c_client *client);
+#endif 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void synaptics_rmi4_early_suspend(struct early_suspend *h);
 static void synaptics_rmi4_late_resume(struct early_suspend *h);
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
-extern void ioctol(struct i2c_client *client);
-static struct i2c_client *update_client;
-#endif 
 
 #if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
 #define virtualkeys virtualkeys.synaptics-rmi4-ts
@@ -54,6 +73,10 @@ static struct i2c_client *update_client;
 static const char ts_keys_size[] = "0x01:102:100:1061:200:74:0x01:139:300:1061:200:74:0x01:158:500:1061:200:74";
 #elif defined(CONFIG_MACH_SKATE)
 static const char ts_keys_size[] = "0x01:102:43:850:60:50:0x01:139:235:850:60:50:0x01:158:436:850:60:50";
+#elif defined(CONFIG_MACH_BLADE2)
+static const char ts_keys_size[] = "0x01:139:45:842:90:74:0x01:102:180:842:90:74:0x01:158:307:842:90:74:0x01:217:435:842:90:74";
+#elif defined(CONFIG_MACH_BLUETICK)
+static const char ts_keys_size[] = "0x01:139:60:880:100:100:0x01:102:170:880:100:100:0x01:158:310:880:100:100:0x01:217:410:880:100:100";
 #else
 static const char ts_keys_size[] = "0x01:102:51:503:102:1007:0x01:139:158:503:102:1007:0x01:158:266:503:102:1007";
 #endif 
@@ -96,135 +119,131 @@ static void ts_key_report_deinit(void)
 }
 #endif
 
-
+#define TOUCHSCREEN_DUPLICATED_FILTER
 
 #ifdef TOUCHSCREEN_DUPLICATED_FILTER
-static int duplicated_filter(struct synaptics_ts_data *ts, int x,int y,int x2,int y2,
-						const int finger2, const int z)
-{
-	int drift_x[2];
-	int drift_y[2];
-	static int ref_x[2], ref_y[2];
-	uint8_t discard[2] = {0, 0};
 
-	drift_x[0] = abs(ref_x[0] - x);
-	drift_y[0] = abs(ref_y[0] - y);
-	if (finger2) {
-		drift_x[1] = abs(ref_x[1] - x2);
-		drift_y[1] = abs(ref_y[1] - y2);
+#define LCD_UNIT_PATH "dev/graphics/fb0"
+
+static int get_screeninfo(uint *xres, uint *yres)
+{
+	struct fb_info *info;
+
+	info = registered_fb[0];
+	if (!info) {
+		pr_err("%s: Can not access lcd info \n",__func__);
+		return -ENODEV;
 	}
-	/* pr_info("ref_x :%d, ref_y: %d, x: %d, y: %d\n", ref_x, ref_y, pos[0][0], pos[0][1]); */
-	if (drift_x[0] < ts->dup_threshold && drift_y[0] < ts->dup_threshold && z != 0) {
-		/* pr_info("ref_x :%d, ref_y: %d, x: %d, y: %d\n", ref_x[0], ref_y[0], pos[0][0], pos[0][1]); */
-		discard[0] = 1;
-	}
-	if (!finger2 || (drift_x[1] < ts->dup_threshold && drift_y[1] < ts->dup_threshold)) {
-		discard[1] = 1;
-	}
-	if (discard[0] && discard[1]) {
-		/* if finger 0 and finger 1's movement < threshold , discard it. */
-		return 1;
-	}
-	ref_x[0] = x;
-	ref_y[0] = y;
-	if (finger2) {
-		ref_x[1] = x2;
-		ref_y[1] = y2;
-	}
+
+	*xres = info->var.xres;
+	*yres = info->var.yres;
+	printk("xres=%d, yres=%d \n",*xres,*yres);
+
+	return 1;
+}
+
+static inline int duplicated_filter(struct synaptics_rmi4_data *ts, 
+						int i, int z, int w, int x, int y)
+{
+	int drift_x, drift_y;
+	
+	/* up pointer, report anyway and clean the entry */
 	if (z == 0) {
-		ref_x[0] = ref_y[0] = 0;
-		ref_x[1] = ref_y[1] = 0;
+		memset((void *)&old_report_data[i], 0, sizeof(old_report_data[0]));
+		return 0;
 	}
+
+	/* drift small enough, don't report */
+	drift_x = abs(old_report_data[i].x - x);
+	drift_y = abs(old_report_data[i].y - y);
+	if (drift_x < ts->dup_threshold && drift_y < ts->dup_threshold)
+		return 1;
+
+	/* normal case, report it and cache the new data */
+	old_report_data[i].z = z;
+	old_report_data[i].w = w;
+	old_report_data[i].x = x;
+	old_report_data[i].y = y;
 
 	return 0;
 }
+
 #endif /* TOUCHSCREEN_DUPLICATED_FILTER */
-
-/*
-static void dump_regs(struct synaptics_rmi4_data *ts)
-{
-	int ret=0;
-	int i;
-	int buf_len=32;
-	uint8_t buf[buf_len];
-
-	ret = i2c_smbus_read_i2c_block_data(ts->client,
-		ts->data_base, buf_len,buf);
-	if (ret < 0){
-		pr_err("ts dump_regs: failed to get ts intr state\n");
-	}else{
-		for (i=0;i<buf_len;i++)
-			pr_info("addr=0x%x, value=0x%x\n",
-				ts->data_base+i,buf[i]);
-	}
-}
-*/
-#if defined (CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
-int update_result_flag=0;
-struct synaptics_rmi4_data *ts_temp;
-#endif
 
 static int
 proc_read_val(char *page, char **start, off_t off, int count, int *eof,
 			  void *data)
 {
-			int len = 0;
-			len += sprintf(page + len, "%s\n", "touchscreen module");
-			len += sprintf(page + len, "name	 : %s\n", "synaptics");
-	#if defined(CONFIG_MACH_R750)
-			len += sprintf(page + len, "i2c address  : %x\n", 0x23);
-	#else
-			len += sprintf(page + len, "i2c address  : 0x%x\n", 0x22);
-	#endif
-	#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_3K)
-			len += sprintf(page + len, "IC type    : %s\n", "3000 series");
-	#else
-			len += sprintf(page + len, "IC type    : %s\n", "2000 series");
-	#endif
-	#if defined(CONFIG_MACH_R750)
-			len += sprintf(page + len, "firmware version	: %s\n", "TM1551");
-	#elif  defined(CONFIG_MACH_JOE)
-			len += sprintf(page + len, "firmware version	: %s\n", "TM1419-001");
-	#elif  defined(CONFIG_MACH_BLADE)
-			len += sprintf(page + len, "firmware version	: %s\n", "TM1541");
-	#elif  defined(CONFIG_MACH_SKATE)
-			len += sprintf(page + len, "firmware version	: %s\n", "TM1792");	
-	#endif
-			len += sprintf(page + len, "module : %s\n", "synaptics + TPK");
-	#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE
-	  len += sprintf(page + len, "update flag : 0x%x\n", update_result_flag);
-	#endif
-			if (off + count >= len)
-				*eof = 1;
-			if (len < off)
-				return 0;
-			*start = page + off;
-			return ((count < len - off) ? count : len - off);
-		}
-		//ZTE_WLY_CRDB00509514,END
+	int ret=0;
+	int len = 0;
+	int buf_len=32;	//f01.query len = 21.
+	char buf[buf_len];
+	struct synaptics_rmi4_data *ts = pgtsdata;
+
+	if ( ts == NULL ){
+		pr_err("%s: invalid device!\n",__func__);
+		return -1;
+	}
+
+	ret = i2c_smbus_read_i2c_block_data(
+		ts->client, ts->f01.query_base, buf_len, buf);
+	if (ret < 0){
+		pr_err("%s: failed to get ts if01 query base\n",__func__);
+		return ret;
+	}else{
+		//len += sprintf(page + len, "I2c address : %x\n", ts->client->addr );
+		//len += sprintf(page + len, "Manufacturer ID : %x\n", buf[0]);		
+		//len += sprintf(page + len, "Serial Number : 0x%x%x\n", buf[9],buf[10]);
+		len += sprintf(page + len, "Manufacturer : %s\n", "Synaptics");
+		len += sprintf(page + len, "Product ID : %c%c%c%c%c%c%c%c%c%c\n", 
+			buf[11], buf[12], buf[13], buf[14], buf[15], buf[16],
+			buf[17], buf[18], buf[19], buf[20]);
+		len += sprintf(page + len, "Firmware Revision : %x\n", buf[3]);
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE
+		len += sprintf(page + len, "Update flag : 0x%x\n", update_result_flag_syna);
+#endif
+
+		if (off + count >= len)
+			*eof = 1;
+
+		if (len < off)
+			return 0;
+
+		*start = page + off;
+		return ((count < len - off) ? count : len - off);
+	}
+
+}
 		
 static int proc_write_val(struct file *file, const char *buffer,
 		   unsigned long count, void *data)
 {
 	unsigned long val;
-	#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
 	int ret=0;
-	update_result_flag=0;
-	disable_irq(update_client->irq);
-	ioctol(update_client);
-	msleep(500);
-	enable_irq(update_client->irq);
+	update_result_flag_syna=0;
 
-	ret = i2c_smbus_write_byte_data(update_client, ts_temp->f11.ctrl_base+2, 0x9);
+	disable_irq(pgtsdata->client->irq);
+	//ioctol(pgtsdata->client);
+	syna_fwupdate();
+	msleep(500);
+	enable_irq(pgtsdata->client->irq);
+
+	//升级完成后需要对一些参数再做配置
+	//尤其是坐标系最大值的配置，否则会导致升级后触摸屏不可用
+	//后续需要添加其他机型的配置
+	ret = i2c_smbus_write_byte_data(pgtsdata->client, pgtsdata->f11.ctrl_base+2, 0x9);
 	if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
-	ret = i2c_smbus_write_byte_data(update_client, ts_temp->f11.ctrl_base+3, 0x9);	
+	ret = i2c_smbus_write_byte_data(pgtsdata->client, pgtsdata->f11.ctrl_base+3, 0x9);	
 	if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
-	update_result_flag=2;
-	#endif
+	update_result_flag_syna=2;
+#endif
+
 	sscanf(buffer, "%lu", &val);				
-	printk("ts_key_report_synaptics_show\n");
+	printk("%s: ts_key_report_synaptics_show\n", __func__);
 	return -EINVAL;
 }
+
 
 static int synaptics_rmi4_get_pdt(struct synaptics_rmi4_data *ts)
 {
@@ -240,12 +259,23 @@ static int synaptics_rmi4_get_pdt(struct synaptics_rmi4_data *ts)
 	ts->data_base= 0xff;
 	ts->data_len = 0;
 
+	//pr_info("synaptics_ts: synaptics_rmi4_read_pdt\n");
 	do {
 
-
+		//now we do nothing to pages other than PAGE 0. 
+		/*
+		if (page_select!=0){
+			ret = i2c_smbus_write_byte_data(ts->client, PDT_PAGE_SELECT, page_select);
+			if (ret<0)
+				pr_err("i2c_smbus_write_byte_data failed\n");
+		}
+		*/
+		//pr_info("--------------------------------------\n");
 		pdt_addr_base=PDT_ADDR_BASE;
 		ret = i2c_smbus_read_i2c_block_data(ts->client,
 			pdt_addr_base-PDT_BYTE_COUNT*nFd+1, sizeof(struct rmi4_function_descriptor),(uint8_t *)&fd);
+		//pr_info("synaptics_ts: page=%d,pdt_addr_base=0x%x,nfd=%d,addr=0x%x\n",
+		//	page_select,pdt_addr_base,nFd,PDT_ADDR_BASE-PDT_BYTE_COUNT*nFd+1);
 		pr_info("function_number=0x%x, query_base=0x%x, cmd_base=0x%x, "\
 			"ctrl_base=0x%x, data_base=0x%x, intr_src_count=0x%x\n",
 			fd.function_number,fd.query_base,fd.cmd_base,
@@ -270,6 +300,7 @@ static int synaptics_rmi4_get_pdt(struct synaptics_rmi4_data *ts)
 			switch(fd.function_number){
 			case 0x01:
 				ts->f01.flag		= fd.function_number;
+				ts->f01.query_base  = fd.query_base;
 				ts->f01.ctrl_base	= fd.ctrl_base;
 				ts->f01.data_offset	= fd.data_base;	//intr status
 				ts->f01.intr_offset = intr_count/8;
@@ -280,31 +311,55 @@ static int synaptics_rmi4_get_pdt(struct synaptics_rmi4_data *ts)
 				break;
 			case 0x11:
 				ts->f11.flag		= fd.function_number;
+				ts->f11.query_base	= fd.query_base;
 				ts->f11.ctrl_base 	= fd.ctrl_base;
 				ts->f11.data_offset = fd.data_base;
 				ts->f11.intr_offset = intr_count/8;
 				ts->f11.intr_mask 	= ((1<<(fd.intr_src_count &0x7))-1)<<(intr_count%8);
+				//pr_info("synaptics_ts:intr_offset=0x%x, intr_mask=0x%x\n",
+				//	ts->f11.intr_offset,ts->f11.intr_mask);
+				//i2c_smbus_write_word_data(ts->client, fd.ctrl_base+6,480);
+				//i2c_smbus_write_word_data(ts->client, fd.ctrl_base+8,800);
 
 				ts->max[0]=i2c_smbus_read_word_data(ts->client, fd.ctrl_base+6)-12;
 				ts->max[1]=i2c_smbus_read_word_data(ts->client, fd.ctrl_base+8)-12;
-				pr_info("synaptics_ts:max_x=%d, max_y=%d\n",ts->max[0],ts->max[1]);
+				pr_info("%s: max_x=%d, max_y=%d\n",__func__,ts->max[0],ts->max[1]);
+
+				//ts->f11_fingers = kcalloc(ts->f11.points_supported,
+				//	sizeof(*ts->f11_fingers), 0);
 
 				ret=i2c_smbus_read_word_data(ts->client, fd.query_base);
 				ret = i2c_smbus_read_i2c_block_data(ts->client,
 					fd.query_base,sizeof(query),query);
 				if (ret < 0){
-					pr_err("i2c_smbus_read_byte_data failed\n");
+					pr_err("%s: i2c_smbus_read_byte_data failed\n",__func__);
 					return ret;
 				}
+				/*{
+					int i;
+					for (i=0;i<=11;i++)
+						pr_info("query[%d]=0x%x\n",i,query[i]);
+				}*/
 
 				ts->f11.points_supported=(query[1]&0x7)+1;
 				if (ts->f11.points_supported >5)
 					ts->points_supported=10;
 				else
 					ts->points_supported=ts->f11.points_supported;
+				//if ( ts->points_needed > ts->points_supported )
+					//ts->points_needed = ts->points_supported;
+				//ts->points_needed=SYNAPTICS_RMI4_MAXP_NEEDED;
 				pr_info("synaptics_ts:%d, points_supported=%d\n",
 					ts->f11.points_supported,ts->points_supported);
 
+				/*
+				// We now consider only ONE sensor situation.
+				if (query[0]&0x7 !=1){
+					pr_err("i2c_smbus_read_byte_data failed\n");
+					return -1;//synaptics_ts: need a better error code
+				}
+				pr_info("synaptics_ts: sensor=%d\n",query[0]&0x7);
+				*/
 				ts->f11.data_len = data_len =
 					// DATA0 : finger status, four fingers per register 
 					(ts->f11.points_supported/4+1)
@@ -350,22 +405,42 @@ static int synaptics_rmi4_get_pdt(struct synaptics_rmi4_data *ts)
 		
 		intr_count+=fd.intr_src_count;
 
+		//pr_info("1 data_base =0x%x, len=%d\n", ts->data_base,ts->data_len);
 		if ( fd.data_base && (ts->data_base > fd.data_base) )
 			ts->data_base = fd.data_base;
 
 		ts->data_len += data_len;
+		//pr_info("data_len=%d\n",data_len);
+		//pr_info("3 data_base =0x%x, len=%d\n", ts->data_base,ts->data_len);
 
 		nFd++;
 
 	}while( page_select<1);
 
 	ts->f01.data_len = 1+ (intr_count+7)/8;
+	//pr_info("synaptics_ts: f01 data len =%d\n",ts->f01.data_len);
 
+	//check data base & data len
 	ts->data_len += ts->f01.data_len;
-	pr_info("synaptics_ts: data_base=0x%x, data_len=%d\n",ts->data_base,ts->data_len);
+	pr_info("%s: data_base=0x%x, data_len=%d\n",__func__,ts->data_base,ts->data_len);
 
 	ts->f01.data_offset -= ts->data_base;
 	ts->f11.data_offset -= ts->data_base;
+	//pr_info("synaptics_ts: f01 offset =%d, f11 offset=%d\n",ts->f01.data_offset, ts->f11.data_offset);
+
+
+	// display touchpanel info
+	{
+	int buf_len=32;	//f01.query len = 21.
+	char buf[buf_len];
+	ret = i2c_smbus_read_i2c_block_data(
+		ts->client, ts->f01.query_base, buf_len, buf);
+	pr_info("%s: Manufacturer : %s\n", "Synaptics",__func__);
+	pr_info("%s: Product ID : %c%c%c%c%c%c%c%c%c%c\n",__func__, 
+			buf[11], buf[12], buf[13], buf[14], buf[15], buf[16],
+			buf[17], buf[18], buf[19], buf[20]);
+	pr_info("%s: Firmware Revision : 0x%x\n",__func__, buf[3]);
+	}
 
 	return ret;
 }
@@ -395,33 +470,40 @@ static int synaptics_rmi4_set_panel_state(
 		 * the interrupt is asserted whenever the change in finger 
 		 * position exceeds either DeltaXPosThreshold or DeltaYPosThreshold.
 		*/
-		ret = i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+2, 0x9);
-		if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
-		ret = i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+3, 0x9);	
-		if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
+		ret = i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+2, 0x2);
+		if (ret<0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
+		ret = i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+3, 0x2);
+		if (ret<0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
 		mode = i2c_smbus_read_byte_data(ts->client, ts->f11.ctrl_base);
 		mode &=~0x7;
 		mode |=0x01;
 		ret = i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base, mode);
-		if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
+		if (ret<0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
 	case TS_RESUME:	
 		// set nomal mode
 		mode = i2c_smbus_read_byte_data(ts->client, ts->f01.ctrl_base);
 		mode &=~0x3;
 		ret = i2c_smbus_write_byte_data(ts->client, ts->f01.ctrl_base, mode);
-		if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
+		if (ret<0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
+		//i2c_smbus_write_word_data(ts->client, ts->f11.ctrl_base+6,480);
+		//i2c_smbus_write_word_data(ts->client, ts->f11.ctrl_base+8,800);
+		//i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+2,0x10);
+		//i2c_smbus_write_byte_data(ts->client, ts->f11.ctrl_base+3,0x10);
 
+		//enable irq
 		ret = i2c_smbus_write_byte_data(ts->client,ts->f01.ctrl_base+1, 0x7);
 		break;
 	case TS_SUSPEND:
+		// disable irq
 		ret = i2c_smbus_write_byte_data(ts->client, ts->f01.ctrl_base+1, 0);
-		if (ret <0) pr_err("i2c_smbus_write_byte_data failed\n");
+		if (ret <0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
 
+		// deep sleep
 		mode = i2c_smbus_read_byte_data(ts->client, ts->f01.ctrl_base);
 		mode &=~0x3;
 		mode |=0x01;
 		ret = i2c_smbus_write_byte_data(ts->client, ts->f01.ctrl_base, mode);
-		if (ret<0) pr_err("i2c_smbus_write_byte_data failed\n");
+		if (ret<0) pr_err("%s: i2c_smbus_write_byte_data failed\n",__func__);
 		break;
 	default:
 		break;
@@ -437,60 +519,78 @@ static void synaptics_rmi4_work_func(struct work_struct *work)
 	int buf_len		= ts->data_len;
 	__u8 buf[buf_len];
 	struct f11_2d_point_data *point_data=NULL;
-	int i,x,y,w,z,finger;
-	static uint finger_pre[10];
+	int i,x,y,w,z,finger,will_report;
+	DECLARE_BITMAP(pointers_to_report, NR_FINGERS);
 
 	ret = i2c_smbus_read_i2c_block_data(ts->client,ts->data_base, buf_len, buf);
-
+/*	for (i=0;i<buf_len;i++)
+		pr_info("addr=0x%x, buf[%d]=0x%x\n",ts->data_base+i,i,buf[i]);
+*/
+	// now only consider 
 	interrupt=buf[1];
-
+	//pr_info("synaptics_ts, intr=0x%x\n",interrupt);
 	if ( ts->f11.flag && (interrupt & ts->f11.intr_mask) ) 
 	{
-
-		for (i=0; i<ts->points_supported; i++)
+		// Gesture:google likes to compute guestures itself instead of hw reports.
+		/* Figure out which pointer(s) should be reported */
+		bitmap_zero(pointers_to_report, NR_FINGERS);
+		will_report = 0;
+		for (i=0; i<ts->points_supported;i++)
 		{
 			finger = 0x3 &(buf[ts->f11.data_offset+i/4] >> ((i%4)*2));
 
-			if (1 == finger)finger_pre[i] =2;
-			if ((0 == finger)&&(0!=finger_pre[i]))finger_pre[i] =1;
+			if (finger)	{/* active or down pointers, should report */
+				__set_bit(i, pre_fingers);
+				__set_bit(i, pointers_to_report);
+			} else if (test_bit(i, pre_fingers)) {	/* finger == 0, but previous finger == 1, up pointers, should report */
+				__clear_bit(i, pre_fingers);
+				__set_bit(i, pointers_to_report);
+			} else	/* inactive pointers, do nothing */
+				continue;
 			point_data = (struct f11_2d_point_data *)
-				( buf 
-				+ ts->f11.data_offset 
-				+ (1 + ts->points_supported/4)
-				+ i * sizeof(struct f11_2d_point_data)
-				);
+					( buf 
+					+ ts->f11.data_offset 
+					+ (1 + ts->points_supported/4)
+					+ i * sizeof(struct f11_2d_point_data)
+					);
 
 			x =((__u16)((point_data->xh<<0x4)|(point_data->xyl &0xF)))-6;
 			y =((__u16)((point_data->yh<<0x4)|(point_data->xyl &0xF0)>>0x4))-6;
 			w = ( point_data->wxy & 0x0F ) + ( point_data->wxy >>4 & 0x0F );
 			z = point_data->z;
-			if (x < 0) x =0;
-			else if (x >ts->max[0])x = ts->max[0];
-			if (y < 0) y =0;
-			else if (y >ts->max[1])y = ts->max[1];
+			x = ( x < 0 ) ? 0 : x ;
+			x = ( x > ts->max[0] ) ? ts->max[0] : x ;
+			y = ( y < 0 ) ? 0 : y ;
+			y = ( y > ts->max[1] ) ? ts->max[1] : y ;
 
-			switch(finger_pre[i])
-			{
-				case 1:
-				{
-					finger_pre[i]=0;
-				};
-				case 2:
-				{
-					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
-			 		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, z);
-					input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, w);//default 10
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_X, x);
-					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, y);
-					input_mt_sync(ts->input_dev);
-				}break;
-				default:break;
-			}
+			new_report_data[i].w = w;
+			new_report_data[i].z = z;
+			new_report_data[i].x = x;
+			new_report_data[i].y = y;
+
+#ifdef TOUCHSCREEN_DUPLICATED_FILTER
+			if (duplicated_filter(ts, i, z, w, x, y))
+				continue;
+#endif
+			will_report = 1;
 		}
-		input_sync(ts->input_dev);
+		
+		if (will_report) {
+			for_each_set_bit(i, pointers_to_report, NR_FINGERS) {
+				input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
+				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, new_report_data[i].z);
+				input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, new_report_data[i].w);//default 10
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_X, new_report_data[i].x);
+				input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, new_report_data[i].y);
+				input_mt_sync(ts->input_dev);
+			}
+			input_sync(ts->input_dev);
+		}
 	}
+
 	if (ts->use_irq)
 		enable_irq(ts->client->irq);
+
 }
 
 
@@ -516,12 +616,12 @@ static int synaptics_rmi4_probe(
 {
 	struct synaptics_rmi4_data *ts;
 	struct synaptics_rmi4_data *pdata;
+	struct proc_dir_entry *dir, *refresh;
 	int ret = 0;
 	uint max_x,max_y;
-	struct proc_dir_entry *dir, *refresh;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		pr_err("synaptics_ts_probe: need I2C_FUNC_I2C\n");
+		pr_err("%s: need I2C_FUNC_I2C\n", __func__);
 		ret = -ENODEV;
 		goto err_check_functionality_failed;
 	}
@@ -533,26 +633,24 @@ static int synaptics_rmi4_probe(
 	}
 	INIT_WORK(&ts->work, synaptics_rmi4_work_func);
 	ts->client = client;
-#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
-				update_client=client;
-#endif	
-
 	i2c_set_clientdata(client, ts);
 
 
 	pdata = client->dev.platform_data;
 	if (pdata){
+		//ts->power = client->dev.platform_data;
 		ts->power 	= pdata->power;
 		ts->orientation	= pdata->orientation;
+		//ts->points_needed = pdata->points_needed;
 		ts->gpio_irq = pdata->gpio_irq;
 	}else{
-		pr_err("%s error!\n",__func__);
+		pr_err("%s: error!\n",__func__);
 		goto err_detect_failed; 
 	}
 	if (ts->power) {
 		ret = ts->power(1);
 		if (ret < 0) {
-			pr_err("%s power on failed\n",__func__);
+			pr_err("%s: power on failed\n",__func__);
 			goto err_power_failed;
 		}
 		msleep(250);
@@ -563,15 +661,19 @@ static int synaptics_rmi4_probe(
 			__func__, ts->gpio_irq,ret);
 			goto err_power_failed;
 	}
-#if defined (CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
-	ts_temp=ts;
-#endif
 	ret = synaptics_rmi4_get_pdt(ts);
 	if (ret <= 0) {
-		pr_err("Error identifying device (%d)\n", ret);
+		pr_err("%s: Error identifying device (%d)\n", __func__, ret);
 		ret = -ENODEV;
 		goto err_detect_failed;
 	}
+
+	synaptics_wq = create_singlethread_workqueue("synaptics_wq");
+	if (!synaptics_wq){
+		pr_err("Could not create work queue synaptics_wq: no memory");
+		return -ENOMEM;
+	}
+	pgtsdata=ts;
 
 	max_x=ts->max[0];
 #if defined(CONFIG_MACH_R750)
@@ -580,15 +682,23 @@ static int synaptics_rmi4_probe(
 	max_y=3092-6;
 #elif defined(CONFIG_MACH_SKATE)
 	max_y=1869-6;
+#elif defined(CONFIG_MACH_BLADE2)
+	max_y = 1518 -6;
+#elif defined(CONFIG_MACH_BLUETICK)
+	max_y = 1518 -6;
+
 #else
 	max_y=ts->max[1];
 #endif
+	printk("synaptics_rmi4_probe: max_x=%d  max_y=%d\n",max_x,max_y);//ZTE_TS_XYM_20110720
 
+	//ret = synaptics_rmi4_init_panel(ts); 
 	ret = synaptics_rmi4_set_panel_state(ts, TS_POWER_ON); 
 	if (ret < 0) {
-		pr_err("synaptics_rmi4_set_panel_state failed\n");
+		pr_err("%s: synaptics_rmi4_set_panel_state failed\n",__func__);
 		goto err_detect_failed;
 	}
+//	dump_regs(ts);
 
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
@@ -601,8 +711,13 @@ static int synaptics_rmi4_probe(
 	ts->input_dev->phys = client->name;
 
 #ifdef TOUCHSCREEN_DUPLICATED_FILTER
-	ts->dup_threshold=(max_y*10/LCD_MAX_Y+5)/10;	
-	pr_info("dup_threshold %d\n", ts->dup_threshold);
+{
+	uint xres,yres=0;
+	get_screeninfo(&xres, &yres);
+	ts->dup_threshold= (2*max_y)/yres;
+	//ts->dup_threshold=(max_y*10/LCD_MAX_Y+5)/10;
+	//pr_info("dup_threshold %d\n", ts->dup_threshold);
+}
 #endif
 
 	set_bit(EV_SYN, ts->input_dev->evbit);
@@ -612,6 +727,8 @@ static int synaptics_rmi4_probe(
 	set_bit(KEY_HOME, ts->input_dev->keybit);
 	set_bit(KEY_MENU, ts->input_dev->keybit);
 	set_bit(KEY_BACK, ts->input_dev->keybit);
+	//set_bit(ABS_X, ts->input_dev->absbit);
+	//set_bit(ABS_Y, ts->input_dev->absbit);
 	set_bit(ABS_SINGLE_TAP, ts->input_dev->absbit);
 	set_bit(ABS_TAP_HOLD, ts->input_dev->absbit);
 	set_bit(ABS_EARLY_TAP, ts->input_dev->absbit);
@@ -626,8 +743,11 @@ static int synaptics_rmi4_probe(
 	set_bit(ABS_MT_WIDTH_MAJOR, ts->input_dev->absbit);
 	set_bit(ABS_MT_ORIENTATION, ts->input_dev->absbit);
 
+	//input_set_abs_params(ts->input_dev, ABS_X, 0, max_x, 0, 0);
+	//input_set_abs_params(ts->input_dev, ABS_Y, 0, max_y, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_ORIENTATION, 0, ts->orientation, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 0xFF, 0, 0);
+	//input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MINOR, 0, 0xF, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, max_x+1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, max_y+1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 30, 0, 0);
@@ -639,6 +759,7 @@ static int synaptics_rmi4_probe(
 	input_set_abs_params(ts->input_dev, ABS_PRESS, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_DOUBLE_TAP, 0, 5, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PINCH, -0xFF, 0xFF, 0, 0);
+	//input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, 0, 0);
 
 	ret = input_register_device(ts->input_dev);
 	if (ret)	{
@@ -646,7 +767,8 @@ static int synaptics_rmi4_probe(
 			__func__, ts->input_dev->name);
 		goto err_input_register_device_failed;
 	}
-
+	
+	ts->use_irq = 1;
 	if (client->irq) 
 	{
         if (request_irq(client->irq, synaptics_rmi4_irq_handler, 
@@ -655,6 +777,7 @@ static int synaptics_rmi4_probe(
 			pr_info("Received IRQ!\n");
 			ts->use_irq = 1;
 		}else{
+			ts->use_irq = 0;
 			dev_err(&client->dev, "request_irq failed\n");
 		}
 	}
@@ -679,9 +802,18 @@ static int synaptics_rmi4_probe(
 		refresh->read_proc  = proc_read_val;
 		refresh->write_proc = proc_write_val;
 	}
+
 #if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
 	ts_key_report_init();
 #endif
+
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
+	syna_fwupdate_init(client);
+#endif
+
+	bitmap_zero(pre_fingers, NR_FINGERS);
+	memset((void *)old_report_data, 0, sizeof(old_report_data));
+	memset((void *)new_report_data, 0, sizeof(old_report_data));
 
 	pr_info("%s: Start ts %s in %s mode\n",
 		__func__,ts->input_dev->name, ts->use_irq ? "interrupt" : "polling");
@@ -708,12 +840,16 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 #if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
 	ts_key_report_deinit();
 #endif
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)
+	syna_fwupdate_deinit(client);
+#endif
+
 
 	// power off
 	if (ts->power) {
 		ret = ts->power(0);
 		if (ret < 0)
-			pr_err("%s power off failed\n",__func__);
+			pr_err("%s: power off failed\n",__func__);
 	}
 
 	unregister_early_suspend(&ts->early_suspend);
@@ -741,11 +877,18 @@ static int synaptics_rmi4_suspend(struct i2c_client *client, pm_message_t mesg)
 		hrtimer_cancel(&ts->timer);
 
 	ret = cancel_work_sync(&ts->work);
+	/* if work was pending disable-count is now 2 */
 	if (ret && ts->use_irq)
 		enable_irq(client->irq);
 
 	synaptics_rmi4_set_panel_state(ts, TS_SUSPEND);
-
+/*
+	if (ts->power) {
+		ret = ts->power(0);
+		if (ret < 0)
+			pr_err("synaptics_rmi4_suspend power off failed\n");
+	}
+*/
 	return 0;
 }
 
@@ -753,7 +896,14 @@ static int synaptics_rmi4_resume(struct i2c_client *client)
 {
 //	int ret;
 	struct synaptics_rmi4_data *ts = i2c_get_clientdata(client);
-
+/*
+	if (ts->power){
+		ret=ts->power(1);
+		if (ret < 0)
+			pr_err("synaptics_rmi4_resume power on failed\n");
+	}
+*/
+	//synaptics_rmi4_init_panel(ts);
 	synaptics_rmi4_set_panel_state(ts, TS_RESUME);
 	
 	if (ts->use_irq){
@@ -800,11 +950,6 @@ static struct i2c_driver synaptics_rmi4_driver = {
 
 static int __devinit synaptics_rmi4_init(void)
 {
-	synaptics_wq = create_singlethread_workqueue("synaptics_wq");
-	if (!synaptics_wq){
-		pr_err("Could not create work queue synaptics_wq: no memory");
-		return -ENOMEM;
-	}
 	return i2c_add_driver(&synaptics_rmi4_driver);
 }
 

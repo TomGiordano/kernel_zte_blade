@@ -735,6 +735,11 @@ static ssize_t gauge_show_StateOfCharge(struct device_driver *driver, char *buf)
 static DRIVER_ATTR(enable, S_IRWXUGO, gauge_show_enable, gauge_store_enable);	//can read write execute
 static DRIVER_ATTR(upmode, S_IRWXUGO, gauge_show_upmode, gauge_store_upmode);	//can read write execute
 static DRIVER_ATTR(Control, S_IRWXUGO, gauge_show_Control, gauge_store_Control);	//can read write execute
+#else
+static DRIVER_ATTR(enable, S_IRWXU|S_IRWXG|S_IRUGO, gauge_show_enable, gauge_store_enable);	//can read write execute
+static DRIVER_ATTR(upmode, S_IRWXU|S_IRWXG|S_IRUGO, gauge_show_upmode, gauge_store_upmode);	//can read write execute
+static DRIVER_ATTR(Control, S_IRWXU|S_IRWXG|S_IRUGO, gauge_show_Control, gauge_store_Control);	//can read write execute
+#endif
 static DRIVER_ATTR(batTemperature, S_IRUGO, gauge_show_temperature, NULL); //显示实时电流
 static DRIVER_ATTR(batVoltage, S_IRUGO, gauge_show_voltage, NULL);
 static DRIVER_ATTR(Flags, S_IRUGO, gauge_show_flag, NULL);

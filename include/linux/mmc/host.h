@@ -226,7 +226,7 @@ struct mmc_host {
 	} embedded_sdio_data;
 #endif
 #ifdef CONFIG_ATH_WIFI
-    int    last_suspend_error;
+	int suspend_keep_power;
 #endif
 #ifdef CONFIG_MMC_PERF_PROFILING
 	struct {

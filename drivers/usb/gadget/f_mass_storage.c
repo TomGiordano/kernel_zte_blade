@@ -304,6 +304,12 @@ int os_switch_is_enable(void);
 //static int default_lunstype[MAX_LUNS] = {0,1};
 //end
 
+int scsicmd_start_adbd(void);
+int scsicmd_stop_adbd(void);
+//#if defined(CONFIG_MACH_ROAMER)
+#define ENUM_ADB_FROM_MSC
+//#endif
+
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 #include <linux/usb/android_composite.h>
 #include <linux/platform_device.h>
@@ -1552,6 +1558,48 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 
 	return reply_size;
 }
+#ifdef ENUM_ADB_FROM_MSC
+//xingbeilei_20110801
+static int do_start_stop_usb_debug(struct fsg_common *common, struct fsg_buffhd *bh)
+{
+	int call_us_ret = -1;
+	char *envp[] = {
+		"HOME=/",
+		"PATH=/sbin:/system/sbin:/system/bin:/system/xbin",
+		NULL,
+	};
+	char *exec_path = "/sbin/do_scsi_command";
+	char *argv[] = { exec_path, NULL, NULL, };
+
+	if(common->cmnd[1]=='z' && common->cmnd[2]=='t' && common->cmnd[3]=='e'){
+		/* No special options */
+		switch(common->cmnd[5]){
+			case 0x00://disable adbd ---for 736T
+			argv[1] = "stop_adbd";
+			call_us_ret = call_usermodehelper(exec_path, argv, envp, UMH_WAIT_PROC);
+			break;
+		case 0x01://enable adbd ---for 736T
+			argv[1] = "start_adbd";
+			call_us_ret = call_usermodehelper(exec_path, argv, envp, UMH_WAIT_PROC);
+			break;
+		case 0x02: //disable adbd ---for All except 736T
+			call_us_ret = scsicmd_stop_adbd();
+			break;
+		case 0x03: //enable adbd ---for All except 736T
+			call_us_ret = scsicmd_start_adbd();
+			break;
+		default:
+			printk(KERN_DEBUG "Unknown ZTE specific command...(0x%2.2X)\n", common->cmnd[5]);
+			break;
+		}
+	}
+	printk(KERN_NOTICE "%s adb daemon from mass_storage %s(%d)\n",
+	       (common->cmnd[5] == 0x01)?"Enable":(common->cmnd[5] == 0x00)?"Disable":"Unknown",
+	       (call_us_ret == 0)?"DONE":"FAIL", call_us_ret);
+	return 0;
+
+}
+#endif
 
 /*---------------------------------------
  scsi response data type
@@ -2389,6 +2437,7 @@ static int do_scsi_command(struct fsg_common *common)
 	int			reply = -EINVAL;
 	int			i;
 	static char		unknown[16];
+	//int j;
 
 	dump_cdb(common);
 
@@ -2404,6 +2453,11 @@ static int do_scsi_command(struct fsg_common *common)
 	common->short_packet_received = 0;
 
 	down_read(&common->filesem);	/* We're using the backing file */
+
+        /*for(j=0; j<MAX_COMMAND_SIZE; j++) {
+                //printk(KERN_ERR"xbl:do_start_stop_usb_debug:0x%d \n",common->cmnd[j]);
+        }*/
+
 	switch (common->cmnd[0]) {
 
 	case SC_INQUIRY:
@@ -2647,6 +2701,11 @@ static int do_scsi_command(struct fsg_common *common)
 		if (reply==0)
          	reply=do_get_configuration(common,bh);
  		break;
+#ifdef ENUM_ADB_FROM_MSC
+	case SC_START_STOP_USB_DEBUG:
+		reply=do_start_stop_usb_debug(common,bh);
+		break;
+#endif		
 	/* Some mandatory commands that we recognize but don't implement.
 	 * They don't mean much in this setting.  It's left as an exercise
 	 * for anyone interested to implement RESERVE and RELEASE in terms

@@ -20,7 +20,10 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
- 
+  2011-04-16   lijing       add param setting                        ZTE_CAM_LJ_20110416
+  2011-04-14   lijing       modify sensor angle from 90 to 180, else ZTE_CAM_LJ_20110414_01
+                            snapshot angle is 90 rotated
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -387,7 +390,7 @@ static long hi704_set_effect(int32_t mode, int32_t effect)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x11,0x03,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -443,7 +446,7 @@ static long hi704_set_effect(int32_t mode, int32_t effect)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x11,0x03,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -498,7 +501,7 @@ static long hi704_set_effect(int32_t mode, int32_t effect)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x11,0x03,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -559,7 +562,7 @@ static long hi704_set_effect(int32_t mode, int32_t effect)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x11,0x03,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -920,7 +923,12 @@ static int32_t hi704_set_contrast(int8_t contrast)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x48,0x54,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = hi704_i2c_write(hi704_client->addr,0x48,0x20,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -935,17 +943,28 @@ static int32_t hi704_set_contrast(int8_t contrast)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x48,0x74,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
             }
+            rc = hi704_i2c_write(hi704_client->addr,0x48,0x60,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+
         }
         break;
 
         case CAMERA_CONTRAST_2:
         {
             rc = hi704_i2c_write(hi704_client->addr,0x03,0x10,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -965,11 +984,17 @@ static int32_t hi704_set_contrast(int8_t contrast)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x48,0x94,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
             }
+            rc = hi704_i2c_write(hi704_client->addr,0x48,0xa0,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+
         }
         break; 
 
@@ -980,11 +1005,17 @@ static int32_t hi704_set_contrast(int8_t contrast)
             {
                 return rc;
             }
-            rc = hi704_i2c_write(hi704_client->addr,0x48,0xb4,BYTE_LEN);
+            rc = hi704_i2c_write(hi704_client->addr,0x11,0x43,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
             }
+                        rc = hi704_i2c_write(hi704_client->addr,0x48,0xf4,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+
         }
         break;
 
@@ -1348,6 +1379,11 @@ static int32_t hi704_set_sharpness(int8_t sharpness)
             {
                 return rc;
             }
+            rc = hi704_i2c_write(hi704_client->addr,0x10,0x01,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
             rc = hi704_i2c_write(hi704_client->addr,0x90,0x04,BYTE_LEN);
             if (rc < 0)
             {
@@ -1364,6 +1400,11 @@ static int32_t hi704_set_sharpness(int8_t sharpness)
         case CAMERA_SHARPNESS_1:
         {
             rc = hi704_i2c_write(hi704_client->addr,0x03,0x13,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = hi704_i2c_write(hi704_client->addr,0x10,0x01,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -1388,6 +1429,11 @@ static int32_t hi704_set_sharpness(int8_t sharpness)
             {
                 return rc;
             }
+            rc = hi704_i2c_write(hi704_client->addr,0x10,0x01,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
             rc = hi704_i2c_write(hi704_client->addr,0x90,0x04,BYTE_LEN);
             if (rc < 0)
             {
@@ -1408,6 +1454,11 @@ static int32_t hi704_set_sharpness(int8_t sharpness)
             {
                 return rc;
             }
+            rc = hi704_i2c_write(hi704_client->addr,0x10,0x01,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
             rc = hi704_i2c_write(hi704_client->addr,0x90,0x04,BYTE_LEN);
             if (rc < 0)
             {
@@ -1424,6 +1475,11 @@ static int32_t hi704_set_sharpness(int8_t sharpness)
         case CAMERA_SHARPNESS_4:
         {
             rc = hi704_i2c_write(hi704_client->addr,0x03,0x13,BYTE_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = hi704_i2c_write(hi704_client->addr,0x10,0x01,BYTE_LEN);
             if (rc < 0)
             {
                 return rc;
@@ -2511,7 +2567,10 @@ int hi704_sensor_probe(const struct msm_camera_sensor_info *info,
         goto probe_failed;
     }
 
-  
+    /*
+     * modify sensor angle from 90 to 180, else snapshot angle is 90 rotated
+     * ZTE_CAM_LJ_20110414_01
+     */
     s->s_mount_angle = 0;
     s->s_camera_type = FRONT_CAMERA_2D;
 

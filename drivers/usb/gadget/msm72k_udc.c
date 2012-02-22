@@ -48,6 +48,16 @@
 #include <mach/rpc_hsusb.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
+#if defined(CONFIG_TOUCHSCREEN_MXT224)||defined(CONFIG_TOUCHSCREEN_MXT224_NEW)
+#include <linux/atmel_qt602240.h>    //huangjinyu add 20110722
+#endif
+
+#if defined (CONFIG_TS_NOTIFIER)
+extern int ts_notifier_call_chain(unsigned long val);
+#endif
+#if defined (CONFIG_FTS_USB_NOTIFY)
+extern int Ft5x0x_ts_notifier_call_chain(unsigned long val);
+#endif
 
 void schedule_usb_plug(void);
 
@@ -212,6 +222,11 @@ struct usb_info {
 	struct usb_gadget		gadget;
 	struct usb_gadget_driver	*driver;
 	struct switch_dev sdev;
+	//xingbeilei
+	struct switch_dev scsi_sdev;
+	int start_adbd;
+	struct work_struct scsi_work;
+	//end
 
 #define ep0out ept[0]
 #define ep0in  ept[16]
@@ -279,6 +294,58 @@ static ssize_t print_switch_state(struct switch_dev *sdev, char *buf)
 {
 	return sprintf(buf, "%s\n", sdev->state ? "online" : "offline");
 }
+//xingbeilei
+int scsicmd_start_adbd(void)
+{
+	struct usb_info *ui = the_usb_info;
+	if (NULL == ui) {
+		return -1;
+	}
+	ui->start_adbd = 1;
+	switch_set_state(&ui->scsi_sdev, 1);
+	printk(KERN_ERR"usb_xbl: %s, %d  %d\n",__FUNCTION__, __LINE__, ui->start_adbd);
+	return 0;
+}
+EXPORT_SYMBOL(scsicmd_start_adbd);
+
+int scsicmd_stop_adbd(void)
+{
+	struct usb_info *ui = the_usb_info;
+	if (NULL == ui) {
+		return -1;
+	}
+	ui->start_adbd = 0;
+	switch_set_state(&ui->scsi_sdev, 2);
+	printk(KERN_ERR"usb_xbl: %s, %d  %d\n",__FUNCTION__, __LINE__, ui->start_adbd);
+	return 0;
+}
+EXPORT_SYMBOL(scsicmd_stop_adbd);
+
+static void scsicmd_usbstate_offline(struct work_struct *w)
+{
+	struct usb_info *ui = container_of(w, struct usb_info, scsi_work);
+        if (NULL == ui) {
+                return;
+        }
+
+        if (ui->start_adbd == 1) {
+		printk(KERN_ERR"usb_xbl: %s, %d  %d\n",__FUNCTION__, __LINE__, ui->start_adbd);
+                switch_set_state(&ui->scsi_sdev, 0);
+        }
+	ui->start_adbd = 0;
+	return;
+}
+
+static ssize_t scsicmd_print_switch_name(struct switch_dev *sdev, char *buf)
+{
+	return sprintf(buf, "%s\n", "usb_scsi_command");
+}
+
+static ssize_t scsicmd_print_switch_state(struct switch_dev *sdev, char *buf)
+{
+	return sprintf(buf, "%d\n", sdev->state);
+}
+//end
 
 #ifdef ARM11_DETECT_CHG
 static inline enum chg_type usb_get_chg_type(struct usb_info *ui)
@@ -1290,7 +1357,10 @@ static void usb_prepare(struct usb_info *ui)
 		usb_ept_alloc_req(&ui->ep0in, SETUP_BUF_SIZE, GFP_KERNEL);
 
 	INIT_WORK(&ui->work, usb_do_work);
-	#ifdef ARM11_DETECT_CHG
+	//xingbeilei
+	INIT_WORK(&ui->scsi_work, scsicmd_usbstate_offline);
+	//end
+        #ifdef ARM11_DETECT_CHG
 	INIT_DELAYED_WORK(&ui->chg_det, usb_chg_detect);
 	INIT_DELAYED_WORK(&ui->chg_stop, usb_chg_stop);
 	#endif
@@ -1403,6 +1473,7 @@ static void usb_do_work_check_vbus(struct usb_info *ui)
 	spin_unlock_irqrestore(&ui->lock, iflags);
 }
 
+
 static void usb_do_work(struct work_struct *w)
 {
 	struct usb_info *ui = container_of(w, struct usb_info, work);
@@ -1471,6 +1542,14 @@ static void usb_do_work(struct work_struct *w)
 				pm_runtime_resume(&ui->pdev->dev);
 				dev_info(&ui->pdev->dev,
 					"msm72k_udc: IDLE -> ONLINE\n");
+
+#if defined (CONFIG_TS_NOTIFIER)
+				ts_notifier_call_chain(1);
+#endif
+#if defined (CONFIG_FTS_USB_NOTIFY)
+				Ft5x0x_ts_notifier_call_chain(1);
+#endif
+
 				usb_reset(ui);
 				ret = request_irq(otg->irq, usb_interrupt,
 							IRQF_SHARED,
@@ -1519,9 +1598,9 @@ static void usb_do_work(struct work_struct *w)
 					"msm72k_udc: ONLINE -> STOP\n");
 
 				
-				//atomic_set(&ui->running, 0);
-				//atomic_set(&ui->remote_wakeup, 0);
-				//atomic_set(&ui->configured, 0);
+				atomic_set(&ui->running, 0);
+				atomic_set(&ui->remote_wakeup, 0);
+				atomic_set(&ui->configured, 0);
 
 				if (ui->driver) {
 					dev_dbg(&ui->pdev->dev,
@@ -1583,8 +1662,14 @@ static void usb_do_work(struct work_struct *w)
                                 #endif
 				dev_info(&ui->pdev->dev,
 					"msm72k_udc: ONLINE -> OFFLINE\n");
-
-				
+								
+#if defined (CONFIG_TS_NOTIFIER)
+				ts_notifier_call_chain(0);
+#endif
+#if defined(CONFIG_FTS_USB_NOTIFY)
+				Ft5x0x_ts_notifier_call_chain(0);
+#endif
+		
 				atomic_set(&ui->running, 0);
 				atomic_set(&ui->remote_wakeup, 0);
 				atomic_set(&ui->configured, 0);
@@ -1705,7 +1790,13 @@ static void usb_do_work(struct work_struct *w)
 				pm_runtime_resume(&ui->pdev->dev);
 				dev_info(&ui->pdev->dev,
 					"msm72k_udc: OFFLINE -> ONLINE\n");
-
+				
+#if defined (CONFIG_TS_NOTIFIER)
+				ts_notifier_call_chain(1);
+#endif
+#if defined(CONFIG_FTS_USB_NOTIFY)
+				Ft5x0x_ts_notifier_call_chain(1);
+#endif
 				usb_reset(ui);
 				ui->state = USB_STATE_ONLINE;
 				usb_do_work_check_vbus(ui);
@@ -1767,6 +1858,9 @@ void msm_hsusb_set_vbus_state(int online)
 	} else {
 		ui->gadget.speed = USB_SPEED_UNKNOWN;
 		ui->usb_state = USB_STATE_NOTATTACHED;
+		//xingbeilei
+		schedule_work(&ui->scsi_work);
+		//end
 		ui->flags |= USB_FLAG_VBUS_OFFLINE;
 	}
 	if (in_interrupt()) {
@@ -2502,10 +2596,20 @@ static int msm72k_probe(struct platform_device *pdev)
 	ui->sdev.name = DRIVER_NAME;
 	ui->sdev.print_name = print_switch_name;
 	ui->sdev.print_state = print_switch_state;
-
 	retval = switch_dev_register(&ui->sdev);
 	if (retval)
 		return usb_free(ui, retval);
+
+	//xingbeilei
+        ui->scsi_sdev.name = "usb_scsi_command";
+        ui->scsi_sdev.print_name = scsicmd_print_switch_name;
+        ui->scsi_sdev.print_state = scsicmd_print_switch_state;
+	retval = switch_dev_register(&ui->scsi_sdev);
+	if (retval) {
+		switch_dev_unregister(&ui->sdev);
+		return usb_free(ui, retval);
+	}
+	//end
 
 	the_usb_info = ui;
 
@@ -2532,6 +2636,9 @@ static int msm72k_probe(struct platform_device *pdev)
 			"%s: Cannot bind the transceiver, retval:(%d)\n",
 			__func__, retval);
 		switch_dev_unregister(&ui->sdev);
+		//xingbeilei
+		switch_dev_unregister(&ui->scsi_sdev);
+		//end
 		wake_lock_destroy(&ui->wlock);
 		return usb_free(ui, retval);
 	}

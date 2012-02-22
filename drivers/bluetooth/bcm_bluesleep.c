@@ -23,7 +23,9 @@
 				 Sleep-Mode Protocol from the Host side
    2006-Sep-08  Motorola         Added workqueue for handling sleep work.
    2007-Jan-24  Motorola         Added mbm_handle_ioi() call to ISR.
-  
+   2010-Oct-25  qxx          modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025
+   2010-12-07   qxx          compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207
+   2011-03-14   qxx          modify sleep control for broadcom BTLA bluetooth chip ZTE_BT_QXX_20110314
 */
 
 #include <linux/module.h>	/* kernel module definitions */
@@ -191,7 +193,7 @@ static void bcmsleep_sleep_work(struct work_struct *work)
 			return;
 		}
 	} else {
-	
+	//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 begin
 	   if (test_bit(BT_ASLEEP, &flags)) 
 	   {
 			 bcmsleep_sleep_wakeup();
@@ -200,7 +202,7 @@ static void bcmsleep_sleep_work(struct work_struct *work)
 		 {
 		   mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
 	   }
-	
+	//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 end
 	}
 }
 
@@ -238,10 +240,10 @@ static void bcmsleep_outgoing_data(void)
 
 	/* if the tx side is sleeping... */
 	if (gpio_get_value(bsi->ext_wake)) {
-
+//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 begin
     gpio_set_value(bsi->ext_wake, 0);
 		bcmsleep_sleep_wakeup();
-
+//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 end
 	}
 
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
@@ -254,7 +256,7 @@ static void bcmsleep_outgoing_data(void)
  * @param data The HCI device associated with the event.
  * @return <code>NOTIFY_DONE</code>.
  */
-
+//modify sleep control for broadcom BTLA bluetooth chip ZTE_BT_QXX_20110314 begin 
 #ifdef CONFIG_BT_BCM_BTLA_SLEEP
  void bcmsleep_set_bsi(struct uart_port *);
  void bt_outgoing_data(void);
@@ -274,7 +276,7 @@ void bt_outgoing_data(void)
   BT_DBG("[qxx] outgoing data\n");
 }
 #endif
-
+//modify sleep control for broadcom BTLA bluetooth chip ZTE_BT_QXX_20110314 end
 
 static int bcmsleep_hci_event(struct notifier_block *this,
 				unsigned long event, void *data)

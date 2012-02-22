@@ -534,4 +534,25 @@ extern char nv_path[MOD_PARAM_PATHLEN];
 extern void dhd_wait_for_event(dhd_pub_t *dhd, bool *lockvar);
 extern void dhd_wait_event_wakeup(dhd_pub_t*dhd);
 
+//#ifdef CONFIG_MACH_SKATE
+#define WLAN_PFN 1
+//#else
+//#undef WLAN_PFN
+//#endif
+
+#ifdef WLAN_PFN
+#define PFN_SCAN_FREQ   		60 /* in secs */
+#define PFN_RSSI_MARGIN			30 /* in dBm */
+#define PFN_LOST_NETWORK_TIMEOUT	60 /* in secs */
+int dhd_set_pfn_ssid(char * ssid, int ssid_len);
+int dhd_clear_pfn_ssid(void);
+int dhd_enable_pfn_ssid(int enabled);
+#endif
+
+
+/* dhd_commn arp offload wrapers */
+extern void dhd_arp_cleanup(dhd_pub_t *dhd);
+int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen);
+void dhd_arp_offload_add_ip(dhd_pub_t *dhd, u32 ipaddr);
+
 #endif /* _dhd_h_ */

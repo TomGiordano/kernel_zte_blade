@@ -18,7 +18,17 @@
  */
 /*-----------------------------------------------------------------------------------------
   when         who      what, where, why                        comment tag
-  --------     ----     -------------------------------------   ---------------------------                          
+  --------     ----     -------------------------------------   ---------------------------
+  2011-02-16   wt       set OV5640_MODEL_NAME                   ZTE_CAMERA_JIA_20100818
+  2010-09-03   jia      modify  MT9D113_MODEL_ID                ZTE_CAMERA_JIA_20100903
+                        and MT9D115_MODEL_ID
+  2010-09-02   jia      set MT9D113_MODEL_ID                    ZTE_CAMERA_JIA_20100902
+                        and MT9D115_MODEL_ID
+  2010-08-18   jia      set OV5642_MODEL_ID                     ZTE_CAMERA_JIA_20100818
+  2010-07-06   li.jing  set MT9D115_MODEL_ID                    ZTE_CAMERA_LIJING_20100706
+  2010-06-29   li.jing  add config for MT9D115-2.0Mp-FF-Socket  ZTE_CAMERA_LIJING_20100629
+  2010-06-13   lijing   modify file permission                  LIJING_CAM_20100613
+  2010-06-10   lijing   create file                             
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/sysdev.h>
@@ -118,7 +128,10 @@ static ssize_t sensorinfo_show_name(struct sys_device *dev,
     return snprintf(buf, PAGE_SIZE, "%s\n", sensor_name);
 }
 
-
+/*
+ * LIJING_CAM_20100613
+ * modify file permission from 0400->0404
+ */
 static struct sysdev_attribute sensorinfo_files[] = {
     _SYSDEV_ATTR(id, 0404, sensorinfo_show_id, NULL),
     _SYSDEV_ATTR(name, 0404, sensorinfo_show_name, NULL),

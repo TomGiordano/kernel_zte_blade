@@ -242,7 +242,8 @@ struct interrupt_data {
 //SCSI Command for OS X
 #define SC_GET_CONFIGRATION    0x46
 #define SC_SET_CD_SPEED	           0xbb	
-
+// xingbeilei_20110801 start_stop usb debug
+#define SC_START_STOP_USB_DEBUG  0x86
 
 
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */

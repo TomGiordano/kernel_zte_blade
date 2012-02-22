@@ -21,7 +21,11 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
+  2010-12-15   jia.jia      Add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-03-03   zh.shj       Add process of lens shading before       ZTE_MSM_CAMERA_ZHSHJ_001
+                            preview and snapshot
+  2009-12-19   zh.shj       Add struct item for contrast             ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #ifndef MT9T11X_H
