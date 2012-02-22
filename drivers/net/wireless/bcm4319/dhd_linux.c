@@ -43,6 +43,7 @@
 #include <linux/ethtool.h>
 #include <linux/fcntl.h>
 #include <linux/fs.h>
+#include <linux/inetdevice.h>
 
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
@@ -67,6 +68,10 @@
 
 /* global variant to indicate whether softap is working */
 bool g_bSoftapRunning = false;
+int g_bEarlySuspendMode = 0;
+extern bool g_disableDhcpPktFilter;
+/* it is used to indicate whether the FW is downloaded successfully */
+bool DHD_ATTACH_STATE_FW_DONE=false;
 
 #if defined(CUSTOMER_HW2) && defined(CONFIG_WIFI_CONTROL_FUNC)
 #include <linux/wifi_tiwlan.h>
@@ -185,6 +190,12 @@ void wifi_del_dev(void)
 }
 #endif /* defined(CUSTOMER_HW2) && defined(CONFIG_WIFI_CONTROL_FUNC) */
 
+static int dhd_device_event(struct notifier_block *this, unsigned long event,
+				void *ptr);
+
+static struct notifier_block dhd_notifier = {
+	.notifier_call = dhd_device_event
+};
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
 #include <linux/suspend.h>
@@ -330,7 +341,7 @@ uint dhd_pkt_filter_init = 0;
 module_param(dhd_pkt_filter_init, uint, 0);
 
 /* Pkt filter mode control */
-uint dhd_master_mode = TRUE;
+uint dhd_master_mode = FALSE;
 module_param(dhd_master_mode, uint, 1);
 
 /* Watchdog thread priority, -1 to use kernel timer */
@@ -481,10 +492,10 @@ extern int register_pm_notifier(struct notifier_block *nb);
 extern int unregister_pm_notifier(struct notifier_block *nb);
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP) */
 	/* && defined(DHD_GPL) */
-static void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
+void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
 {
 #ifdef PKT_FILTER_SUPPORT
-	DHD_TRACE(("%s: %d\n", __FUNCTION__, value));
+	DHD_ERROR(("%s: %d\n", __FUNCTION__, value));
 	/* 1 - Enable packet filter, only allow unicast packet to send up */
 	/* 0 - Disable packet filter */
 	if (dhd_pkt_filter_enable) {
@@ -498,6 +509,145 @@ static void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
 	}
 #endif
 }
+
+
+#ifdef WLAN_PFN
+
+#define DHD_PFN(x) printf x
+
+#if defined(IL_BIGENDIAN)
+#include <bcmendian.h>
+#define htod32(i) (bcmswap32(i))
+#define htod16(i) (bcmswap16(i))
+#else
+#define htod32(i) i
+#define htod16(i) i
+#endif
+
+typedef struct pfn_ssid {
+        char            ssid[32];                 
+        int32           ssid_len;            
+} pfn_ssid_t;
+
+static pfn_ssid_t pfn_ssid_set;
+static int pfn_is_set = 0;
+int need_pfn = 0;
+
+
+dhd_pub_t *pfn_dhd = NULL;
+
+int dhd_set_pfn_ssid(char * ssid, int ssid_len)
+{
+        if ((ssid_len < 1) || (ssid_len > 32)) {
+                printk("Invaild ssid length!\n");
+                return -1;
+        }
+        DHD_PFN(("pfn: set ssid = %s\n", ssid));
+
+        strncpy(pfn_ssid_set.ssid, ssid, ssid_len);
+        pfn_ssid_set.ssid_len = ssid_len;
+	pfn_is_set = 1;
+
+	return 0;
+}
+
+int dhd_clear_pfn_ssid(void)
+{	
+        DHD_PFN(("%s enter \n", __func__));
+
+	 memset(pfn_ssid_set.ssid, 0, 32);		
+	 pfn_is_set = 0;
+
+	return 0;
+}
+
+static int dhd_set_pfn(dhd_pub_t *dhd, int enabled)
+{
+        wl_pfn_param_t pfn_param;
+        char iovbuf[64];
+        int pfn_enabled = 0;
+        wl_pfn_t pfn_element;
+        int iov_len = 0;
+	
+
+        DHD_PFN(("%s: enter. %s\n", __FUNCTION__, (!enabled || !pfn_is_set)?"clear only":"set"));
+        /* Disable pfn */
+        bcm_mkiovar("pfn", (char *)&pfn_enabled, 4, iovbuf, sizeof(iovbuf));
+        dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+	 DHD_PFN((" %s disable pfn: %d\n", __func__,  pfn_enabled));
+	 
+        if (!enabled || !pfn_is_set)
+                return 0;
+
+	if(dhd->in_suspend == 0) {
+		printk("still screen on, skip set pfn ================\n");
+		return 0;	
+	}
+
+	if(!need_pfn) {
+		printk("link remain, no need set pfn \n");
+		return 0;
+	} else {
+		printk("link down, need pfn enable \n");
+		need_pfn = 0;
+	}
+
+	 /* clear pfn */
+        iov_len = bcm_mkiovar("pfnclear", NULL, 0, iovbuf, sizeof(iovbuf));
+        if (iov_len)
+                dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, iov_len);
+
+	DHD_PFN(("%s clear pfn  \n", __func__)); 
+
+
+        /* set pfn parameters */
+        pfn_param.version = htod32(PFN_VERSION);
+        pfn_param.flags = htod16((PFN_LIST_ORDER << SORT_CRITERIA_BIT));
+        /* Scan frequency of 30 sec */
+        pfn_param.scan_freq = htod32(PFN_SCAN_FREQ);
+        /* RSSI margin of 30 dBm */
+        pfn_param.rssi_margin = htod16(PFN_RSSI_MARGIN);
+        /* Network timeout 60 sec */
+        pfn_param.lost_network_timeout = htod32(PFN_LOST_NETWORK_TIMEOUT);
+
+        bcm_mkiovar("pfn_set", (char *)&pfn_param, sizeof(pfn_param), iovbuf, sizeof(iovbuf));
+        dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+
+        /* set pfn ssid */
+        pfn_element.bss_type = htod32(DOT11_BSSTYPE_INFRASTRUCTURE);
+        pfn_element.auth = (DOT11_OPEN_SYSTEM);
+        pfn_element.wpa_auth = htod32(WPA_AUTH_PFN_ANY);
+        pfn_element.wsec = htod32(0);
+        pfn_element.infra = htod32(1);
+
+        strncpy((char *)pfn_element.ssid.SSID, pfn_ssid_set.ssid,
+             	sizeof(pfn_element.ssid.SSID));
+        pfn_element.ssid.SSID_len = pfn_ssid_set.ssid_len;
+
+        bcm_mkiovar("pfn_add", (char *)&pfn_element, sizeof(pfn_element), iovbuf, sizeof(iovbuf));
+        dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+        DHD_PFN((" %s add pfn: %s\n", __func__,  pfn_ssid_set.ssid));
+
+        pfn_enabled=1;
+        bcm_mkiovar("pfn", (char *)&pfn_enabled, 4, iovbuf, sizeof(iovbuf));
+        dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+
+	 DHD_PFN((" %s enable pfn: %d\n", __func__,  pfn_enabled));
+
+        return 0;
+}	
+
+int dhd_enable_pfn_ssid(int enabled)
+{
+	DHD_PFN(("%s enter, enabled: %d\n", __func__, enabled));
+	
+	if(pfn_dhd != NULL) {
+		dhd_set_pfn(pfn_dhd, enabled);
+	}
+
+	return 0;
+}
+#endif   //WLAN_PFN
 
 
 #if defined(KEEP_ALIVE)
@@ -560,10 +710,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 	uint roamvar = 1;
 #endif /* CUSTOMER_HW2 */
 
-#if defined(KEEP_ALIVE)
-	int ioc_res;
-#endif
-
+	printk("shaohua compare  dhd %p \n", dhd);
 
 	DHD_ERROR(("%s: enter, value = %d in_suspend=%d\n", \
 			__FUNCTION__, value, dhd->in_suspend));
@@ -578,16 +725,15 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					(char *)&power_mode, sizeof(power_mode));
 
 				/* Enable packet filter, only allow unicast packet to send up */
-				dhd_set_packet_filter(1, dhd);
+				//dhd_set_packet_filter(1, dhd);
 
 				/* if dtim skip setup as default force it to wake each thrid dtim
 				 *  for better power saving.
 				 *  Note that side effect is chance to miss BC/MC packet
 				*/
-				if ((dhd->dtim_skip == 0) || (dhd->dtim_skip == 1))
-					bcn_li_dtim = 3;
-				else
-					bcn_li_dtim = dhd->dtim_skip;
+				
+				/* Listen Interval added PENGJI_20110926 */
+				bcn_li_dtim = 1;
 				bcm_mkiovar("bcn_li_dtim", (char *)&bcn_li_dtim,
 					4, iovbuf, sizeof(iovbuf));
 				dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
@@ -600,11 +746,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 #endif /* CUSTOMER_HW2 */
 
-#if defined(KEEP_ALIVE)
-				DHD_ERROR(("suspend, KEEP_ALIVE\n"));
-				if ((ioc_res = dhd_keep_alive_onoff(dhd, 1)) != 0)
-					DHD_ERROR(("%s result:%d\n", __FUNCTION__, ioc_res));
-#endif
 			} else {
 
 				/* Kernel resumed  */
@@ -615,7 +756,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					sizeof(power_mode));
 
 				/* disable pkt filter */
-				dhd_set_packet_filter(0, dhd);
+				//dhd_set_packet_filter(0, dhd);
 
 				/* restore pre-suspend setting for dtim_skip */
 				bcm_mkiovar("bcn_li_dtim", (char *)&dhd->dtim_skip,
@@ -628,13 +769,6 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						 sizeof(iovbuf));
 				dhdcdc_set_ioctl(dhd, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
 #endif /* CUSTOMER_HW2 */
-
-#if defined(KEEP_ALIVE)
-				DHD_ERROR(("resume, KEEP_ALIVE\n"));
-				if ((ioc_res = dhd_keep_alive_onoff(dhd, 0)) != 0)
-					DHD_ERROR(("%s result:%d\n", __FUNCTION__, ioc_res));
-#endif
-
 			}
 	}
 
@@ -643,6 +777,10 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 
 static void dhd_suspend_resume_helper(struct dhd_info *dhd, int val)
 {
+#if defined(KEEP_ALIVE)
+		int ioc_res;
+#endif
+
 	dhd_pub_t *dhdp = &dhd->pub;
 
         if(true ==g_bSoftapRunning)
@@ -650,12 +788,51 @@ static void dhd_suspend_resume_helper(struct dhd_info *dhd, int val)
             printk("skip suspend/resume, val: %d\n", val);
 	    return;
         }
+
+	if(dhdp->busstate == DHD_BUS_DOWN)
+	{
+		printk("skip because bus is down, val: %d\n", val);
+	    	return;
+	}
 		
 	dhd_os_proto_block(dhdp);
 	/* Set flag when early suspend was called */
 	dhdp->in_suspend = val;
+	g_bEarlySuspendMode = dhdp->in_suspend;
+	if(val)  //once need goto suspend mode, filter the package
+	{	    
+	        if(false == g_disableDhcpPktFilter)
+	        {
+			/* Enable packet filter, only allow unicast packet to send up */
+			dhd_set_packet_filter(1, dhdp);
+	        }
+		
+		#ifdef WLAN_PFN
+                /* set pfn */
+                dhd_enable_pfn_ssid(1);
+		#endif
+
+		#if defined(KEEP_ALIVE)
+		DHD_ERROR(("suspend, KEEP_ALIVE\n"));
+		if ((ioc_res = dhd_keep_alive_onoff(dhdp, 1)) != 0)
+			DHD_ERROR(("%s result:%d\n", __FUNCTION__, ioc_res));
+		#endif
+	}
+	else
+	{
+		/* disable pkt filter */
+	    	dhd_set_packet_filter(0, dhdp);
+		
+	    	#if defined(KEEP_ALIVE)
+		DHD_ERROR(("resume, KEEP_ALIVE\n"));
+		if ((ioc_res = dhd_keep_alive_onoff(dhdp, 0)) != 0)
+			DHD_ERROR(("%s result:%d\n", __FUNCTION__, ioc_res));
+		#endif
+	}
+	
 	if (!dhdp->suspend_disable_flag)
 		dhd_set_suspend(val, dhdp);
+	
 	dhd_os_proto_unblock(dhdp);
 }
 
@@ -663,10 +840,12 @@ static void dhd_early_suspend(struct early_suspend *h)
 {
 	struct dhd_info *dhd = container_of(h, struct dhd_info, early_suspend);
 
-	DHD_ERROR(("%s: enter\n", __FUNCTION__));
+	DHD_ERROR(("%s: enter, dhd fw state=0x%x\n", __FUNCTION__, DHD_ATTACH_STATE_FW_DONE));
 
-	if (dhd)
+	if (dhd&&DHD_ATTACH_STATE_FW_DONE)
 		dhd_suspend_resume_helper(dhd, 1);
+	else
+		printk("%s: dhd is not attach,skip it! dhd_state: 0x%.08x\n", __FUNCTION__, DHD_ATTACH_STATE_FW_DONE);//
 
 }
 
@@ -676,8 +855,10 @@ static void dhd_late_resume(struct early_suspend *h)
 
 	DHD_ERROR(("%s: enter\n", __FUNCTION__));
 
-	if (dhd)
+	if (dhd&&DHD_ATTACH_STATE_FW_DONE)
 		dhd_suspend_resume_helper(dhd, 0);
+	else
+		printk("%s: dhd is not attach,skip it! dhd_state: 0x%.08x\n", __FUNCTION__, DHD_ATTACH_STATE_FW_DONE);//
 }
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
 
@@ -2187,6 +2368,8 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	register_early_suspend(&dhd->early_suspend);
 #endif
 
+	register_inetaddr_notifier(&dhd_notifier);
+
 	return &dhd->pub;
 
 fail:
@@ -2211,6 +2394,13 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	ASSERT(dhd);
 
 	DHD_TRACE(("%s: \n", __FUNCTION__));
+
+#ifdef WLAN_PFN
+	if(pfn_dhd == NULL) {
+		pfn_dhd = dhdp;
+		printk("shaohua set pfn_dhd %p \n", pfn_dhd);
+	}
+#endif  //#ifdef WLAN_PFN	
 
 	/* try to download image and nvram to the dongle */
 	if  (dhd->pub.busstate == DHD_BUS_DOWN) {
@@ -2282,17 +2472,30 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	setbit(dhdp->eventmask, WLC_E_TXFAIL);
 	setbit(dhdp->eventmask, WLC_E_JOIN_START);
 	setbit(dhdp->eventmask, WLC_E_SCAN_COMPLETE);
-#ifdef PNO_SUPPORT
+#if defined(PNO_SUPPORT) || defined(WLAN_PFN)
 	setbit(dhdp->eventmask, WLC_E_PFN_NET_FOUND);
 #endif /* PNO_SUPPORT */
 
 /* enable dongle roaming event */
 	setbit(dhdp->eventmask, WLC_E_ROAM);
 
+#if 0
 	dhdp->pktfilter_count = 1;
 	/* Setup filter to allow only unicast */
 	dhdp->pktfilter[0] = "100 0 0 0 0x01 0x00";
+#endif //#if 0	
+
+	dhdp->pktfilter_count = 2;
+        /* we have seen OEMs filter out broadcast packets.  Might not be relevant, but just showing what others have implemented. */
+        dhdp->pktfilter[0] = "100 0 0 0 0x01 0x01";
+        /* Setup filter to drop NAT keep alive packets.  Filter on the destination port and length only */
+        dhdp->pktfilter[1] = "101 0 0 36 0xffffffff 0x11940009";
+	 
 #endif /* EMBEDDED_PLATFORM */
+
+	/* here means that FW is downloaded successfully, you can send the command to the firmware */
+	DHD_ATTACH_STATE_FW_DONE = true;
+        printk("%s, dhd fw state: 0x%x\n", __FUNCTION__, DHD_ATTACH_STATE_FW_DONE);
 
 	/* Bus is ready, do any protocol initialization */
 	if ((ret = dhd_prot_init(&dhd->pub)) < 0)
@@ -2344,6 +2547,47 @@ static struct net_device_ops dhd_ops_virt = {
 	.ndo_set_multicast_list = dhd_set_multicast_list
 };
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)) */
+static int dhd_device_event(struct notifier_block *this, unsigned long event,
+				void *ptr)
+{
+	struct in_ifaddr *ifa = (struct in_ifaddr *)ptr;
+	dhd_info_t *dhd;
+	dhd_pub_t *dhd_pub;
+
+	if (!ifa)
+		return NOTIFY_DONE;
+
+	dhd = *(dhd_info_t **)netdev_priv(ifa->ifa_dev->dev);
+	dhd_pub = &dhd->pub;
+
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 31))
+	if (ifa->ifa_dev->dev->netdev_ops == &dhd_ops_pri) {
+#else
+	if (ifa->ifa_dev->dev->open == &dhd_open) {
+#endif
+		switch (event) {
+		case NETDEV_UP:
+			DHD_ERROR(("%s: [%s] Up IP: 0x%x\n",
+			    __FUNCTION__, ifa->ifa_label, ifa->ifa_address));
+
+			dhd_arp_cleanup(dhd_pub);
+			break;
+
+		case NETDEV_DOWN:
+			DHD_ERROR(("%s: [%s] Down IP: 0x%x\n",
+			    __FUNCTION__, ifa->ifa_label, ifa->ifa_address));
+
+			dhd_arp_cleanup(dhd_pub);
+			break;
+
+		default:
+			DHD_TRACE(("%s: [%s] Event: %lu\n",
+			    __FUNCTION__, ifa->ifa_label, event));
+			break;
+		}
+	}
+	return NOTIFY_DONE;
+}
 int
 dhd_net_attach(dhd_pub_t *dhdp, int ifidx)
 {
@@ -2485,6 +2729,8 @@ dhd_detach(dhd_pub_t *dhdp)
 			dhd_if_t *ifp;
 			int i;
 
+			unregister_inetaddr_notifier(&dhd_notifier);
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 		if (dhd->early_suspend.suspend)
 			unregister_early_suspend(&dhd->early_suspend);
@@ -2531,6 +2777,9 @@ dhd_detach(dhd_pub_t *dhdp)
 		}
 
 		dhd_bus_detach(dhdp);
+
+		/* reset it to false, because driver will be unloaded */
+		DHD_ATTACH_STATE_FW_DONE = false;
 
 		if (dhdp->prot)
 			dhd_prot_detach(dhdp);

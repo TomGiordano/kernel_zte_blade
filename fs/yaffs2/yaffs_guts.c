@@ -6337,6 +6337,14 @@ static int yaffs_ScanBackwards(yaffs_Device *dev)
 				  blk, c));
 
 				  dev->nFreeChunks++;
+                        } else if (tags.chunkId > YAFFS_MAX_CHUNK_ID ||
+				   (tags.chunkId > 0 && tags.byteCount > dev->nDataBytesPerChunk) ||
+				   tags.sequenceNumber != bi->sequenceNumber ) {
+				
+				printk(KERN_ERR "[MyTag]Chunk (%d:%d) with bad tags:obj = %d, chunkId = %d, byteCount = %d, ignored",
+				       blk, c, tags.objectId, tags.chunkId, tags.byteCount);
+				
+				dev->nFreeChunks++;
 
 			} else if (tags.chunkId > 0) {
 				/* chunkId > 0 so it is a data chunk... */
@@ -7545,8 +7553,14 @@ int yaffs_GutsInitialise(yaffs_Device *dev)
 				if (!init_failed && !yaffs_CreateInitialDirectories(dev))
 					init_failed = 1;
 
-				if (!init_failed && !yaffs_ScanBackwards(dev))
-					init_failed = 1;
+				if (!init_failed && !yaffs_ScanBackwards(dev)) {
+					printk(KERN_ERR "[MyTag]yaffs_ScanBackwards failed, using yaffs_Scan...\n");
+					
+					if (!yaffs_Scan(dev)) {
+						printk(KERN_ERR "[MyTag]yaffs_Scan failed...\n");
+						init_failed = 1;
+					}
+				}
 			}
 		} else if (!yaffs_Scan(dev))
 				init_failed = 1;

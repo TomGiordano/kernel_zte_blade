@@ -20,6 +20,21 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-10-26   lijing       update camera params                     ZTE_CAM_LJ_20111026
+  2011-09-29   lijing       fix bug of exposure invalidation         ZTE_CAM_LJ_20110929
+  2011-09-19   lijing       update params for de-noise               ZTE_CAM_LJ_20110919
+  2011-07-19   lijing       modify gamma setting                     ZTE_CAM_LJ_20110719
+  2011-05-30   ygl          removed the modification for 736T,       ZTE_YGL_CAM_20110530
+                            otherwise the preview is exception
+  2011-03-21   ygl          fixed the execption of the display       ZTE_YGL_CAM_20110321
+  2010-08-06   li.jing      update reg settings to fix bug of        ZTE_LJ_CAM_20100806
+                            orientation error and decrease AE's
+                            time latency
+  2010-07-23   li.jing      update sensor settings                   ZTE_LJ_CAM_20100723
+  2010-07-21   jia          remove setting of "lens_for_indoor_tbl"  ZTE_CAM_JIA_20100721
+                            and "lens_for_outdoor_tbl"
+  2010-07-05   li.jing      update sensor reg settings               ZTE_CAM_LIJING_20100705
+  2010-06-29   li.jing      created                                  ZTE_CAMERA_LIJING_20100629
 ------------------------------------------------------------------------------------------*/
 
 #include "mt9d115.h"
@@ -387,6 +402,8 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x098C, 0xA005, WORD_LEN, 0}, 	// MCU_ADDRESS [MON_CMD]
     {0x0990, 0x0001, WORD_LEN, 200}, 	// MCU_DATA_0
 
+//ZTE_CAM_LJ_20111026
+#if 0 
     {0x364E, 0x0770, WORD_LEN, 0}, 	// P_GR_P0Q0
     {0x3650, 0xD48A, WORD_LEN, 0}, 	// P_GR_P0Q1
     {0x3652, 0x4E71, WORD_LEN, 0}, 	// P_GR_P0Q2
@@ -490,6 +507,112 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x3644, 0x0338, WORD_LEN, 0}, 	// POLY_ORIGIN_C
     {0x3642, 0x0240, WORD_LEN, 0}, 	// POLY_ORIGIN_R
     {0x3210, 0x01B8, WORD_LEN, 0}, 	// COLOR_PIPELINE_CONTROL
+#else
+    {0x3210, 0x01B0, WORD_LEN,0}, 	// COLOR_PIPELINE_CONTROL
+    {0x364E, 0x03F0, WORD_LEN,0}, 	// P_GR_P0Q0
+    {0x3650, 0x6789, WORD_LEN,0}, 	// P_GR_P0Q1
+    {0x3652, 0x5AB1, WORD_LEN,0}, 	// P_GR_P0Q2
+    {0x3654, 0x0D50, WORD_LEN,0}, 	// P_GR_P0Q3
+    {0x3656, 0xAF32, WORD_LEN,0}, 	// P_GR_P0Q4
+    {0x3658, 0x7F2F, WORD_LEN,0}, 	// P_RD_P0Q0
+    {0x365A, 0xB7EA, WORD_LEN,0}, 	// P_RD_P0Q1
+    {0x365C, 0x6031, WORD_LEN,0}, 	// P_RD_P0Q2
+    {0x365E, 0x3650, WORD_LEN,0}, 	// P_RD_P0Q3
+    {0x3660, 0x82F2, WORD_LEN,0}, 	// P_RD_P0Q4
+    {0x3662, 0x7F8F, WORD_LEN,0}, 	// P_BL_P0Q0
+    {0x3664, 0x974A, WORD_LEN,0}, 	// P_BL_P0Q1
+    {0x3666, 0x60D1, WORD_LEN,0}, 	// P_BL_P0Q2
+    {0x3668, 0x2DD0, WORD_LEN,0}, 	// P_BL_P0Q3
+    {0x366A, 0xF9D2, WORD_LEN,0}, 	// P_BL_P0Q4
+    {0x366C, 0x7F0F, WORD_LEN,0}, 	// P_GB_P0Q0
+    {0x366E, 0x9D48, WORD_LEN,0}, 	// P_GB_P0Q1
+    {0x3670, 0x5BF1, WORD_LEN,0}, 	// P_GB_P0Q2
+    {0x3672, 0x0850, WORD_LEN,0}, 	// P_GB_P0Q3
+    {0x3674, 0xAAB2, WORD_LEN,0}, 	// P_GB_P0Q4
+    {0x3676, 0x5B0A, WORD_LEN,0}, 	// P_GR_P1Q0
+    {0x3678, 0x8390, WORD_LEN,0}, 	// P_GR_P1Q1
+    {0x367A, 0x84F0, WORD_LEN,0}, 	// P_GR_P1Q2
+    {0x367C, 0x3A51, WORD_LEN,0}, 	// P_GR_P1Q3
+    {0x367E, 0x2DD1, WORD_LEN,0}, 	// P_GR_P1Q4
+    {0x3680, 0x10EC, WORD_LEN,0}, 	// P_RD_P1Q0
+    {0x3682, 0x38EF, WORD_LEN,0}, 	// P_RD_P1Q1
+    {0x3684, 0x3B8E, WORD_LEN,0}, 	// P_RD_P1Q2
+    {0x3686, 0xF271, WORD_LEN,0}, 	// P_RD_P1Q3
+    {0x3688, 0xD131, WORD_LEN,0}, 	// P_RD_P1Q4
+    {0x368A, 0xF34C, WORD_LEN,0}, 	// P_BL_P1Q0
+    {0x368C, 0xD60F, WORD_LEN,0}, 	// P_BL_P1Q1
+    {0x368E, 0x8710, WORD_LEN,0}, 	// P_BL_P1Q2
+    {0x3690, 0x0C52, WORD_LEN,0}, 	// P_BL_P1Q3
+    {0x3692, 0xC550, WORD_LEN,0}, 	// P_BL_P1Q4
+    {0x3694, 0x888D, WORD_LEN,0}, 	// P_GB_P1Q0
+    {0x3696, 0x0DF0, WORD_LEN,0}, 	// P_GB_P1Q1
+    {0x3698, 0x558D, WORD_LEN,0}, 	// P_GB_P1Q2
+    {0x369A, 0xBF72, WORD_LEN,0}, 	// P_GB_P1Q3
+    {0x369C, 0x8D4D, WORD_LEN,0}, 	// P_GB_P1Q4
+    {0x369E, 0x7BF2, WORD_LEN,0}, 	// P_GR_P2Q0
+    {0x36A0, 0x7D30, WORD_LEN,0}, 	// P_GR_P2Q1
+    {0x36A2, 0x97D4, WORD_LEN,0}, 	// P_GR_P2Q2
+    {0x36A4, 0x2ED1, WORD_LEN,0}, 	// P_GR_P2Q3
+    {0x36A6, 0x8CD2, WORD_LEN,0}, 	// P_GR_P2Q4
+    {0x36A8, 0x5D52, WORD_LEN,0}, 	// P_RD_P2Q0
+    {0x36AA, 0x6510, WORD_LEN,0}, 	// P_RD_P2Q1
+    {0x36AC, 0xBC52, WORD_LEN,0}, 	// P_RD_P2Q2
+    {0x36AE, 0x9F6F, WORD_LEN,0}, 	// P_RD_P2Q3
+    {0x36B0, 0xCF15, WORD_LEN,0}, 	// P_RD_P2Q4
+    {0x36B2, 0x4C92, WORD_LEN,0}, 	// P_BL_P2Q0
+    {0x36B4, 0x3A90, WORD_LEN,0}, 	// P_BL_P2Q1
+    {0x36B6, 0x9A34, WORD_LEN,0}, 	// P_BL_P2Q2
+    {0x36B8, 0x4091, WORD_LEN,0}, 	// P_BL_P2Q3
+    {0x36BA, 0x6513, WORD_LEN,0}, 	// P_BL_P2Q4
+    {0x36BC, 0x7DD2, WORD_LEN,0}, 	// P_GB_P2Q0
+    {0x36BE, 0x5030, WORD_LEN,0}, 	// P_GB_P2Q1
+    {0x36C0, 0x8CD4, WORD_LEN,0}, 	// P_GB_P2Q2
+    {0x36C2, 0x1892, WORD_LEN,0}, 	// P_GB_P2Q3
+    {0x36C4, 0xAD14, WORD_LEN,0}, 	// P_GB_P2Q4
+    {0x36C6, 0xC651, WORD_LEN,0}, 	// P_GR_P3Q0
+    {0x36C8, 0x0751, WORD_LEN,0}, 	// P_GR_P3Q1
+    {0x36CA, 0xC190, WORD_LEN,0}, 	// P_GR_P3Q2
+    {0x36CC, 0x33CC, WORD_LEN,0}, 	// P_GR_P3Q3
+    {0x36CE, 0x1456, WORD_LEN,0}, 	// P_GR_P3Q4
+    {0x36D0, 0xBEB0, WORD_LEN,0}, 	// P_RD_P3Q0
+    {0x36D2, 0x8712, WORD_LEN,0}, 	// P_RD_P3Q1
+    {0x36D4, 0x1911, WORD_LEN,0}, 	// P_RD_P3Q2
+    {0x36D6, 0x53D3, WORD_LEN,0}, 	// P_RD_P3Q3
+    {0x36D8, 0x0A91, WORD_LEN,0}, 	// P_RD_P3Q4
+    {0x36DA, 0x9CAF, WORD_LEN,0}, 	// P_BL_P3Q0
+    {0x36DC, 0x22D1, WORD_LEN,0}, 	// P_BL_P3Q1
+    {0x36DE, 0x8E12, WORD_LEN,0}, 	// P_BL_P3Q2
+    {0x36E0, 0xA792, WORD_LEN,0}, 	// P_BL_P3Q3
+    {0x36E2, 0x4F55, WORD_LEN,0}, 	// P_BL_P3Q4
+    {0x36E4, 0xA4F1, WORD_LEN,0}, 	// P_GB_P3Q0
+    {0x36E6, 0x9FB2, WORD_LEN,0}, 	// P_GB_P3Q1
+    {0x36E8, 0xF551, WORD_LEN,0}, 	// P_GB_P3Q2
+    {0x36EA, 0x8EB2, WORD_LEN,0}, 	// P_GB_P3Q3
+    {0x36EC, 0x1BB6, WORD_LEN,0}, 	// P_GB_P3Q4
+    {0x36EE, 0xDC94, WORD_LEN,0}, 	// P_GR_P4Q0
+    {0x36F0, 0x4ED3, WORD_LEN,0}, 	// P_GR_P4Q1
+    {0x36F2, 0xA197, WORD_LEN,0}, 	// P_GR_P4Q2
+    {0x36F4, 0xEA77, WORD_LEN,0}, 	// P_GR_P4Q3
+    {0x36F6, 0x401A, WORD_LEN,0}, 	// P_GR_P4Q4
+    {0x36F8, 0xC553, WORD_LEN,0}, 	// P_RD_P4Q0
+    {0x36FA, 0x33F2, WORD_LEN,0}, 	// P_RD_P4Q1
+    {0x36FC, 0xB5B7, WORD_LEN,0}, 	// P_RD_P4Q2
+    {0x36FE, 0xF0B6, WORD_LEN,0}, 	// P_RD_P4Q3
+    {0x3700, 0x0E3A, WORD_LEN,0}, 	// P_RD_P4Q4
+    {0x3702, 0x80D4, WORD_LEN,0}, 	// P_BL_P4Q0
+    {0x3704, 0x7673, WORD_LEN,0}, 	// P_BL_P4Q1
+    {0x3706, 0xDF16, WORD_LEN,0}, 	// P_BL_P4Q2
+    {0x3708, 0x8138, WORD_LEN,0}, 	// P_BL_P4Q3
+    {0x370A, 0x177A, WORD_LEN,0}, 	// P_BL_P4Q4
+    {0x370C, 0xDCD4, WORD_LEN,0}, 	// P_GB_P4Q0
+    {0x370E, 0x2113, WORD_LEN,0}, 	// P_GB_P4Q1
+    {0x3710, 0xB0D7, WORD_LEN,0}, 	// P_GB_P4Q2
+    {0x3712, 0xD3B7, WORD_LEN,0}, 	// P_GB_P4Q3
+    {0x3714, 0x49BA, WORD_LEN,0}, 	// P_GB_P4Q4
+    {0x3644, 0x02E0, WORD_LEN,0}, 	// POLY_ORIGIN_C
+    {0x3642, 0x0264, WORD_LEN,0}, 	// POLY_ORIGIN_R
+    {0x3210, 0x01B8, WORD_LEN,0}, 	// COLOR_PIPELINE_CONTROL
+#endif
 
     {0x321C, 0x0003, WORD_LEN, 0},	//By Pass TxFIFO = 3
     {0x098C, 0x2703, WORD_LEN, 0},	//Output Width (A)
@@ -511,8 +634,11 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x098C, 0x2715, WORD_LEN, 0},	//Row Speed (A)
     {0x0990, 0x0111, WORD_LEN, 0},	//      = 273
 
-                                                                    
-#if defined(CONFIG_MACH_TURIES)                                            
+    /*                                                                     
+     * Setting for snapshot rotation                                       
+     * ZTE_YGL_CAM_20110321                                                
+     */                                                                    
+#if defined(CONFIG_MACH_TURIES) || defined(CONFIG_MACH_SKATE)                                             
     {0x098C, 0x2717, WORD_LEN,0 }, // MCU_ADDRESS [MODE_SENSOR_READ_MODE_A]
     {0x0990, 0x046C, WORD_LEN,0 }, // MCU_DATA_0 for vertical orientation  
 #else                                                                      
@@ -541,8 +667,11 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x098C, 0x272B, WORD_LEN, 0},	//Row Speed (B)
     {0x0990, 0x0111, WORD_LEN, 0},	//      = 273
 
-  
-#if defined(CONFIG_MACH_TURIES)
+    /*
+     * Setting for snapshot rotation 
+     * ZTE_YGL_CAM_20110321
+     */
+#if defined(CONFIG_MACH_TURIES) || defined(CONFIG_MACH_SKATE) 
     {0x098C, 0x272D, WORD_LEN,0 },  // MCU_ADDRESS [MODE_SENSOR_READ_MODE_B]
     {0x0990, 0x0024, WORD_LEN,0 },  // MCU_DATA_0 for vertical orientation
 #else
@@ -672,6 +801,12 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0990, 0x00FA, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xAB61, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_B_18]
     {0x0990, 0x00FF, WORD_LEN, 0}, 	// MCU_DATA_0
+
+/*
+ * ZTE_CAM_LJ_20110719
+ */
+//ZTE_CAM_LJ_20111026
+#if 1     
     {0x098C, 0xAB3C, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
     {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xAB3D, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
@@ -710,7 +845,83 @@ static struct mt9d115_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0990, 0x00FA, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xAB4E, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
     {0x0990, 0x00FF, WORD_LEN, 0}, 	// MCU_DATA_0
-  
+#else
+//[Gamma 0.5]
+	{0x098C, 0xAB3C, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_0]
+	{0x0990, 0x0000, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3D, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_1]
+	{0x0990, 0x0008, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3E, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_2]
+	{0x0990, 0x0016, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB3F, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_3]
+	{0x0990, 0x002C, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB40, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_4]
+	{0x0990, 0x004A, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB41, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_5]
+	{0x0990, 0x0063, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB42, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_6]
+	{0x0990, 0x007A, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB43, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_7]
+	{0x0990, 0x008F, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB44, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_8]
+	{0x0990, 0x00A0, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB45, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_9]
+	{0x0990, 0x00AF, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB46, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_10]
+	{0x0990, 0x00BC, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB47, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_11]
+	{0x0990, 0x00C8, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB48, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_12]
+	{0x0990, 0x00D2, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB49, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_13]
+	{0x0990, 0x00DB, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4A, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_14]
+	{0x0990, 0x00E3, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4B, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_15]
+	{0x0990, 0x00EB, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4C, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_16]
+	{0x0990, 0x00F2, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4D, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_17]
+	{0x0990, 0x00F9, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xAB4E, WORD_LEN,0}, 	// MCU_ADDRESS [HG_GAMMA_TABLE_A_18]
+	{0x0990, 0x00FF, WORD_LEN,0}, 	// MCU_DATA_0
+	{0x098C, 0xA103, WORD_LEN,0}, 	// MCU_ADDRESS [SEQ_CMD]
+	{0x0990, 0x0005, WORD_LEN,0}, 	// MCU_DATA_0
+#endif
+    /*
+     * ZTE_CAM_LJ_20110919
+     * update params for de-noise
+     */
+     //ZTE_CAM_LJ_20111026
+//#if defined(CONFIG_MACH_TURIES) || defined(CONFIG_MACH_ROAMER)
+    {0x098C, 0xAB2C, WORD_LEN, 0},             // MCU_ADDRESS [HG_NR_START_R]
+    {0x0990, 0x0001, WORD_LEN, 0},   // MCU_DATA_0
+    {0x098C, 0xAB2D, WORD_LEN, 0},             // MCU_ADDRESS [HG_NR_START_G]
+    {0x0990, 0x0001, WORD_LEN, 0},   // MCU_DATA_0
+    {0x098C, 0xAB2E, WORD_LEN, 0},             // MCU_ADDRESS [HG_NR_START_B]
+    {0x0990, 0x0001, WORD_LEN, 0},   // MCU_DATA_0
+    {0x098C, 0xAB2F, WORD_LEN, 0},             // MCU_ADDRESS [HG_NR_START_OL]
+    {0x0990, 0x0001, WORD_LEN, 0},   // MCU_DATA_0
+    {0x098C, 0xAB30, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_STOP_R]
+    {0x0990, 0x001E, WORD_LEN, 0},   // MCU_DATA_0 //0X001E 20111024
+    {0x098C, 0xAB31, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_STOP_G]
+    {0x0990, 0x001E, WORD_LEN, 0},   // MCU_DATA_0 //0X001E 20111024
+    {0x098C, 0xAB32, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_STOP_B]
+    {0x0990, 0x001E, WORD_LEN, 0},   // MCU_DATA_0 //0X001E 20111024
+    {0x098C, 0xAB33, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_STOP_OL]
+    {0x0990, 0x001E, WORD_LEN, 0},   // MCU_DATA_0 //0X001E 20111024 
+    {0x098C, 0xAB34, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_GAINSTART] 
+    {0x0990, 0x000E, WORD_LEN, 0},   // MCU_DATA_0 
+    {0x098C, 0xAB35, WORD_LEN, 0}, // MCU_ADDRESS [HG_NR_GAINSTOP]
+    {0x0990, 0x0091, WORD_LEN, 0},   // MCU_DATA_0
+
+    {0x33F4, 0x005B, WORD_LEN, 0},   // MCU_DATA_0 //default 4b
+//#endif
+    /*
+     * ZTE_YGL_CAM_20110321
+     * bit 8-11 of this reg effect the slope of PCLK,
+     * the larger the number,the smaller the slope 
+     */
 #if defined(CONFIG_MACH_V9)
      {0x001E, 0x0777, WORD_LEN,0}, 
 #endif
@@ -1383,218 +1594,499 @@ static uint16_t const sharpness_tbl_sz[] = {
  * values of exposure and brightness.
  */
 //[exposure_tbl_0]
+/*
+ * ZTE_CAM_LJ_20110929
+ *  fix bug of exposure invalidation
+ */
 static struct mt9d115_i2c_reg_conf const exposure0_brightness0_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0006, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
+
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness1_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0010, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness2_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x001A, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness3_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0023, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness4_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x002B, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness5_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0038, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure0_brightness6_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0048, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 //[exposure_tbl_1]
 static struct mt9d115_i2c_reg_conf const exposure1_brightness0_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x000A, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness1_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0019, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness2_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0028, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness3_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0034, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness4_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0040, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness5_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0054, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure1_brightness6_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x006C, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 //[exposure_tbl_2]
 static struct mt9d115_i2c_reg_conf const exposure2_brightness0_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0010, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness1_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0022, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness2_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0036, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness3_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0046, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness4_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0056, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness5_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0},
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0070, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure2_brightness6_tbl[] = {
-    {0x337E, 0x0000, WORD_LEN, 0}, 
+    //{0x337E, 0x0000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0000, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0090, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 //[exposure_tbl_3]
 static struct mt9d115_i2c_reg_conf const exposure3_brightness0_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0010, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness1_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0022, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness2_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0036, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness3_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0046, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness4_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0056, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness5_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0070, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure3_brightness6_tbl[] = {
-    {0x337E, 0x1800, WORD_LEN, 0}, 
+    //{0x337E, 0x1800, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0018, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0090, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 //[exposure_tbl_4]
 static struct mt9d115_i2c_reg_conf const exposure4_brightness0_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0},
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0010, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness1_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0022, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness2_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0036, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
+
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness3_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0046, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
+
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness4_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0056, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness5_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0},
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0070, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const exposure4_brightness6_tbl[] = {
-    {0x337E, 0x3000, WORD_LEN, 0}, 
+    //{0x337E, 0x3000, WORD_LEN, 0}, 
+    {0x098C, 0xA75D, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_A]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098C, 0xA75E, WORD_LEN, 0}, 	// MCU_ADDRESS [MODE_Y_RGB_OFFSET_B]
+    {0x0990, 0x0030, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098C, 0xA24F, WORD_LEN, 0},
     {0x0990, 0x0090, WORD_LEN, 0},
+
+    {0x098C, 0xA103, WORD_LEN, 0}, 	// MCU_ADDRESS [HG_LL_SAT1]
+    {0x0990, 0x0005, WORD_LEN, 50}, 	// MCU_DATA_0
 };
 
 static struct mt9d115_i2c_reg_conf const *brightness_exposure_tbl[] = {

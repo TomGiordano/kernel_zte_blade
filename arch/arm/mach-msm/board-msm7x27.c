@@ -2455,6 +2455,14 @@ static struct i2c_board_info aux_i2c_devices[] = {
 		.type         = "taos",
 		.addr         = 0x39,
 	},
+	{
+		.type         = "isl29026",
+		.addr         = 0x45,
+	},
+	{
+		.type         = "ona3301",
+		.addr         = 0x37,
+	},	
 	//ZTE_ALSPRX_001 end
 };
 /*ZTE_AUX_FYA_001,@2010-02-06,END*/

@@ -51,8 +51,9 @@
 	do {} while (0)
 #endif /* DEBUG */
 
+#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
 #define GPIO_SDA_PIN 93
-
+#endif
 /* ----- global variables ---------------------------------------------	*/
 
 static int bit_test;	/* see if the line-setting functions work	*/
@@ -178,7 +179,6 @@ static int i2c_outb(struct i2c_adapter *i2c_adap, unsigned char c)
 		sb = (c >> i) & 1;
 		setsda(adap, sb);
 		udelay((adap->udelay + 1) / 2);
-		
 		if (sclhi(adap) < 0) { /* timed out */
 			bit_dbg(1, &i2c_adap->dev, "i2c_outb: 0x%02x, "
 				"timeout at bit #%d\n", (int)c, i);
@@ -192,14 +192,12 @@ static int i2c_outb(struct i2c_adapter *i2c_adap, unsigned char c)
 		 */
 		scllo(adap);
 	}
-	
-#if defined(CONFIG_MACH_SAILBOAT)
+#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
 	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_INPUT,
 					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
 #else
 sdahi(adap);
 #endif
-
 	if (sclhi(adap) < 0) { /* timeout */
 		bit_dbg(1, &i2c_adap->dev, "i2c_outb: 0x%02x, "
 			"timeout at ack\n", (int)c);
@@ -214,11 +212,10 @@ sdahi(adap);
 		ack ? "A" : "NA");
 
 	scllo(adap);
-#if defined(CONFIG_MACH_SAILBOAT)	
+#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
 	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_OUTPUT,
 					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
 #endif
-					
 	return ack;
 	/* assert: scl is low (sda undef) */
 }
@@ -233,8 +230,7 @@ static int i2c_inb(struct i2c_adapter *i2c_adap)
 	struct i2c_algo_bit_data *adap = i2c_adap->algo_data;
 
 	/* assert: scl is low */
-
-#if defined(CONFIG_MACH_SAILBOAT)
+#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
 	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_INPUT,
 					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
 #else
@@ -251,17 +247,14 @@ static int i2c_inb(struct i2c_adapter *i2c_adap)
 			indata |= 0x01;
 		setscl(adap, 0);
 		udelay(i == 7 ? adap->udelay / 2 : adap->udelay);
-		
 	}
 	/* assert: scl is low */
-	
-#if  defined(CONFIG_MACH_SAILBOAT)	
+#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
 	sdahi(adap);
 	
 	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_OUTPUT,
 					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE); //for testing
 #endif
-					
 	return indata;
 }
 

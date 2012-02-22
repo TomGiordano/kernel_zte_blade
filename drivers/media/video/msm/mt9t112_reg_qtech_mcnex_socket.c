@@ -20,8 +20,53 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
-
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-08-12   ygl          modify setting of AWB and lensshading    ZTE_MSM_CAMERA_YGL_001
+                            to improve effects of preview and
+                            snapshot
+  2010-07-21   jia          fix bug of wrong ptr of                  ZTE_MSM_CAMERA_JIA_001
+                            "lens_for_indoor_tbl"
+  2010-06-28   jia          improve AWB for internal lab test        ZTE_MSM_CAMERA_JIA_20100628
+  2010-06-25   jia          improve AWB for internal lab test        ZTE_MSM_CAMERA_JIA_20100625
+  2010-03-13   zh.shj       improve performance of auto WB,          ZTE_MSM_CAMERA_ZHSHJ_001
+                            contrast, and LS in indoor environment
+  2010-03-03   zh.shj       Add process of lens shading before       ZTE_MSM_CAMERA_ZHSHJ_001
+                            preview and snapshot
+  2010-02-21   zh.shj       set sharpenss value according to         ZTE_MSM_CAMERA_ZHSHJ_001
+                            different brightness level;
+                            patched from Aptina, USA;
+                            modify contrast value according to
+                            patch provided by Aptina, USA;
+                            enlarge AF windows;
+                            improve AWB effect for new sensor;
+  2010-02-04   zh.shj       improve effect of preview and snapshot   ZTE_MSM_CAMERA_ZHSHJ_001
+                            after new module is available
+  2010-01-28   zh.shj       modify setting of maximum brightness     ZTE_MSM_CAMERA_ZHSHJ_001
+  2010-01-26   zh.shj       fix bug of inconsistence during setting  ZTE_MSM_CAMERA_ZHSHJ_001
+                            minimum brightness
+  2010-01-22   zh.shj       improve effect of preview and snapshot   ZTE_MSM_CAMERA_ZHSHJ_001
+                            under poor light condition
+  2010-01-14   zh.shj       modify config of sharpness               ZTE_MSM_CAMERA_ZHSHJ_001
+  2010-01-06   zh.shj       modify config of PLL to make PCLK equal  ZTE_MSM_CAMERA_ZHSHJ_001
+                            to MCLK
+                            modify config of AWB and CCM
+                            modify config of auto mode of white balance
+                            modify config of brightness
+  2010-01-05   zh.shj       modify config of contrast                ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-28   zh.shj       add config for MT9T112-3.1Mp-AF          ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-28   jia.jia      merged from mt9t111_reg_qtech.c          ZTE_MSM_CAMERA_JIA_001
+  2009-12-21   zh.shj       improve effects of white balance         ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-21   chg          for vfe zoom                             CHG_CAM_20091217
+  2009-12-19   zh.shj       add config for contrast                  ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-11   jia.jia      rename file with mt9t111_reg_qtech       ZTE_MSM_CAMERA_JIA_001
+  2009-12-03   jia.jia      Improve efficiency of sensor init        ZTE_MSM_CAMERA_JIA_001
+  2009-12-01   jia.jia      Refactor code for sensor init            ZTE_MSM_CAMERA_JIA_001
+  2009-11-09   jia.jia      add wb and af settings                   ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-11-26   zh.shj       improve effects of AF, AWB and LSC;      ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-11-09   jia.jia      add orientation setting for preview      ZTE_MSM_CAMERA_ZHSHJ_001
+                            and snapshot
+  2009-11-05   zh.shj       mt9t111 preview function implemented     ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "mt9t11x.h"

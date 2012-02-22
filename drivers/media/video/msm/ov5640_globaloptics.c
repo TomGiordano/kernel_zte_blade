@@ -20,7 +20,24 @@
 /*-----------------------------------------------------------------------------------------
   when              who                   what, where, why                    comment tag
   --------      -- ----     -------------------------------------    --------------------------
-
+ 2011-07-20   wangtao    modified for add front camer ovm7690                ZTE_WT_CAM_20110720
+ 2011-07-08   ygl        Ken modified for SNR test                           ZTE_YGL_CAM_20110708
+ 2011-07-01   wangtao    neil modified for clolor special effect             WT_CAM_20110701
+                         cannt reserver reg(w/r )       
+ 2011-06-24   lijing     optimize adaptor flow                               ZTE_CAM_LJ_20110624 
+ 2011-06-21   wangtao    kenxu add for reduce noise under dark condition     WT_CAM_20110621
+                        neil add color matrix    
+ 2011-05-06   wangtao   resolve bug of wb cannt save                         WT_CAM_20110506 
+ 2011-05-03   wangtao   resolve bug of af sleep ov neil                      WT_CAM_20110503 
+ 2011-04-28   wangtao   resolve iso settings ov ken                          WT_CAM_20110428 
+ 2011-04-26   wangtao   resolve bright is differ from preview and snapshot   WT_CAM_20110426 
+ 2011-04-21   wangtao    optimize contrast /staturation register write avoid direct write  WT_CAM_20110421
+ 2011-04-11   wangtao    modified for some register write avoid direct write  WT_CAM_20110411
+                         value by use tmp_reg         
+ 2011-03-31   wangtao    modified for lens shading and display green          WT_CAM_20110331
+ 2011-03-10   wangtao    add ov5640 5.0MP effect / wb / bright                WT_CAM_20110127
+                        reduce snap time by neil ov  
+ 2011-01-27   wangtao    add ov5640 5.0MP af setting by set register          WT_CAM_20110127
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -81,8 +98,21 @@ static DECLARE_WORK(ov5640_cb_work, ov5640_workqueue);
 
 /* GPIO For Sensor Clock Switch */
 
+#if defined(CONFIG_MACH_RAISE)
 #define OV5640_GPIO_SWITCH_CTL     39
+#define OV5640_GPIO_SWITCH_VAL     1
+#elif defined(CONFIG_MACH_SAILBOAT)
+#define OV5640_GPIO_SWITCH_CTL     30
+#define OV5640_GPIO_SWITCH_VAL     0
+#elif defined(CONFIG_MACH_R750) || defined(CONFIG_MACH_JOE)
+#define OV5640_GPIO_SWITCH_CTL     39
+#define OV5640_GPIO_SWITCH_VAL     0
+#else
+#define OV5640_GPIO_SWITCH_CTL     39
+#define OV5640_GPIO_SWITCH_VAL     1
+#endif
 
+#if 0
 /* 
  * modify for mclk switch for msm7627_joe
  */
@@ -93,6 +123,7 @@ static DECLARE_WORK(ov5640_cb_work, ov5640_workqueue);
 #else
 #define OV5640_GPIO_SWITCH_VAL     1
 #endif
+#endif
 
 //#define CAPTURE_FRAMERATE 375
 //#define PREVIEW_FRAMERATE 1500
@@ -100,7 +131,9 @@ static DECLARE_WORK(ov5640_cb_work, ov5640_workqueue);
 #define CAPTURE_FRAMERATE 750
 #define PREVIEW_FRAMERATE 1500
 
-
+/* ZTE_YGL_CAM_20101214
+ * add the interface of touch AF for froyo
+ */
 #define OV5640_AF_WINDOW_FULL_WIDTH  64
 #define OV5640_AF_WINDOW_FULL_HEIGHT 48
 /* 
@@ -136,7 +169,7 @@ static uint32_t g_preview_line_width;
 static uint16_t g_preview_gain,g_preview_gain_low,g_preview_gain_high;
 static uint32_t g_preview_frame_rate = 0;
 
-#if 0 
+#if 0 //ZTE_ZT_CAM_20101203
 static uint16_t temp_l,temp_m,temp_h;
 #endif
 
@@ -820,7 +853,10 @@ static long ov5640_set_contrast(int8_t contrast_val)
                return rc;
             }
 
-        
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -869,6 +905,10 @@ static long ov5640_set_contrast(int8_t contrast_val)
                return rc;
             }
 
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -917,7 +957,10 @@ static long ov5640_set_contrast(int8_t contrast_val)
                return rc;
             }
 
-        
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -966,7 +1009,10 @@ static long ov5640_set_contrast(int8_t contrast_val)
                return rc;
             }
 
-        
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1015,7 +1061,10 @@ static long ov5640_set_contrast(int8_t contrast_val)
                return rc;
             }
 
-        
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1085,7 +1134,10 @@ static long ov5640_set_saturation(int8_t saturation_val)
                return rc;
             }
 
-       
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1144,6 +1196,10 @@ static long ov5640_set_saturation(int8_t saturation_val)
                return rc;
             }
 
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1201,7 +1257,10 @@ static long ov5640_set_saturation(int8_t saturation_val)
                return rc;
             }
 
-        
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1259,7 +1318,10 @@ static long ov5640_set_saturation(int8_t saturation_val)
                return rc;
             }
 
-      
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1317,6 +1379,10 @@ static long ov5640_set_saturation(int8_t saturation_val)
                return rc;
             }
 
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -1742,7 +1808,9 @@ static long ov5640_set_wb(int8_t wb_mode)
     return rc;
 }
 
-
+ /* ZTE_YGL_CAM_20101214
+  * add the interface of touch AF for froyo
+  */
 static int32_t ov5640_set_aec_rio(aec_rio_cfg position)
 {
     
@@ -1887,6 +1955,17 @@ static int32_t ov5640_set_iso(int8_t iso_val)
 
         case CAMERA_ISO_SET_100:
         {
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x350b ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    msleep(100);		
             rc = ov5640_i2c_write(ov5640_client->addr, 0x3A18 ,0x0000, WORD_LEN);
             if (rc < 0)
             {
@@ -1897,11 +1976,27 @@ static int32_t ov5640_set_iso(int8_t iso_val)
             {
                return rc;
             }
+            rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
         }
         break;
 
         case CAMERA_ISO_SET_200:
         {
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x350b ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    msleep(100);					
             rc = ov5640_i2c_write(ov5640_client->addr, 0x3A18 ,0x0000, WORD_LEN);
             if (rc < 0)
             {
@@ -1912,11 +2007,27 @@ static int32_t ov5640_set_iso(int8_t iso_val)
             {
                return rc;
             }
+           rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }		
         }
         break;
 
         case CAMERA_ISO_SET_400:
         {
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x350b ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    msleep(100);		
             rc = ov5640_i2c_write(ov5640_client->addr, 0x3A18 ,0x0000, WORD_LEN);
             if (rc < 0)
             {
@@ -1927,12 +2038,28 @@ static int32_t ov5640_set_iso(int8_t iso_val)
             {
                return rc;
             }
+            rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }			
         }
         break;
 
         case CAMERA_ISO_SET_800:
         {
-            rc = ov5640_i2c_write(ov5640_client->addr, 0x3A18 ,0x0000, WORD_LEN);
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    rc = ov5640_i2c_write(ov5640_client->addr, 0x350b ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }	
+	    msleep(100);				
+            rc = ov5640_i2c_write(ov5640_client->addr, 0x3A18 ,0x0000, WORD_LEN);//ZTE_YGL_CAM_20110708,modifed for SNR
             if (rc < 0)
             {
                return rc;
@@ -1942,6 +2069,11 @@ static int32_t ov5640_set_iso(int8_t iso_val)
             {
                return rc;
             }
+            rc = ov5640_i2c_write(ov5640_client->addr, 0x3503 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }			
         }
         break;
 
@@ -2258,6 +2390,9 @@ static int32_t ov5640_set_sharpness(int8_t sharpness)
 	return rc;
 } 
 
+/* ZTE_ZT_CAM_20101026_04
+ * add the interface of exposure compensation for foryo
+ */
 static long ov5640_set_exposure_compensation(int8_t exposure)
 {
     long rc = 0;
@@ -2623,7 +2758,7 @@ if(temp_reg == 0) //no flip
    
 
     //Read back AGC gain for preview
-	
+	//ZTE_YGL_CAM_20110708,modifed for SNR
     rc = ov5640_i2c_read(ov5640_client->addr, 0x350b, &g_preview_gain_low, BYTE_LEN);
     if (rc < 0)
     {
@@ -2657,7 +2792,7 @@ static long ov5640_hw_ae_transfer(void)
     uint16_t gain = g_preview_gain;
     uint32_t capture_lines_max;
    
-   
+    //ZTE_YGL_CAM_20110708,modifed for SNR
     uint16_t YAVG; //kenxu add for improve noise.
 
 
@@ -2998,7 +3133,10 @@ static long ov5640_set_effect(int32_t mode, int32_t effect)
                return rc;
             }
 
-          
+            /*
+             * ZTE_LJ_CAM_20101026
+             * fix bug of no preview image after changing effect mode repeatedly
+             */
             tmp_reg &= 0x00FF;
             tmp_reg |= 0x0080;
             rc = ov5640_i2c_write(ov5640_client->addr, 0x5001, tmp_reg, BYTE_LEN);
@@ -3514,7 +3652,7 @@ static int ov5640_sensor_dev_probe(const struct msm_camera_sensor_info *pinfo)
      * switch_val: 0, to switch clock to frontend sensor, i.e., MT9V113, or
      *             1, to switch clock to backend sensor, i.e., OV5640
      */
-#if defined(CONFIG_MACH_RAISE)
+#if defined(CONFIG_MACH_RAISE) || defined(CONFIG_MACH_SAILBOAT)
     rc = msm_camera_clk_switch(pinfo, OV5640_GPIO_SWITCH_CTL, OV5640_GPIO_SWITCH_VAL);
     if (rc < 0)
     {
@@ -3595,7 +3733,8 @@ dev_probe_fail:
 
 static int ov5640_sensor_probe_init(const struct msm_camera_sensor_info *data)
 {
-#if !defined(CONFIG_SENSOR_ADAPTER)
+
+#if !defined(CONFIG_SENSOR_ADAPTER) && !defined(CONFIG_OVM7690)
     uint32_t switch_on; 
 #endif
     int rc = 0;
@@ -3619,6 +3758,8 @@ printk("zt debug: %s\n", __func__);//zhangtao
     }
 
     ov5640_ctrl->sensordata = data;
+
+#if !defined(CONFIG_OVM7690)
 
 #if !defined(CONFIG_SENSOR_ADAPTER)
     /*
@@ -3660,7 +3801,7 @@ printk("zt debug: %s\n", __func__);//zhangtao
      * switch_val: 0, to switch clock to frontend sensor, i.e., MT9V113, or
      *             1, to switch clock to backend sensor, i.e., OV5640
      */
-#if defined(CONFIG_MACH_RAISE)
+#if defined(CONFIG_MACH_RAISE) || defined(CONFIG_MACH_SAILBOAT)
     rc = msm_camera_clk_switch(ov5640_ctrl->sensordata, OV5640_GPIO_SWITCH_CTL, OV5640_GPIO_SWITCH_VAL);
     if (rc < 0)
     {
@@ -3740,6 +3881,83 @@ printk("zt debug: %s\n", __func__);//zhangtao
         CCRT("%s: sensor_release failed!\n", __func__);
         goto probe_init_fail;
     }
+#else //CONFIG_OVM7690
+
+// 20110720 wt modified for front  camera ovm7690 
+// when ov5640 sensor init ,set ovm7690 pwd high and set ov5640 pwd low
+ 
+    rc = gpio_request(23, "ovm7690");
+    if (0 == rc)
+    {
+        /* ignore "rc" */
+        rc = gpio_direction_output(23, 1);
+    }
+    gpio_free(23);
+    
+    mdelay(5);
+    
+// set pwd is low
+    rc = ov5640_hard_standby(ov5640_ctrl->sensordata, 0);
+    mdelay(5);
+
+//set sda statue  and set 3017 3018 ff after pwd is low    
+    rc = ov5640_i2c_write(ov5640_client->addr, 0x3017, 0x00FF, WORD_LEN);
+    if (rc < 0)
+    {
+        CCRT("%s: failed, rc=%d!\n", __func__, rc);
+        return rc;
+    }
+    rc = ov5640_i2c_write(ov5640_client->addr, 0x3018, 0x00FF, WORD_LEN);
+    if (rc < 0)
+    {
+        CCRT("%s: failed, rc=%d!\n", __func__, rc);
+        return rc;
+    }       
+
+    //reset 0 -> 1
+    rc = gpio_request(ov5640_ctrl->sensordata->sensor_reset, "ov5640");
+    rc = gpio_direction_output(ov5640_ctrl->sensordata->sensor_reset, 0);
+    gpio_free(ov5640_ctrl->sensordata->sensor_reset);
+
+    /* time delay for deasserting RESET */
+    mdelay(3);
+    
+    rc = gpio_request(ov5640_ctrl->sensordata->sensor_reset, "ov5640");
+    rc = gpio_direction_output(ov5640_ctrl->sensordata->sensor_reset, 1);
+    gpio_free(ov5640_ctrl->sensordata->sensor_reset);
+
+    mdelay(10);
+    
+    /* Sensor Register Setting */
+    rc = ov5640_sensor_init_probe(ov5640_ctrl->sensordata);
+    if (rc < 0)
+    {
+        pr_err("%s: sensor_init_probe failed!\n", __func__);
+        goto probe_init_fail;
+    }
+    
+    mdelay(3);
+
+//set 3017 3018 0 before pwd set high 
+    rc = ov5640_i2c_write(ov5640_client->addr, 0x3017, 0x0000, WORD_LEN);
+    if (rc < 0)
+    {
+        CCRT("%s: failed, rc=%d!\n", __func__, rc);
+        return rc;
+    }
+    rc = ov5640_i2c_write(ov5640_client->addr, 0x3018, 0x0000, WORD_LEN);
+    if (rc < 0)
+    {
+        CCRT("%s: failed, rc=%d!\n", __func__, rc);
+        return rc;
+    }       
+
+				    
+    rc = ov5640_hard_standby(ov5640_ctrl->sensordata, 1);   
+    
+    mdelay(5);
+    
+#endif //CONFIG_OVM7690
 
     return 0;
 
@@ -3770,17 +3988,40 @@ static int ov5640_sensor_init(const struct msm_camera_sensor_info *data)
         goto sensor_init_fail;
     }
 
-    msm_camio_camif_pad_reg_reset();
+#if defined(CONFIG_OVM7690)
+//set front camera pwd high and back camera pwd low to swtich to back camera
+    rc = gpio_request(23, "ovm7690");
+    if (0 == rc)
+    {
+        /* ignore "rc" */
+        rc = gpio_direction_output(23, 1);
+        pr_err("ovm7690:rc=%d",rc);
+        
+    }
+     gpio_free(23);
 
-    /* time delay for resetting CAMIF's PAD */
-    mdelay(10);
+	mdelay(10);
+#endif //CONFIG_OVM7690
+    
 
+#if defined(CONFIG_MACH_SAILBOAT)
+    rc = msm_camera_clk_switch(ov5640_ctrl->sensordata, OV5640_GPIO_SWITCH_CTL, OV5640_GPIO_SWITCH_VAL);
+    if (rc < 0)
+    {
+        pr_err("%s: camera_clk_switch failed!\n", __func__);
+        goto sensor_init_fail;
+    }
+#endif /* defined(CONFIG_MACH_RAISE) */
     /* Input MCLK */
     msm_camio_clk_rate_set(OV5640_CAMIO_MCLK);
 
     /* time delay for enabling MCLK */
     mdelay(10);
 
+	msm_camio_camif_pad_reg_reset();
+
+	/* time delay for resetting CAMIF's PAD */
+	mdelay(10);
     /* Exit From Hard Standby */   
     switch_on = 0;
     rc = ov5640_hard_standby(ov5640_ctrl->sensordata, switch_on);
@@ -3790,8 +4031,32 @@ static int ov5640_sensor_init(const struct msm_camera_sensor_info *data)
         rc = -EFAULT;
         goto sensor_init_fail;
     }
+#if defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113)
+// set 3017 3018 ff after pwd is low
+	rc = ov5640_i2c_write(ov5640_client->addr, 0x3017, 0x00FF, WORD_LEN);
+	if (rc < 0)
+	{
+	    pr_err("%s: failed 1, rc=%d!\n", __func__, rc);
+	    return rc;
+	}
+	rc = ov5640_i2c_write(ov5640_client->addr, 0x3018, 0x00FF, WORD_LEN);
+	if (rc < 0)
+	{
+	    pr_err("%s: failed 2, rc=%d!\n", __func__, rc);
+	    return rc;
+	}
+#endif //CONFIG_OVM7690    
 
-  
+    /*
+      * To avoid green display when preview mode is resumed
+      * after snapshot or review.
+      * The action of pulling STANDBY GPIO down is the key which
+      * generates the problem mentioned above,
+      * So time delay is added to avoid this problem.
+      *
+      * ZTE_YGL_CAM_20101018, ZTE_YGL_CAM_20101123
+      * Decrease time delay from 700ms to 400ms in order to pass CTS
+      */
     mdelay(400);
 
     return 0;
@@ -3892,13 +4157,15 @@ static int ov5640_sensor_config(void __user *argp)
         }
         break;
 
-        case CFG_SET_EXPOSURE_COMPENSATION:
+        case CFG_SET_EXPOSURE_COMPENSATION://ZTE_ZT_CAM_20101026_04
         {
             rc = ov5640_set_exposure_compensation(cfg_data.cfg.exposure);
         }
         break;
 
-       
+        /* ZTE_YGL_CAM_20101214
+         * add the interface of touch AF for froyo
+         */
         case CFG_SET_AEC_RIO:
         {
             rc = ov5640_set_aec_rio(cfg_data.cfg.aec_rio);
@@ -3935,6 +4202,22 @@ static int ov5640_sensor_release(void)
 
     /* Enter Into Hard Standby */
     /* ignore rc */
+    
+#if defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113)// for sda 20110720
+			rc = ov5640_i2c_write(ov5640_client->addr, 0x3017, 0x0000, WORD_LEN);
+			if (rc < 0)
+			{
+			    CCRT("%s: failed, rc=%d!\n", __func__, rc);
+			    return rc;
+			}
+			rc = ov5640_i2c_write(ov5640_client->addr, 0x3018, 0x0000, WORD_LEN);
+			if (rc < 0)
+			{
+			    CCRT("%s: failed, rc=%d!\n", __func__, rc);
+			    return rc;
+			}       
+#endif
+
     switch_on = 1;
     rc = ov5640_hard_standby(ov5640_ctrl->sensordata, switch_on);
 
@@ -4055,7 +4338,10 @@ int ov5640_sensor_probe(const struct msm_camera_sensor_info *info,
         goto probe_failed;
     }
 
-  
+    /*
+	 * add sensor configuration
+	 * ZTE_CAM_LJ_20110413
+	 */ 
     s->s_mount_angle = 0;
     s->s_camera_type = BACK_CAMERA_2D;
 
@@ -4123,7 +4409,12 @@ static int __ov5640_probe_internal(struct platform_device *pdev)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
-   
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
       if(rc != -ENOINIT){
 	 	pr_err("%s: rc != -ENOINIT\n", __func__);
     	msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);

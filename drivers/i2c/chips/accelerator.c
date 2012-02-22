@@ -1181,7 +1181,7 @@ static int lis302dl_ioctl(struct inode *inode, struct file *file, unsigned int c
 
 static void adxl34x_early_suspend(struct early_suspend *handler)
 {
-	int ret = adxl34x_set_mode(0);
+	int ret = adxl34x_set_mode(1);
 	if(!ret)
 		pr_info(ADXL34X_TAG "adxl34x suspend\n");
 	else
@@ -1190,7 +1190,7 @@ static void adxl34x_early_suspend(struct early_suspend *handler)
 
 static void lis302dl_early_suspend(struct early_suspend *handler)
 {
-	int ret = lis302dl_set_mode(0);
+	int ret = lis302dl_set_mode(1);
 	if(!ret)
 		pr_info(LIS302_TAG "lis302dl suspend\n");
 	else
@@ -1199,23 +1199,23 @@ static void lis302dl_early_suspend(struct early_suspend *handler)
 
 static void adxl34x_late_resume(struct early_suspend *handler)
 {
-	int ret = adxl34x_set_mode(1);
+	//int ret = adxl34x_set_mode(1);
 
-	if(!ret)
+	//if(!ret)
 		pr_info(ADXL34X_TAG "adxl34x resume\n");
-	else
-		pr_err(ADXL34X_TAG "adxl34x resume failed \n");
+	//else
+	//	pr_err(ADXL34X_TAG "adxl34x resume failed \n");
 
 }
 
 static void lis302dl_late_resume(struct early_suspend *handler)
 {
-	int ret = lis302dl_set_mode(1);
+	//int ret = lis302dl_set_mode(1);
 
-	if(!ret)
+	//if(!ret)
 		pr_info(LIS302_TAG "lis302dl resume\n");
-	else
-		pr_err(LIS302_TAG "lis302dl resume failed \n");
+	//else
+	//	pr_err(LIS302_TAG "lis302dl resume failed \n");
 
 }
 

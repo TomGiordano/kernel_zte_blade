@@ -20,6 +20,8 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-04-15   lijing       add settings                             ZTE_CAM_LJ_20100415
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "hi704.h"
@@ -483,7 +485,10 @@ static struct hi704_i2c_reg_conf const sequencer_tbl[] = {
     {0x0000, 0x0000, WORD_LEN, 0},
 };
 
-
+/*
+ * ZTE_CAM_LJ_20100415
+ * add antibanding settings
+ */
  static struct hi704_i2c_reg_conf const antibanding_auto_tbl[] = {
     {0x03, 0x20, BYTE_LEN, 0},
     {0x10, 0x0c, BYTE_LEN, 0},

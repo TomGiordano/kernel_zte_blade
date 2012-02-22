@@ -320,6 +320,14 @@ static int  lis302dl_TransRBuff(short *buffer)
 	buffer[0] = ((s8)buf[1])*18;
 	buffer[1] = ((s8)buf[0])*18;
 	buffer[2] = ((s8)buf[2])*18;
+#elif defined(CONFIG_MACH_RACER2)	
+	buffer[0] = ((s8)buf[0])*18;
+	buffer[1] = ((s8)buf[1])*18;
+	buffer[2] = ((s8)buf[2])*18*(-1);
+#elif defined(CONFIG_MACH_BLUETICK)	
+	buffer[0] = ((s8)buf[0])*18;
+	buffer[1] = ((s8)buf[1])*18*(-1);
+	buffer[2] = ((s8)buf[2])*18;
 #else
 	buffer[0] = ((s8)buf[1])*18*(-1);
 	buffer[1] = ((s8)buf[0])*18*(-1);
@@ -423,7 +431,7 @@ static int lis302dl_ioctl(struct inode *inode, struct file *file, unsigned int c
 
 static void lis302dl_early_suspend(struct early_suspend *handler)
 {
-	int ret = lis302dl_set_mode(0);
+	int ret = lis302dl_set_mode(1);
 	if(!ret)
 		pr_info(LIS302_TAG "lis302dl suspend\n");
 	else
@@ -433,12 +441,12 @@ static void lis302dl_early_suspend(struct early_suspend *handler)
 
 static void lis302dl_late_resume(struct early_suspend *handler)
 {
-	int ret = lis302dl_set_mode(1);
+	//int ret = lis302dl_set_mode(1);   
 
-	if(!ret)
+	//if(!ret)
 		pr_info(LIS302_TAG "lis302dl resume\n");
-	else
-		pr_err(LIS302_TAG "lis302dl resume failed \n");
+	//else
+	//	pr_err(LIS302_TAG "lis302dl resume failed \n");
 
 }
 

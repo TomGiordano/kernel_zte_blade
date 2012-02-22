@@ -20,6 +20,49 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2010-12-15   lijing       add Touch AF and AntiShake function      ZTE_CAM_LJ_20101214
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-12-07   jia          decrease time delay from 500us to 100us  ZTE_CAM_JIA_20101207
+                            for hard reset
+  2010-12-06   jia          add support for exposure compensation    ZTE_CAM_JIA_20101206
+  2010-12-03   zt           fix bug that standby current is higher   ZTE_ZT_CAM_20101203
+                            when Mt9p111 is adaptered
+  2010-12-03   zt           fix bug that standby current is higher   ZTE_ZT_CAM_20101203
+                            when Mt9p111 is adaptered
+  2010-11-22   lijing       add time delay before reading status of  ZTE_LJ_CAM_20101122
+                            AF to fix switch failure problem between
+                            preview and snapshot
+  2010-10-22   jia          add time delay for OTP read sequence     ZTE_JIA_CAM_20100930
+                            to fix abnormal preview problem
+  2010-09-30   jia          Decrease time delay from 10ms to 500us   ZTE_JIA_CAM_20100930
+                            to fix init failure problem 
+  2010-09-30   jia          Enable core VDD power supply to fix      ZTE_JIA_CAM_20100930
+                            init failure problem
+  2010-09-30   lijing       update effect settings and wb delay time ZTE_LJ_CAM_20100930
+  2010-09-08   jia          add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-08-24   lijing       update iso settings                      ZTE_LJ_CAM_20100824  
+  2010-08-19   lijing       add time delay of sensor mode query      ZTE_LIJING_CAM_20100819
+  2010-08-17   lijing       set motor into manual mode when entering ZTE_LIJING_CAM_20100817
+                            preview mode to avoid motor moving in 
+                            setting wb,effect etc.
+  2010-08-12   lijing       add judgement for snapshot mode switch,  ZTE_LIJING_CAM_20100812
+                            delete delay of wb
+  2010-07-20   jia          Improve effect of AF by reading          JIA_CAM_20100720
+                            status of AF
+  2010-06-22   ye.ganlin    Add config for loading LSC config        YGL_CAM_20100622
+                            from OTP memory
+  2010-06-21   lijing       solve sensor current leakage issue       LIJING_CAM_20100621
+  2010-06-10   lijing       add interface for getting sensor info    LIJING_CAM_20100610
+  2010-06-08   jia          refactor process of                      JIA_CAM_20100608
+                            "CONFIG_SENSOR_ADAPTER"
+  2010-06-05   zh.shj       Get FTM flag to adjust the               ZHSHJ_CAM_20100605
+                            initialize process of camera
+  2010-06-05   zh.shj       add wake_lock for mt9p111                ZHSHJ_CAM_20100605 
+  2010-06-05   zh.shj       add probe init process of soft           ZHSHJ_CAM_20100605 
+                            standby mode for mt9p111
+  2010-06-05   zh.shj       modify process of sensors adapter for    ZHSHJ_CAM_20100605 
+                            sensors share the same i2c addr
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -98,7 +141,10 @@ static DECLARE_WORK(mt9p111_cb_work, mt9p111_workqueue);
 #define MT9P111_GPIO_SWITCH_VAL     1
 #endif /* defined(CONFIG_MACH_RAISE) */
 
-
+/*
+ * ZTE_CAM_LJ_20101214
+ * add Touch AF funciton
+ */
 #define MT9P111_AF_WINDOW_FULL_WIDTH            256
 #define MT9P111_AF_WINDOW_FULL_HEIGHT           256
 #define MT9P111_TOUCH_AF_WINDOW_DEFAULT_WIDTH   86
@@ -227,19 +273,36 @@ static int mt9p111_hard_reset(const struct msm_camera_sensor_info *dev)
         /* ignore "rc" */
         rc = gpio_direction_output(dev->sensor_reset, 1);
 
-     
+        /* ZTE_JIA_CAM_20100930
+         * Decrease time delay from 10ms to 1ms
+         * to fix init failure problem
+         */
         mdelay(1);
 
         /* ignore "rc" */
         rc = gpio_direction_output(dev->sensor_reset, 0);
 
- 
+        /*
+          * RESET_BAR pulse width: Min 70 EXTCLKs
+          * EXTCLKs: = MCLK (i.e., MT9P111_CAMIO_MCLK)
+          *
+          * ZTE_JIA_CAM_20100930
+          * Decrease time delay from 10ms to 3us
+          * to fix init failure problem
+          */
         udelay(3);
 
         /* ignore "rc" */
         rc = gpio_direction_output(dev->sensor_reset, 1);
 
-    
+        /*
+         * Time delay before first serial write: Min 100 EXTCLKs
+         * EXTCLKs: = MCLK (i.e., MT9P111_CAMIO_MCLK)
+         *
+         * ZTE_JIA_CAM_20100930
+         * Decrease time delay from 500us to 100us
+         * to fix init failure problem 
+         */
         udelay(100);
     }
 
@@ -442,7 +505,11 @@ static int32_t mt9p111_af_trigger(void)
     uint32_t i;
     int32_t rc;
     
- 
+    /*
+     * ZTE_CAM_LJ_20101214
+     * Touch AF function will change AF windows size
+     * So when using AF restore default AF window size
+     */
     uint16_t window_width = 0;
 
     CDBG("%s: entry\n", __func__);
@@ -462,7 +529,11 @@ static int32_t mt9p111_af_trigger(void)
     rc = mt9p111_i2c_write(mt9p111_client->addr, 0x098E, 0x8419, WORD_LEN);
     rc = mt9p111_i2c_write(mt9p111_client->addr, 0x8419, 0x05, BYTE_LEN);
 
-  
+    /*
+     * ZTE_CAM_LJ_20101214
+     * Touch AF function will change AF windows size
+     * So when using AF restore default AF window size
+     */
     rc = mt9p111_i2c_read(mt9p111_client->addr,0xB856, &window_width, BYTE_LEN);
     if(window_width != 0xBF) {       
         rc = mt9p111_i2c_write(mt9p111_client->addr, 0x098E, 0xB854, WORD_LEN);
@@ -484,7 +555,13 @@ static int32_t mt9p111_af_trigger(void)
     rc = mt9p111_i2c_write(mt9p111_client->addr, 0x098E, 0xB006, WORD_LEN);
     rc = mt9p111_i2c_write(mt9p111_client->addr, 0xB006, 0x01, BYTE_LEN);
 
- 
+    /* ZTE_LJ_CAM_20101122 
+      * add time delay before reading status of
+      * AF to fix switch failure problem between
+      * preview and snapshot
+      *
+      * time delay of 150ms is needed
+      */
     mdelay(150);
 
     af_status = 0x0000;
@@ -638,7 +715,9 @@ static long mt9p111_reg_init(void)
             return rc;
         }
         
-     
+        /* ZTE_JIA_CAM_20100930
+         * add time delay for OTP read sequence, from 100ms to 200ms
+         */
         mdelay(200);
 
         CDBG("%s: check otp memory is whether available for reading, is_otp_written=0x%x!\n",
@@ -690,7 +769,9 @@ static long mt9p111_reg_init(void)
             return rc;
         }
         
-     
+        /* ZTE_JIA_CAM_20100930
+         * add time delay for OTP read sequence, from 100ms to 200ms
+         */
         mdelay(200);
 
         CDBG("%s: check for the 3rd otp memory, is_otp_written =0x%x !\n", __func__, is_otp_written); 
@@ -729,7 +810,9 @@ static long mt9p111_reg_init(void)
                 return rc;
             }
             
-         
+            /* ZTE_JIA_CAM_20100930
+             * add time delay for OTP read sequence, from 100ms to 200ms
+             */
             mdelay(200);
 
             CDBG("%s: check for the 2nd otp memory, is_otp_written =0x%x !\n", __func__, is_otp_written); 
@@ -765,7 +848,9 @@ static long mt9p111_reg_init(void)
                     return rc;
                 }
                 
-             
+                /* ZTE_JIA_CAM_20100930
+                 * add time delay for OTP read sequence, from 100ms to 200ms
+                 */
                 mdelay(200);
 
                 CDBG("%s: check for the 1st otp memory, is_otp_written =0x%x !\n", __func__, is_otp_written); 
@@ -887,7 +972,11 @@ static long mt9p111_set_sensor_mode(int32_t mode)
     {
         case SENSOR_PREVIEW_MODE:
         {
-     
+            /*
+             * ZTE_LIJING_CAM_20100817
+             * Set Focus Mode as Manual Mode
+             * and Make Focus Infinite 
+             */
             rc = mt9p111_i2c_write(mt9p111_client->addr,0x098E, 0x8419,WORD_LEN);
             if (rc < 0)
             {
@@ -949,7 +1038,14 @@ static long mt9p111_set_sensor_mode(int32_t mode)
                 return rc;
             }
             
-   
+            /*
+             * ZTE_LIJING_CAM_20100817
+             * judge if switch to preview mode is successful
+             *
+             * 0x03: enter into preview mode
+             * 0x07: enter into snapshot mode
+             * others: not in snapshot mode
+             */
             while (value != 0x03 && times != 2000)
             {
                 rc = mt9p111_i2c_write(mt9p111_client->addr, 0x098E, 0x8405, WORD_LEN);
@@ -964,7 +1060,12 @@ static long mt9p111_set_sensor_mode(int32_t mode)
                     return rc;
                 }
                 
-        
+                /*
+                   * ZTE_LIJING_CAM_20100819
+                   *
+                   * MUST add time delay for next read,
+                   * to avoid failure of reading preview mode
+                   */
                 mdelay(50);
                 
                 times++;
@@ -1014,7 +1115,12 @@ static long mt9p111_set_sensor_mode(int32_t mode)
                     return rc;
                 }
                 
-       
+                /*
+                   * ZTE_LIJING_CAM_20100819
+                   *
+                   * MUST add time delay for next read,
+                   * to avoid failure of reading preview mode
+                   */
                 mdelay(50);
                 
                 times++;
@@ -1069,7 +1175,10 @@ static long mt9p111_set_effect(int32_t mode, int32_t effect)
         break;
     }
 
-
+    /*
+     * ZTE_LJ_CAM_20100930
+     * Change delay time to 50 ms before setting effect according to suggestion of fae
+     */
     mdelay(50);
 
     switch (effect)
@@ -1231,7 +1340,10 @@ static long mt9p111_set_effect(int32_t mode, int32_t effect)
         }
     }
 
-
+    /*
+     * ZTE_LJ_CAM_20100930
+     * Change delay time to 50 ms after setting effect according to suggestion of fae
+     */
     mdelay(50);
 
     return rc;
@@ -1857,7 +1969,10 @@ static int32_t mt9p111_set_iso(int8_t iso_val)
     return rc;
 } 
 
-
+/*
+ * ZTE_CAM_LJ_20101214
+ * add Touch AF and AntiShake funciton
+ */
 static int32_t mt9p111_set_aec_rio(aec_rio_cfg position)
 {	
     int32_t rc = 0;	
@@ -2281,7 +2396,13 @@ static int mt9p111_sensor_init_probe(const struct msm_camera_sensor_info *data)
     switch_on = 0;
 #endif /* defined(CONFIG_MACH_RAISE) || defined(CONFIG_MACH_JOE) */
 
- 
+    /* ZTE_JIA_CAM_20100930
+      * Enable core VDD power supply to fix init failure problem
+      */
+    /* 
+     * ZTE_CAM_LJ_20101224
+     * remove this setting for we have other method to resolve init failure problem
+     */
     //mt9p111_i2c_write(mt9p111_client->addr, 0x0020, 0x0000, WORD_LEN);
 
     /* Exit From Hard Standby */
@@ -2301,7 +2422,13 @@ static int mt9p111_sensor_init_probe(const struct msm_camera_sensor_info *data)
         goto init_probe_fail;
     }
 
- 
+    /* ZTE_JIA_CAM_20100930
+      * Enable core VDD power supply to fix init failure problem
+      */
+    /* 
+     * ZTE_CAM_LJ_20101224
+     * remove this setting for we have other method to resolve init failure problem
+     */
     //mt9p111_i2c_write(mt9p111_client->addr, 0x0020, 0x0000, WORD_LEN);
 
     /* Read the Model ID of the sensor */
@@ -2449,8 +2576,13 @@ static int mt9p111_sensor_dev_probe(const struct msm_camera_sensor_info *pinfo)
     switch_on = 0;
 #endif /* defined(CONFIG_MACH_RAISE) || defined(CONFIG_MACH_JOE) */
 
- 
-
+    /* ZTE_JIA_CAM_20100930
+      * Enable core VDD power supply to fix init failure problem
+      */
+    /* 
+     * ZTE_CAM_LJ_20101224
+     * remove this setting for we have other method to resolve init failure problem
+     */
     //mt9p111_i2c_write(mt9p111_client->addr, 0x0020, 0x0000, WORD_LEN);
 
     rc = mt9p111_hard_standby(pinfo, 0);
@@ -2467,7 +2599,13 @@ static int mt9p111_sensor_dev_probe(const struct msm_camera_sensor_info *pinfo)
         return rc;
     }
 
- 
+    /* ZTE_JIA_CAM_20100930
+      * Enable core VDD power supply to fix init failure problem
+      */
+    /* 
+     * ZTE_CAM_LJ_20101224
+     * remove this setting for we have other method to resolve init failure problem
+     */
     //mt9p111_i2c_write(mt9p111_client->addr, 0x0020, 0x0000, WORD_LEN);
 
     model_id = 0x0000;
@@ -2770,7 +2908,10 @@ int mt9p111_sensor_config(void __user *argp)
         break;
 
         
-   
+        /*
+         * ZTE_CAM_LJ_20101214
+         * add variables used for Touch AF and AntiShake function
+         */
         case CFG_SET_AEC_RIO:        
         {
             rc = mt9p111_set_aec_rio(cfg_data.cfg.aec_rio);        
@@ -2831,7 +2972,11 @@ static int mt9p111_sensor_release_internal(void)
     }
     mdelay(1);
 
- 
+    /*
+     * Solve sensor current leakage issue.
+     * Write this reg to shut off all sensor gpios.
+     * by lijing LIJING_CAM_20100621
+     */ 
     rc = mt9p111_i2c_write(mt9p111_client->addr, 0x060E, 0x00FF, WORD_LEN);
     if (rc < 0)
     {
@@ -3105,7 +3250,12 @@ static void mt9p111_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
-
+    /* 
+      * ZTE_ZT_CAM_20101203
+      * fix bug that standby current is higher when CONFIG_SENSOR_ADAPTER is enabled
+      *
+      * ignore "rc"
+      */
     msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);
     return;
 #endif

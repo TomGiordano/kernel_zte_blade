@@ -17,7 +17,48 @@
  *
  * Created by jia.jia@zte.com.cn
  */
-
+/*-----------------------------------------------------------------------------------------
+  when         who          what, where, why                         comment tag
+  --------     ----         -------------------------------------    ----------------------
+  2011-03-14   wt           merge reg settings from 729 mt9p111      WT_CAM_20110314
+                            5.0MP             
+                            
+  2011-03-07   wt           change image_width and  image_height     WT_CAM_20110307
+                             of preview for zoom
+  2011-02-21   wt           modify reg for mirror                    ZTE_WT_CAM_20110221
+  2011-02-15   zt           modify the value of registers for the    ZTE_ZT_CAM_20110215
+                            pictures taken outdoors under sunny
+                            are too red
+  2010-12-24   lijing       update pll setting to resolve init       ZTE_CAM_LJ_20101224
+                            failure problem
+  2010-12-24   lijing       improve reddish of preview               ZTE_LJ_CAM_20101224
+                            update AF setting for lab test
+                            update sharpness setting for lab test
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-12-08   jia          modify setting for lab test,             ZTE_JIA_CAM_20101208
+                            such saturation, sharpness and PLL
+  2010-12-03   lijing       add support for reading EEPROM LSC       ZTE_LJ_CAM_20101203
+                            modify config for lab test
+  2010-11-25   jia          modify time delay in init process        ZTE_JIA_CAM_20101125
+                            recommended by Aptina
+  2010-11-24   jia          modify preview & snapshot orientation    ZTE_JIA_CAM_20101124
+                            for blade board
+  2010-10-22   jia          modify PLL setting to fix abnormal       ZTE_JIA_CAM_20100930
+                            preview problem
+  2010-09-30   lijing       update wb setting for invalidation       ZTE_LJ_CAM_20100930
+                            i.e., add time delay of 500ms for
+                            register of "0x8404" in MWB
+  2010-09-07   lijing       fix WB_AUTO setting error                ZTE_LJ_CAM_20100907
+  2010-08-24   lijing       update wb settings                       ZTE_LJ_CAM_20100824
+  2010-07-20   jia          Improve effect for lab test,             JIA_CAM_20100720
+                            Improve effect of AF
+  2010-06-22   ye.ganlin    Add config for loading LSC config        YGL_CAM_20100622
+                            from OTP memory
+  2010-06-14   ye.ganlin    add new settings such as effect          YGL_CAM_20100613
+  2010-01-25   li.jing      add new settings for 3.0 version         ZTE_MSM_CAMERA_LIJING_001
+  2010-01-18   li.jing      rotate camera preview and snapshot image ZTE_MSM_CAMERA_LIJING_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
+------------------------------------------------------------------------------------------*/
 
 #include "mt9p111.h"
 
@@ -122,6 +163,9 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xC84C, 0x0080, WORD_LEN, 0}, 	// CAM_CORE_A_POWER_MODE
     {0xC84E, 0x0001, WORD_LEN, 0}, 	// CAM_CORE_A_BIN_MODE
 
+    /* ZTE_JIA_CAM_20101124 WT_CAM_20110314
+     * setting for preview orientation
+     */
     {0xC850, 0x00,   BYTE_LEN, 0}, 	// CAM_CORE_A_ORIENTATION
     {0xC851, 0x00, 	 BYTE_LEN, 0},// CAM_CORE_A_PIXEL_ORDER
     {0xC852, 0x019C, WORD_LEN, 0}, 	// CAM_CORE_A_FINE_CORRECTION
@@ -158,7 +202,9 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xC884, 0x0064, WORD_LEN, 0}, 	// CAM_CORE_B_POWER_MODE
     {0xC886, 0x0000, WORD_LEN, 0}, 	// CAM_CORE_B_BIN_MODE
 
-
+    /* ZTE_JIA_CAM_20101124
+     * setting for snapshot orientation
+     */
     {0xC888, 0x00,   BYTE_LEN, 0},  // CAM_CORE_B_ORIENTATION
     {0xC889, 0x00, 	 BYTE_LEN, 0},// CAM_CORE_B_PIXEL_ORDER
     {0xC88A, 0x009C, WORD_LEN, 0}, 	// CAM_CORE_B_FINE_CORRECTION
@@ -689,7 +735,9 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0x098E, 0x0016, WORD_LEN, 0}, 	// LOGICAL_ADDRESS_ACCESS [MON_ADDRESS_LO]
     {0x8016, 0x086C, WORD_LEN, 0}, 	// MON_ADDRESS_LO                     
 
-
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 100ms to 200ms recommended by Aptina
+     */
     {0x8002, 0x0001, WORD_LEN, 200},// MON_CMD
                                 
     //Char setting              
@@ -803,7 +851,10 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xAC3D, 0x84,BYTE_LEN,0}, 	// AWB_MAX_ACCEPTED_PRE_AWB_R2G_RATIO
     {0xAC3E, 0x11,BYTE_LEN,0}, 	// AWB_MIN_ACCEPTED_PRE_AWB_B2G_RATIO
     {0xAC3F, 0x63,BYTE_LEN,0}, 	// AWB_MAX_ACCEPTED_PRE_AWB_B2G_RATIO
-
+	/* 
+	 * ZTE_LJ_CAM_20101224
+	 * improve reddish of preview
+	 */
     {0xAC40, 0x62,BYTE_LEN,0}, 	// AWB_MIN_ACCEPTED_POST_AWB_R2G_RATIO
     {0xAC41, 0x68,BYTE_LEN,0}, 	// AWB_MAX_ACCEPTED_POST_AWB_R2G_RATIO
     
@@ -1250,7 +1301,9 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xBCCA, 0x04   , BYTE_LEN, 0}, // LL_SFFB_TRANSITION_START
     {0xBCCB, 0x00   , BYTE_LEN, 0}, // LL_SFFB_TRANSITION_STOP
 
-
+    /* ZTE_JIA_CAM_20101124
+     * setting for preview & snapshot orientation
+     */
     {0x098E, 0xC8ED , WORD_LEN, 0},	// LOGICAL_ADDRESS_ACCESS
     {0xC8ED, 0x00   , BYTE_LEN, 0},	// LL_SFFB_SOBEL_FLAT_START
     
@@ -1258,7 +1311,10 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xC400, 0x88,   BYTE_LEN, 0}, 	// AFM_ALGO
     {0x8419, 0x05,   BYTE_LEN, 0}, 	// SEQ_STATE_CFG_1_AF
     {0xC400, 0x08,   BYTE_LEN, 0}, 	// AFM_ALGO
-
+    /*
+	 * ZTE_LJ_CAM_20101224
+	 * update AF setting recommended by samsung for lab test
+	 */
     {0xB018, 0x0A, BYTE_LEN, 0},      // AF_FS_POS_0
     {0xB019, 0x1B, BYTE_LEN, 0},      // AF_FS_POS_1
     {0xB01A, 0x2C, BYTE_LEN, 0},      // AF_FS_POS_2
@@ -1278,7 +1334,10 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
 
     {0xB014, 0x03,   BYTE_LEN, 0}, 	// AF_FS_STEP_SIZE
 
-
+    /*
+	 * ZTE_LJ_CAM_20101224
+	 * update AF setting recommended by  samsung for lab test
+	 */
     {0xB010, 0x00, BYTE_LEN, 0}, 	// AF_FS_Sharpness_Variation_TH
 
     {0xB002, 0x0047, WORD_LEN, 0}, 	// AF_MODE
@@ -1287,7 +1346,10 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     /*
       * Macro Position Setting
       */
-
+    /*
+	 * ZTE_LJ_CAM_20101224
+	 * update AF setting recommended by  samsung for lab test
+      */
     {0xC40C, 0x00FF, WORD_LEN, 0},	// AFM_POS_MAX
     {0xC40A, 0x0010, WORD_LEN, 0},	// AFM_POS_MIN
 
@@ -1322,7 +1384,9 @@ static struct mt9p111_i2c_reg_conf const pll_setup_tbl[] = {
     {0x001E, 0x0575, WORD_LEN, 0}, 	// PAD_SLEW_PAD_CONFIG
     {0x0022, 0x0030, WORD_LEN, 0},         // VDD_DIS_COUNTER  
 
-
+    /* ZTE_JIA_CAM_20100930
+     * modify PLL setting to fix abnormal preview problem, from 0x7F78 to 0x7F7E
+     */
     {0x002A, 0x7F7E, WORD_LEN, 0},
 
     {0x002C, 0x0000, WORD_LEN, 0},
@@ -1332,13 +1396,17 @@ static struct mt9p111_i2c_reg_conf const pll_setup_tbl[] = {
 
 //new settings from USA for version 3.0
 static struct mt9p111_i2c_reg_conf const sequencer_tbl[] = {
-
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 50ms to 150ms recommended by Aptina
+     */
     {0x8404, 0x05,   BYTE_LEN, 150}, 	// SEQ_CMD         
 
     {0xAC02, 0x00FF, WORD_LEN, 0}, 	    // AWB_ALGO      
     {0xAC02, 0x00FF, WORD_LEN, 0}, 	    // AWB_ALGO      
 
-
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 50ms to 150ms recommended by Aptina
+     */
     {0x8404, 0x06,   BYTE_LEN, 150},    // SEQ_CMD         
 
     {0x0018, 0x2008, WORD_LEN, 100}, 	// STANDBY_CONTROL_AND_STATUS
@@ -1708,7 +1776,10 @@ static uint16_t const saturation_tbl_sz[] = {
     ARRAY_SIZE(saturation_tbl_4),
 };
 
-
+/*
+ * ZTE_LJ_CAM_20101224
+ * update sharpness setting for lab test recommended by aptina
+ */
 static struct mt9p111_i2c_reg_conf const sharpness_tbl_0[] = {
     {0x098E, 0xBC6A , WORD_LEN, 0},	// LOGICAL_ADDRESS_ACCESS [LL_START_APERTURE_INTEGER_GAIN]   
     {0xBC6A, 0x0004 , WORD_LEN, 0},	// LOGICAL_ADDRESS_ACCESS [LL_START_APERTURE_INTEGER_GAIN]
@@ -1811,7 +1882,9 @@ static uint16_t const exposure_tbl_sz[] = {
     ARRAY_SIZE(exposure_tbl_4),
 };
 
-
+/* ZTE_LJ_CAM_20101203
+ * Mapping between addr of EEPROM and addr of sensor
+ */
 struct mt9p111_eeprom_lsc_reg_conf lsc_reg_addr_tbl[] = {
     {0x00, 0x3640},
     {0x02, 0x3642},

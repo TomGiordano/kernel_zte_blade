@@ -27,6 +27,7 @@
 #include <linux/jiffies.h>
 #include <asm/uaccess.h>
 #include <linux/gpio.h>
+#include <linux/pn544.h>
 
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
@@ -36,9 +37,8 @@
 #include <asm-generic/gpio.h>
 
 #define ZTE_NFC_DEBUG
-#define ZTE_IRQ_LOW 
 
-#define MAX_BUFFER_SIZE 256
+#define MAX_BUFFER_SIZE 512
 
 #define PN544_MAJOR     0  /* Defaults to dynamic major number */
 #define PN544_MINORS    1  /* Register for only one minor */
@@ -53,6 +53,12 @@ struct pn544_dev {
    struct device     *dev;       /* The char device structure */
    int               use_irq;    /* Flag set to 1 if using IRQ, 0 if polling */
    struct hrtimer    timer;      /* Timer used for polling */
+   unsigned int 	ven_gpio;
+   unsigned int 	firm_gpio;
+   unsigned int		irq_gpio;
+   unsigned int       dcdc_gpio;
+   unsigned int       clock_gpio;
+   unsigned int       int_active_low;
 };
 
 static struct pn544_dev    *pn544_dev = NULL;
@@ -175,39 +181,65 @@ static ssize_t pn544_dev_read (struct file *filp, char __user *buf, size_t count
       return -ERESTARTSYS;
    }
    /* Wait for IRQ if not already pending */
- #ifdef ZTE_IRQ_LOW   
-   while (gpio_get_value(irq_gpio)) {
- #else
-   while (!gpio_get_value(irq_gpio)) {
- #endif
-      /* Not ready to read data, release semaphore */
-      up(&pn544->sem);
-      /* Handle non-blocking calls */
-      if (filp->f_flags & O_NONBLOCK) {
-         return -EAGAIN;
-      }
-
-#ifdef ZTE_NFC_DEBUG
-     printk("pn544-dev: wait for incoming data.\n");
-#else
-      pr_debug("pn544-dev: wait for incoming data.\n");
-#endif
-
-     /* Sleep until the IRQ comes */
-    /*这个函数睡眠之后不会被调度，需要在中断或定时器中wake_up_interruptible()	  
-        之后才会被调度去判决gpio_get_value(irq_gpio)!=0  */
- #ifdef ZTE_IRQ_LOW
-   if (wait_event_interruptible(pn544->read_queue, (gpio_get_value(irq_gpio)==0))) {
-#else
-  if (wait_event_interruptible(pn544->read_queue, (gpio_get_value(irq_gpio)!=0))) {
-#endif
-		 return -ERESTARTSYS; /* signal: tell the fs layer to handle it */
-      }
-      /* Loop, but first reacquire the lock (to avoid multiple read concurrency) */
-      if (down_interruptible(&pn544->sem)) {
-         return -ERESTARTSYS;
-      }
+   if(pn544_dev->int_active_low==1)
+   {
+        while (gpio_get_value(irq_gpio)) {
+           /* Not ready to read data, release semaphore */
+           up(&pn544->sem);
+           /* Handle non-blocking calls */
+           if (filp->f_flags & O_NONBLOCK) {
+              return -EAGAIN;
+           }
+     
+     #ifdef ZTE_NFC_DEBUG
+          printk("pn544-dev: wait for incoming data.\n");
+     #else
+           pr_debug("pn544-dev: wait for incoming data.\n");
+     #endif
+     
+          /* Sleep until the IRQ comes */
+         /*这个函数睡眠之后不会被调度，需要在中断或定时器中wake_up_interruptible()	  
+             之后才会被调度去判决gpio_get_value(irq_gpio)!=0  */
+        if (wait_event_interruptible(pn544->read_queue, (gpio_get_value(irq_gpio)==0))) {
+     		 	 return -ERESTARTSYS; /* signal: tell the fs layer to handle it */
+              	}
+     
+     
+           /* Loop, but first reacquire the lock (to avoid multiple read concurrency) */
+           if (down_interruptible(&pn544->sem)) {
+              return -ERESTARTSYS;
+           }
+        }
    }
+   else
+   {
+           while (!gpio_get_value(irq_gpio)) {
+           /* Not ready to read data, release semaphore */
+           up(&pn544->sem);
+           /* Handle non-blocking calls */
+           if (filp->f_flags & O_NONBLOCK) {
+              return -EAGAIN;
+           }
+     
+     #ifdef ZTE_NFC_DEBUG
+          printk("pn544-dev: wait for incoming data.\n");
+     #else
+           pr_debug("pn544-dev: wait for incoming data.\n");
+     #endif
+     
+          /* Sleep until the IRQ comes */
+         /*这个函数睡眠之后不会被调度，需要在中断或定时器中wake_up_interruptible()	  
+             之后才会被调度去判决gpio_get_value(irq_gpio)!=0  */
+         if (wait_event_interruptible(pn544->read_queue, (gpio_get_value(irq_gpio)!=0))) {
+               	 return -ERESTARTSYS; /* signal: tell the fs layer to handle it */
+     		}
+     
+           /* Loop, but first reacquire the lock (to avoid multiple read concurrency) */
+           if (down_interruptible(&pn544->sem)) {
+              return -ERESTARTSYS;
+           }
+        }
+  }
 
    /* Read data */
    ret = i2c_master_recv(client, tmp, count);
@@ -334,6 +366,180 @@ static int pn544_dev_release(struct inode *inode, struct file *file)
    return 0;
 }
 
+#if 0
+static int pn544_dev_ioctl(struct inode *inode, struct file *filp,unsigned int cmd, unsigned long arg)
+{
+
+	void __user *argp = (void __user *)arg;
+	char buf[8];
+	int ret = -1;
+
+	if (copy_from_user(&buf, argp, sizeof(buf)))
+			return -EFAULT;
+
+	switch (cmd) {
+	case PN544_SET_PWR:
+		ret = pn544_set_power();
+		if (ret < 0)
+			return ret;
+		break;
+		
+	default:
+		return -ENOTTY;
+	}
+
+	return 0;
+}
+
+#else
+static int pn544_dev_ioctl(struct inode *inode, struct file *filp,unsigned int cmd, unsigned long arg)
+
+{
+//	struct pn544_dev *pn544_dev = filp->private_data;
+
+	switch (cmd) {
+	case PN544_SET_PWR:
+		if (arg == 2) {
+			/* power on with firmware download (requires hw reset) */
+	#ifdef ZTE_NFC_DEBUG		 
+			printk("%s power on with firmware\n", __func__);
+	#endif
+			gpio_set_value(pn544_dev->ven_gpio, 0);
+			gpio_set_value(pn544_dev->firm_gpio, 1);
+			msleep(10);
+			gpio_set_value(pn544_dev->ven_gpio, 1);
+			msleep(50);
+			gpio_set_value(pn544_dev->ven_gpio, 0);
+			msleep(10);
+		} else if (arg == 1) {
+			/* power on */
+		#ifdef ZTE_NFC_DEBUG	
+			printk("%s power on with ioctl cmd\n", __func__);
+		#endif
+			gpio_set_value(pn544_dev->firm_gpio, 0);
+			gpio_set_value(pn544_dev->ven_gpio, 0);
+			msleep(10);
+		} else  if (arg == 0) {
+			/* power off */
+		#ifdef ZTE_NFC_DEBUG	
+			printk("%s power off with ioctl cmd\n", __func__);
+		#endif
+		       gpio_set_value(pn544_dev->firm_gpio, 0);
+			gpio_set_value(pn544_dev->ven_gpio, 1);
+			msleep(10);
+		} else {
+		//	printk("%s bad arg %d\n", __func__, arg);
+			return -EINVAL;
+		}
+		break;
+	default:
+		printk("%s bad ioctl %d\n", __func__, cmd);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+#endif
+
+static int nxp_pn544_reset(void)
+{
+	int rc;
+	
+     //1. set NXP_PN544_DOWNLOAD_GPIO to 0
+     if(pn544_dev->firm_gpio !=0)
+     {
+          rc = gpio_tlmm_config(GPIO_CFG(pn544_dev->firm_gpio, 0,
+    				GPIO_OUTPUT, GPIO_PULL_DOWN,
+    				GPIO_2MA), GPIO_ENABLE);
+    	  if (rc) {
+    			printk(KERN_ERR"%s: Could not configure nfc gpio %d\n",
+    					__func__, pn544_dev->firm_gpio);
+    			 return -EIO;
+    		   }
+    
+    	 rc = gpio_request(pn544_dev->firm_gpio, "nxp_pn544_download");
+    	 if (rc) {
+    			printk(KERN_ERR"%s: unable to request nfc gpio %d (%d)\n",
+    					__func__, pn544_dev->firm_gpio, rc);
+    			 return -EIO;
+    		    }
+         gpio_direction_output(pn544_dev->firm_gpio, 0);
+     }
+
+      //2. set NXP_PN544_REQ_CLOCK_GPIO to 1???
+     if(pn544_dev->clock_gpio !=0)
+     {
+            rc = gpio_tlmm_config(GPIO_CFG(pn544_dev->clock_gpio, 0,
+       				GPIO_OUTPUT, GPIO_NO_PULL,
+       				GPIO_2MA), GPIO_ENABLE);
+       	if (rc) {
+       			printk(KERN_ERR"%s: Could not configure nfc gpio %d\n",
+       					__func__, pn544_dev->clock_gpio);
+       			 return -EIO;
+       		   }
+       
+       	rc = gpio_request(pn544_dev->clock_gpio, "nxp_pn544_req_clock");
+       	if (rc) {
+       			printk(KERN_ERR"%s: unable to request nfc gpio %d (%d)\n",
+       					__func__, pn544_dev->clock_gpio, rc);
+       			 return -EIO;
+       		    }
+            gpio_direction_output(pn544_dev->clock_gpio, 1);
+     	}	 
+
+     //3. set NXP_PN544_DCDC_GPIO to 1
+     if( pn544_dev->dcdc_gpio!=0)
+     {
+            rc = gpio_tlmm_config(GPIO_CFG(pn544_dev->dcdc_gpio, 0,
+       				GPIO_OUTPUT, GPIO_NO_PULL,
+       				GPIO_2MA), GPIO_ENABLE);
+       	if (rc) {
+       			printk(KERN_ERR"%s: Could not configure nfc gpio %d\n",
+       					__func__, pn544_dev->dcdc_gpio);
+       			 return -EIO;
+       		   }
+       
+       	rc = gpio_request(pn544_dev->dcdc_gpio, "nxp_pn544_dcdc");
+       	if (rc) {
+       			printk(KERN_ERR"%s: unable to request nfc gpio %d (%d)\n",
+       					__func__, pn544_dev->dcdc_gpio, rc);
+       			 return -EIO;
+       		    }
+            gpio_direction_output(pn544_dev->dcdc_gpio, 1);
+     	}
+	 
+       //4. set NXP_PN544_ENABLE_GPIO to 0_1_0
+       if(pn544_dev->ven_gpio !=0)
+       {
+       	rc = gpio_tlmm_config(GPIO_CFG(pn544_dev->ven_gpio, 0,
+       				GPIO_OUTPUT, GPIO_NO_PULL,
+       				GPIO_2MA), GPIO_ENABLE);
+       	if (rc) {
+       			printk(KERN_ERR"%s: Could not configure nfc gpio %d\n",
+       					__func__, pn544_dev->ven_gpio);
+       			 return -EIO;
+       		   }
+       
+       	rc = gpio_request(pn544_dev->ven_gpio, "nxp_pn544_en");
+       	if (rc) {
+       			printk(KERN_ERR"%s: unable to request nfc gpio %d (%d)\n",
+       					__func__,pn544_dev->ven_gpio, rc);
+       			 return -EIO;
+       		    }
+       
+              gpio_direction_output(pn544_dev->ven_gpio, 0);
+       	mdelay(10);
+       	gpio_direction_output(pn544_dev->ven_gpio, 1);
+       	mdelay(50);
+       	gpio_direction_output(pn544_dev->ven_gpio, 0);
+       	mdelay(10);
+       }
+
+	return 0;
+}
+
+
 static const struct file_operations pn544_dev_fops = {
    .owner            = THIS_MODULE,
    .llseek           = no_llseek,
@@ -341,6 +547,7 @@ static const struct file_operations pn544_dev_fops = {
    .write            = pn544_dev_write,
    .open             = pn544_dev_open,
    .release          = pn544_dev_release,
+  .ioctl             = pn544_dev_ioctl,
 /*   .poll             = pn544_dev_poll, */
 };
 
@@ -352,7 +559,8 @@ static int pn544_probe(
    struct i2c_client *client, const struct i2c_device_id *id)
 {
    int               ret;
-
+   struct pn544_i2c_platform_data *pdata;
+   
    if (pn544_dev != NULL) {
       printk(KERN_ERR "pn544_probe: multiple devices NOT supported\n");
       ret = -ENODEV;
@@ -372,6 +580,22 @@ static int pn544_probe(
       goto err_alloc_data_failed;
    }
    pn544_dev->client = client;
+   pdata = client->dev.platform_data;
+   if (pdata) {
+		pn544_dev->irq_gpio=pdata->irq_gpio;
+		pn544_dev->firm_gpio=pdata->firm_gpio;
+		pn544_dev->ven_gpio=pdata->ven_gpio;
+		pn544_dev->clock_gpio=pdata->clock_gpio;
+		pn544_dev->dcdc_gpio=pdata->dcdc_gpio;
+		pn544_dev->int_active_low=pdata->int_active_low;
+		printk( "pn544_probe: gpio config data,irq=%d,download=%d,ven=%d,clock=%d,dcdc=%d,int_active_low=%d\n",pn544_dev->irq_gpio,pn544_dev->firm_gpio,pn544_dev->ven_gpio,pn544_dev->clock_gpio,pn544_dev->dcdc_gpio,pn544_dev->int_active_low);
+   }
+   else
+   {
+   	printk(KERN_ERR "pn544_probe: no gpio config data\n");
+      ret = -ENODEV;
+      goto err_alloc_data_failed;
+   }
 
    /* init semaphore and queues */
    sema_init(&pn544_dev->sem, 1);
@@ -393,14 +617,25 @@ static int pn544_probe(
       goto err_device_create_file_failed;
    }
 
+   ret =nxp_pn544_reset();
+   if (ret < 0) {
+      printk(KERN_ERR "pn544: can't reset device\n");
+       goto err_device_create_file_failed;
+   }
+
    /* set irq/polling mode */
    if (client->irq && !pn544_disable_irq) {
-#ifdef ZTE_IRQ_LOW 	
-     ret = request_irq(client->irq, pn544_dev_irq_handler, IRQF_TRIGGER_FALLING, client->name, pn544_dev);
-#else
-    ret = request_irq(client->irq, pn544_dev_irq_handler, IRQF_TRIGGER_RISING, client->name, pn544_dev);
-#endif
-	  if (ret == 0) {
+	
+    if(pn544_dev->int_active_low==1)
+    {
+          ret = request_irq(client->irq, pn544_dev_irq_handler, IRQF_TRIGGER_FALLING, client->name, pn544_dev);
+    }
+    else
+    {
+         ret = request_irq(client->irq, pn544_dev_irq_handler, IRQF_TRIGGER_RISING, client->name, pn544_dev);
+    }
+	
+    if (ret == 0) {
          pn544_dev->use_irq = 1;
       }
       else {
@@ -414,6 +649,7 @@ static int pn544_probe(
    }
 
    printk(KERN_INFO "pn544_probe: Start in %s mode,IRQ=%d,GPIO=%d\n", pn544_dev->use_irq ? "interrupt" : "polling",client->irq,INT_TO_MSM_GPIO(client->irq));
+
 
    return 0;
 
@@ -465,19 +701,12 @@ static struct i2c_driver pn544_driver = {
 /*
  * module load/unload record keeping
  */
-extern int nxp_pn544_reset(void);
 static int __init pn544_dev_init(void)
 {
    int ret;
 
    printk(KERN_INFO "pn544 /dev/pn544 entry driver\n");
 
-   ret =nxp_pn544_reset();
-   if (ret < 0) {
-      printk(KERN_ERR "pn544: can't reset device\n");
-      return ret;
-   }
-   
    /*1. slf note 20110328--->申请一个设备号,并且将其注册到字符
    设备驱动模型中.:  proc/devices/pn544 。
    函数 register_chrdev   的第一个参数如果为 0，   表示由内核来确

@@ -60,6 +60,9 @@ struct mutex vfe_lock;
 static void     *vfe_syncdata;
 static uint8_t vfestopped;
 
+//lijing modify for high current,merged from patch CRs-Fixed: 280060,ZTE_CAM_20110810
+static int cnt;
+
 static struct stop_event stopevent;
 
 static void vfe_7x_convert(struct msm_vfe_phy_info *pinfo,
@@ -196,6 +199,11 @@ static int vfe_7x_enable(struct camera_enable_cmd *enable)
 	else if (!strcmp(enable->name, "VFETASK"))
 		rc = msm_adsp_enable(vfe_mod);
 
+    //lijing modify for high current,merged from patch CRs-Fixed: 280060,ZTE_CAM_20110810
+	if (!cnt) {
+		add_axi_qos();
+		cnt++;
+	}
 	return rc;
 }
 
@@ -254,8 +262,10 @@ static void vfe_7x_release(struct platform_device *pdev)
 	kfree(extdata);
 	extlen = 0;
 
-	/* set back the AXI frequency to default */
-	update_axi_qos(PM_QOS_DEFAULT_VALUE);
+    //lijing modify for high current,merged from patch CRs-Fixed: 280060,ZTE_CAM_20110810
+    /* Release AXI */
+    release_axi_qos();
+    cnt = 0;
 }
 
 static int vfe_7x_init(struct msm_vfe_callback *presp,

@@ -16,6 +16,11 @@
  * GNU General Public License for more details.
  *
  */
+/*===========================================================================
+when       who       what, where, why                                                comment tag
+--------   ----    -------------------------------------    ----------------------------------
+2010-2-2 chenjun  fix CRDB00443050                                              ZTE_CJ_CRDB00443050
+===========================================================================*/
 
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -1474,6 +1479,7 @@ static void audaac_post_event(struct audio *audio, int type,
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
+/* ZTE_CJ_CRDB00443050, chenjun, 2010-2-2, start */
 static void audaac_suspend(struct early_suspend *h)
 {
 	struct audaac_suspend_ctl *ctl =
@@ -1495,6 +1501,7 @@ static void audaac_resume(struct early_suspend *h)
 	audaac_post_event(ctl->audio, AUDIO_EVENT_RESUME, payload);
 	resume_prevent_suspend();
 }
+/* ZTE_CJ_CRDB00443050, chenjun, 2010-2-2, end */
 #endif
 
 #ifdef CONFIG_DEBUG_FS

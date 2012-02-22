@@ -20,6 +20,9 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-07-14   lijing       move motor to original position after    ZTE_CAM_LJ_20110714
+                            snapshot
+  2011-06-02   lijing       fix bug of high current in sleep mode    ZTE_CAM_LJ_20110602
 
 ------------------------------------------------------------------------------------------*/
 
@@ -238,7 +241,10 @@ static int s5k5cagx_mcnex_qtech_hard_standby(const struct msm_camera_sensor_info
 
     if(on == 1)
     {
-     
+        /*
+         * ZTE_CAM_LJ_20110602
+         * fix bug of high current in sleep mode
+         */
         rc = s5k5cagx_mcnex_qtech_i2c_write(s5k5cagx_mcnex_qtech_client->addr, 0x0028, 0x7000, WORD_LEN);
         if(rc < 0)
         {
@@ -1489,7 +1495,11 @@ rc = s5k5cagx_mcnex_qtech_i2c_write(s5k5cagx_mcnex_qtech_client->addr, 0x0F12, 0
  {
   return rc;
  } 
- #if 0
+/*
+ * ZTE_CAM_LJ_20110714
+ * Move motor to original position
+ */
+ #if 1
 rc = s5k5cagx_mcnex_qtech_i2c_write(s5k5cagx_mcnex_qtech_client->addr, 0x002a, 0x0252, WORD_LEN);
  if (rc < 0)
  {
@@ -2374,7 +2384,10 @@ static int s5k5cagx_mcnex_qtech_sensor_init(const struct msm_camera_sensor_info 
     }
     mdelay(10);
     
-
+    /*
+     * ZTE_CAM_LJ_20110602
+     * fix bug of high current in sleep mode
+     */
     rc = s5k5cagx_mcnex_qtech_i2c_write(s5k5cagx_mcnex_qtech_client->addr, 0x0028, 0x7000, WORD_LEN);
     if(rc < 0)
     {

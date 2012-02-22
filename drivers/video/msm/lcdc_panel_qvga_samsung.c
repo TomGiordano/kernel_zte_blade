@@ -149,6 +149,7 @@ static void lcdc_samsung_init(void)
 
 //display on
 	gpio_lcd_emuspi_write_more_para(0,0x29);
+	msleep(150);                                     
 
 	pr_debug("lcd module samsung init exit!\n");
 	

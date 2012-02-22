@@ -16,7 +16,13 @@
  *
  */
 
-
+/*histstory:
+ when       who     what, where, why                                            comment tag
+ --------   ----    ---------------------------------------------------    ----------------------------------
+ 2009-12-21 	luya    disable clk set for the 1st time 										 LCD_LUYA_20100610_01
+ 2010-03-08   luya		not config LCDC_MUX_CTL to 0 when sleep						 ZTE_LCD_LUYA_20100308_001
+ 2010-08-10   lht		729 lead panel VCI keep when sleep						 ZTE_LCD_LHT_20100810_001
+*/
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -44,7 +50,7 @@ static int lcdc_remove(struct platform_device *pdev);
 
 static int lcdc_off(struct platform_device *pdev);
 static int lcdc_on(struct platform_device *pdev);
-#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA  
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   //ZTE_LCD_LHT_20100810_001
 extern u32 LcdPanleID;
 #endif
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
@@ -53,7 +59,7 @@ static int pdev_list_cnt;
 static struct clk *pixel_mdp_clk; /* drives the lcdc block in mdp */
 static struct clk *pixel_lcdc_clk; /* drives the lcdc interface */
 
-static boolean be_firsttime = true;			
+static boolean be_firsttime = true;			///LCD_LUYA_20100610_01
 static struct platform_driver lcdc_driver = {
 	.probe = lcdc_probe,
 	.remove = lcdc_remove,
@@ -77,19 +83,18 @@ static int lcdc_off(struct platform_device *pdev)
 
 	clk_disable(pixel_mdp_clk);
 	clk_disable(pixel_lcdc_clk);
-#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   //ZTE_LCD_LHT_20100810_001
 	if(LcdPanleID!=42)	
 	{
 		if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
 			lcdc_pdata->lcdc_power_save(0);
 	}
 #elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)||defined(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA)
-
 #else
 	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
 			lcdc_pdata->lcdc_power_save(0);
 #endif
-	
+	///ZTE_LCD_LUYA_20100308_001
 /*	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
 		ret = lcdc_pdata->lcdc_gpio_config(0);*/
 
@@ -171,7 +176,7 @@ out:
 	return ret;
 
 #else
-
+///ZTE_LCD_LUYA_20091221_001		LCD_LUYA_20100610_01
 	if(!be_firsttime)
 	{
 	ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);

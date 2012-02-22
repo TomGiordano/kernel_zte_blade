@@ -30,6 +30,27 @@ config GSENSORS_FROM_AUXI2C_TO_I2C
 	help
 	  Here is one feature to match hardware ,used by fya.
 
+config SENSORS_ONA3301
+	tristate "ONA3301 ambient light sensor"
+	depends on EXPERIMENTAL
+	help
+	  If you say yes here you get support for the ONA3301
+	  ambient light sensor.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called ONA3301.
+
+config SENSORS_ISL29026
+	tristate "ISL29026 ambient light sensor"
+	depends on EXPERIMENTAL
+	help
+	  If you say yes here you get support for the ISL29026
+	  ambient light sensor.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called ISL29026.
+
+
 config SENSORS_TSL2550
 	tristate "Taos TSL2550 ambient light sensor"
 	depends on EXPERIMENTAL

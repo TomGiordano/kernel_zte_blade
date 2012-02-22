@@ -722,6 +722,36 @@ config TOUCHSCREEN_CYPRESS_I2C_RMI
        tristate "MXT224 based touchscreens"
        depends on I2C
        default n 
+ config TOUCHSCREEN_MXT224_NEW
+       tristate "MXT224 NEW based touchscreens"
+       depends on I2C
+       default n        
+ config ATMEL_FW_UPDATE   
+        tristate "MXT224 based touchscreens for fimeware update"
+       depends on I2C
+       default n 
+ config ATMEL_FW_UPDATE_224   
+        tristate "MXT224 224 based touchscreens for fimeware update"
+       depends on I2C
+       default n 
+       
+ config ATMEL_FW_UPDATE_140   
+        tristate "MXT224 140 based touchscreens for fimeware update"
+       depends on I2C
+       default n 
+         
+ config TOUCHSCREEN_MXT224_P736V
+       tristate "MXT224 based touchscreens for p736v"
+       depends on I2C
+       default n 
+config TOUCHSCREEN_MXT224_N760
+       tristate "MXT224 based touchscreens for N760"
+       depends on I2C
+       default n 
+config TOUCHSCREEN_MXT224_P743F
+       tristate "MXT224 based touchscreens for P743"
+       depends on I2C
+       default n 
 config TOUCHSCREEN_CYTTSP_I2C
        tristate "Cypress TTSP based touchscreens"
        depends on I2C
@@ -744,7 +774,7 @@ config TOUCHSCREEN_CYTTSP_I2C
 
 #ZTE_TS_XYM_20110711  begin
  config TOUCHSCREEN_FOCALTECH_NEW
-       tristate "FocalTech touchscreen"
+       tristate "FocalTech touchscreen new"
        depends on I2C
        default n
 #ZTE_TS_XYM_20110711  end
@@ -755,4 +785,12 @@ config TOUCHSCREEN_VIRTUAL_KEYS
 config MINI_RACER
        tristate "mini racer"
        default n 
+
+config FTS_USB_NOTIFY
+		tristate "notify touchscrenn about usb plugin/plugout event"
+		default n 
+
+config SUPPORT_FTS_CTP_UPG
+		tristate "FOCALTECH firmware update"
+		default n 
 endif

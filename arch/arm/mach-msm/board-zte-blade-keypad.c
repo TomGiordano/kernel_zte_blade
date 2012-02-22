@@ -35,7 +35,7 @@ static unsigned int keypad_col_gpios[] = {37, 41, 40};
 #define KEYMAP_INDEX(row, col) ((row)*ARRAY_SIZE(keypad_col_gpios) + (col))
 
 
-static const unsigned short keypad_keymap_mooncake[ARRAY_SIZE(keypad_col_gpios) *
+static const unsigned short keypad_keymap_blade[ARRAY_SIZE(keypad_col_gpios) *
 					      ARRAY_SIZE(keypad_row_gpios)] = {
 	/*                       row, col   */
 	[KEYMAP_INDEX(0, 0)] = KEY_BACK, 
@@ -47,7 +47,7 @@ static const unsigned short keypad_keymap_mooncake[ARRAY_SIZE(keypad_col_gpios) 
 };
 
 
-static const unsigned short mooncake_keypad_virtual_keys[] = {
+static const unsigned short blade_keypad_virtual_keys[] = {
 	KEY_END,
 	KEY_POWER
 };
@@ -80,12 +80,12 @@ void zte_get_gpio_for_key(int *keycode)
 	
 }
 
+//<<------LHX_PM_20110506_01 get which GPIO for BACK HOME MENU
 #endif
-
-/* mooncake keypad platform device information */
-static struct gpio_event_matrix_info mooncake_keypad_matrix_info = {
+/* blade keypad platform device information */
+static struct gpio_event_matrix_info blade_keypad_matrix_info = {
 	.info.func	= gpio_event_matrix_func,
-	.keymap		= keypad_keymap_mooncake,
+	.keymap		= keypad_keymap_blade,
 	.output_gpios	= keypad_row_gpios,
 	.input_gpios	= keypad_col_gpios,
 	.noutputs	= ARRAY_SIZE(keypad_row_gpios),
@@ -100,43 +100,44 @@ static struct gpio_event_matrix_info mooncake_keypad_matrix_info = {
 #endif
 };
 
-static struct gpio_event_info *mooncake_keypad_info[] = {
-	&mooncake_keypad_matrix_info.info
+static struct gpio_event_info *blade_keypad_info[] = {
+	&blade_keypad_matrix_info.info
 };
 
-static struct gpio_event_platform_data mooncake_keypad_data = {
-	.name		= "blade_keypad",  
-	.info		= mooncake_keypad_info,
-	.info_count	= ARRAY_SIZE(mooncake_keypad_info)
+static struct gpio_event_platform_data blade_keypad_data = {
+	.name		= "blade_keypad",
+	.info		= blade_keypad_info,
+	.info_count	= ARRAY_SIZE(blade_keypad_info)
 };
 
-struct platform_device keypad_device_mooncake = {
+struct platform_device keypad_device_blade = {
 	.name	= GPIO_EVENT_DEV_NAME,
 	.id	= -1,
 	.dev	= {
-		.platform_data	= &mooncake_keypad_data,
+		.platform_data	= &blade_keypad_data,
 	},
 };
 
+/* ZTE_FTM_MODE_WLY_001, @2009-12-11, START*/
 #ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 extern int zte_get_ftm_flag(void);
 #endif
-
-static int __init mooncake_init_keypad(void)
+/* ZTE_FTM_MODE_WLY_001, @2009-12-11, END*/
+static int __init blade_init_keypad(void)
 {
-        
+        /* ZTE_FTM_MODE_WLY_001, @2009-12-11, START*/
 	#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	int ftm_flag;
 	ftm_flag = zte_get_ftm_flag();
 	if (1 ==ftm_flag)return 0;
 	#endif
-        
-	mooncake_keypad_matrix_info.keymap = keypad_keymap_mooncake;
+        /* ZTE_FTM_MODE_WLY_001, @2009-12-11, START*/
+	blade_keypad_matrix_info.keymap = keypad_keymap_blade;
 #ifdef CONFIG_MSM_GPIO_WAKE
-	p_keypad_keymap = mooncake_keypad_matrix_info.keymap;	
+	p_keypad_keymap = blade_keypad_matrix_info.keymap;	//LHX_PM_20110506_01 get which GPIO for BACK HOME MENU
 #endif
-	return platform_device_register(&keypad_device_mooncake);
+	return platform_device_register(&keypad_device_blade);
 }
 
-device_initcall(mooncake_init_keypad);
+device_initcall(blade_init_keypad);
 

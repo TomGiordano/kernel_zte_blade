@@ -17,7 +17,15 @@
  */
 
 /*===========================================================================
-
+when       who       what, where, why                        comment tag
+--------   ----    -------------------------------------    ----------------------------------
+2011--3-2  chenjun  fix CRDB00616634  ZTE_Audio_CJ_110302
+2010-08-31 yangxs  modify for fm to save power 				ZTE_FM_YXS_20100831
+2010-5-17 chenjun  fix CRDB00480912                         ZTE_Audio_CJ_100511
+2010-1-25   chenjun  add snd debug info                       ZTE_Audio_DEBUG_CJ_100125
+2009-12-17 chenjun modify for snd debug                     ZTE_Audio_DEBUG_CJ_091217
+2009-11-8  chenjun  add audio loopback                       ZTE_Audio-LB_CJ_1
+2009-11-10 chenjun  add snd debug info                       ZTE_Audio-DEBUG_CJ_1
 ===========================================================================*/
 
 #include <linux/module.h>
@@ -33,7 +41,12 @@
 #include <mach/board.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/debug_mm.h>
+/* ZTE_Audio_CJ_100302, chenjun, 2010-3-2, start */
+// 2010-3-2:this file merged from 4735
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 #include <linux/switch.h>
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
+/* ZTE_Audio_CJ_100302, chenjun, 2010-3-2, end */
 
 struct snd_ctxt {
 	struct mutex lock;
@@ -41,7 +54,9 @@ struct snd_ctxt {
 	struct msm_rpc_endpoint *ept;
 	struct msm_snd_endpoints *snd_epts;
 
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 	struct switch_dev snd_dev_info;
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
 };
 
 struct snd_sys_ctxt {
@@ -53,11 +68,13 @@ static struct snd_sys_ctxt the_snd_sys;
 
 static struct snd_ctxt the_snd;
 
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 #define SND_DEV 0
 #define EAR_MUTE 1
 #define MIC_MUTE 2
 #define SND_DEV_INFO_NUM 3
 static int keep_snd_dev_info[SND_DEV_INFO_NUM] = {0, 0, 0};
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
 
 #define RPC_SND_PROG	0x30000002
 #define RPC_SND_CB_PROG	0x31000002
@@ -68,11 +85,17 @@ static int keep_snd_dev_info[SND_DEV_INFO_NUM] = {0, 0, 0};
 #define SND_SET_VOLUME_PROC 3
 #define SND_AVC_CTL_PROC 29
 #define SND_AGC_CTL_PROC 30
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
   #define SND_AUDIO_LOOPBACK_PROC 37
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, start */
   #define SND_HPH_AMP_CTL_PROC 38
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, end */
 
+/* ZTE_FM_YXS_20100831 start */
 #define SND_DEVICE_FM_STEREO_HEADSET_ZTE	32
 #define SND_SET_FM_HEADSET_DEVICE_PROC    41
+/* ZTE_FM_YXS_20100831 end */
 
 struct rpc_snd_set_device_args {
 	uint32_t device;
@@ -105,17 +128,21 @@ struct rpc_snd_agc_ctl_args {
 };
 
 
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
 struct rpc_snd_lb_ctl_args {
 	uint32_t lb_ctl;
 	uint32_t cb_func;
 	uint32_t client_data;
 };
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
 
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, start */
 struct rpc_snd_hph_amp_ctl_args {
 	uint32_t amp_ctl;
 	uint32_t cb_func;
 	uint32_t client_data;
 };
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, end */
 
 struct snd_set_device_msg {
 	struct rpc_request_hdr hdr;
@@ -138,15 +165,19 @@ struct snd_agc_ctl_msg {
 };
 
 
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
 struct snd_set_lb_msg {
 	struct rpc_request_hdr hdr;
 	struct rpc_snd_lb_ctl_args args;
 };
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
 
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, start */
 struct snd_hph_amp_msg {
 	struct rpc_request_hdr hdr;
 	struct rpc_snd_hph_amp_ctl_args args;
 };
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, end */
 
 struct snd_endpoint *get_snd_endpoints(int *size);
 
@@ -191,7 +222,9 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct snd_set_volume_msg vmsg;
 	struct snd_avc_ctl_msg avc_msg;
 	struct snd_agc_ctl_msg agc_msg;
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
 	struct snd_set_lb_msg lb_msg;
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
 
 	struct msm_snd_device_config dev;
 	struct msm_snd_volume_config vol;
@@ -199,7 +232,9 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	int rc = 0;
 
 	uint32_t avc, agc;
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
 	uint32_t set_lb;
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
 
 	mutex_lock(&snd->lock);
 	switch (cmd) {
@@ -225,6 +260,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
 		
+		/* ZTE_FM_YXS_20100831 start */
 		#if 0
 		rc = msm_rpc_call(snd->ept,
 			SND_SET_DEVICE_PROC,
@@ -245,12 +281,17 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			&dmsg, sizeof(dmsg), 5 * HZ);
         }
 		#endif
+		/* ZTE_FM_YXS_20100831 end */
+/* ZTE_Audio_DEBUG_CJ_091217, chenjun, 2009-12-17, start */
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
               if (dev.device != 28)
               {
 		    keep_snd_dev_info[SND_DEV] = dev.device;
               }
 		keep_snd_dev_info[EAR_MUTE] = dev.ear_mute;
 		keep_snd_dev_info[MIC_MUTE] = dev.mic_mute;
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
+/* ZTE_Audio_DEBUG_CJ_091217, chenjun, 2009-12-17, end */
 		break;
 
 	case SND_SET_VOLUME:
@@ -332,6 +373,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 start */
 	case SND_SET_AUDIO_LOOPBACK:
 		if (get_user(set_lb, (uint32_t __user *) arg)) {
 			rc = -EFAULT;
@@ -352,6 +394,7 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			SND_AUDIO_LOOPBACK_PROC,
 			&lb_msg, sizeof(lb_msg), 5 * HZ);
 		break;
+/* ZTE_Audio-LB_CJ_1 chenjun 2009-10-28 end */
 
 	default:
 		MM_ERR("unknown command\n");
@@ -360,7 +403,9 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 	mutex_unlock(&snd->lock);
 
+/* ZTE_Audio_DEBUG_CJ_100125, chenjun, 2010-1-25, start */
 		MM_INFO("chenjun:rc = %d\n", rc);
+/* ZTE_Audio_DEBUG_CJ_100125, chenjun, 2010-1-25, end */
 
 	return rc;
 }
@@ -413,6 +458,7 @@ static int snd_open(struct inode *inode, struct file *file)
 		snd->opened = 1;
 	} else {
 		MM_ERR("snd already opened\n");
+/* ZTE_Audio_CJ_110302, chenjun, 2011-03-02, start */
 #if 0
 		rc = -EBUSY;
 #else
@@ -430,6 +476,7 @@ static int snd_open(struct inode *inode, struct file *file)
 		snd->opened = 1;
 		MM_ERR("chenjun:reuse opened-snd\n");
 #endif
+/* ZTE_Audio_CJ_110302, chenjun, 2011-03-02, end */
 	}
 
 err:
@@ -686,6 +733,7 @@ static ssize_t snd_vol_store(struct device *dev,
 	return status ? : size;
 }
 
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, start */
 int snd_hph_amp_ctl(uint32_t on)
 {
 	struct snd_ctxt *snd = &the_snd;
@@ -708,6 +756,7 @@ int snd_hph_amp_ctl(uint32_t on)
     
 	return rc;
 }
+/* ZTE_Audio_CJ_100511, chenjun, 2010-5-11, end */
 
 static DEVICE_ATTR(agc, S_IWUSR | S_IRUGO,
 		NULL, snd_agc_store);
@@ -721,6 +770,7 @@ static DEVICE_ATTR(device, S_IWUSR | S_IRUGO,
 static DEVICE_ATTR(volume, S_IWUSR | S_IRUGO,
 		NULL, snd_vol_store);
 
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 static ssize_t print_snd_dev_name(struct switch_dev *sdev, char *buf)
 {
 	return sprintf(buf, "%s\n", "dev,ear_mute,mic_mute");
@@ -730,6 +780,7 @@ static ssize_t print_snd_dev_state(struct switch_dev *sdev, char *buf)
 {
 	return sprintf(buf, "%d,%d,%d\n", keep_snd_dev_info[SND_DEV], keep_snd_dev_info[EAR_MUTE], keep_snd_dev_info[MIC_MUTE]);
 }
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
 
 static int snd_probe(struct platform_device *pdev)
 {
@@ -780,12 +831,14 @@ static int snd_probe(struct platform_device *pdev)
 		misc_deregister(&snd_misc);
 	}
 
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 	snd->snd_dev_info.name = "snd_debug";
 	snd->snd_dev_info.print_name = print_snd_dev_name;
 	snd->snd_dev_info.print_state = print_snd_dev_state;
 	rc = switch_dev_register(&snd->snd_dev_info);
 	if (rc < 0)
 		switch_dev_unregister(&snd->snd_dev_info);
+/* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
 
 	return rc;
 }

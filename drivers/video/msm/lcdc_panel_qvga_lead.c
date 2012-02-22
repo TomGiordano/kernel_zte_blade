@@ -189,6 +189,7 @@ static void lcdc_lead_init(void)
 	gpio_lcd_emuspi_write_one_para(0x0007,0x0133);     /* 262K color and display ON   */
 
 	gpio_lcd_emuspi_write_one_para(0x000C,0x0100);    /* RGB interface setting */  
+	msleep(150);                                     
 	pr_debug("lcd module lead init exit\n!");
 
 }

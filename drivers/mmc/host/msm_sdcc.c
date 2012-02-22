@@ -1727,13 +1727,28 @@ msmsdcc_probe(struct platform_device *pdev)
 	if (plat->sdiowakeup_irq) {
 		ret = request_irq(plat->sdiowakeup_irq,
 			msmsdcc_platform_sdiowakeup_irq,
+#ifdef CONFIG_ATH_WIFI	
+#ifdef CONFIG_WOW_BY_SDIO_DATA1	
 			IRQF_SHARED | IRQF_TRIGGER_FALLING,
 			DRIVER_NAME "sdiowakeup", host);
+#else			
+			IRQF_DISABLED | IRQF_TRIGGER_RISING,
+			DRIVER_NAME "gpiowakeup", host);
+#endif /*CONFIG_WOW_BY_SDIO_DATA1*/	
+#else			
+			IRQF_SHARED | IRQF_TRIGGER_FALLING,
+			DRIVER_NAME "sdiowakeup", host);
+#endif /*CONFIG_ATH_WIFI*/
 		if (ret) {
 			pr_err("Unable to get sdio wakeup IRQ %d (%d)\n",
 				plat->sdiowakeup_irq, ret);
 			goto irq_free;
 		} else {
+#ifdef CONFIG_WOW_BY_SDIO_DATA1	
+			pr_info("%s use sdiowakup irq\n", mmc_hostname(mmc));
+#else
+			pr_info("%s use WoW EXT GPIO irq\n", mmc_hostname(mmc));
+#endif		
 			//ZTE_ZBS_20110308: NOTE, both ATH and BCM don't use this SDIO wake up IRQ
 			set_irq_wake(plat->sdiowakeup_irq, 1);
 			disable_irq(plat->sdiowakeup_irq);
@@ -1924,7 +1939,7 @@ static int msmsdcc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-#if defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)
+#if defined(CONFIG_BCM_WIFI)
 struct msmsdcc_host *wlan_host;
 void plat_disable_wlan_slot(void)
 {
@@ -1969,7 +1984,7 @@ void plat_enable_wlan_slot(void)
 
 }
 EXPORT_SYMBOL(plat_enable_wlan_slot);
-#endif /*defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)*/
+#endif /*defined(CONFIG_BCM_WIFI)*/
 
 #ifdef CONFIG_BCM_WIFI
 #define BRCM_CRTL_HOST_POWER 1
@@ -2049,18 +2064,12 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 				host->clks_on = 0;
 			}
 		}
-#ifdef CONFIG_ATH_WIFI
-		if (mmc->last_suspend_error) {
-			/* 
-			 * save host for WoW mode 
-			 * Don't enable sdio wakeup irq before system suspend
-			*/
-			wlan_host = host;
-			return 0;
-		}
-#else
-		if (host->plat->sdiowakeup_irq)
+		
+		if (host->plat->sdiowakeup_irq) {
+			pr_info("%s () enable sdiowakeup_irq %d\n", __func__, host->plat->sdiowakeup_irq);
 			enable_irq(host->plat->sdiowakeup_irq);
+		}
+		
         #ifdef CONFIG_BCM_WIFI
         #ifdef BRCM_CRTL_HOST_POWER
 		if (!wifi_host && mmc->card && mmc->card->type == MMC_TYPE_SDIO){
@@ -2069,7 +2078,6 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 	  }	
       #endif
       #endif /*CONFIG_BCM_WIFI*/
-#endif /*CONFIG_ATH_WIFI */
 	}
 	return rc;
 }
@@ -2086,13 +2094,6 @@ msmsdcc_resume(struct platform_device *dev)
 		return 0;
 #endif
 	if (mmc) {
-#ifdef CONFIG_ATH_WIFI
-		if (mmc->last_suspend_error) {
-			wlan_host = host;
-			mmc->last_suspend_error = 0;
-			return 0;
-		}
-#endif /*CONFIG_ATH_WIFI*/
 		spin_lock_irqsave(&host->lock, flags);
 		if (!host->clks_on) {
 			if (!IS_ERR(host->pclk))
@@ -2104,11 +2105,15 @@ msmsdcc_resume(struct platform_device *dev)
 		writel(host->mci_irqenable, host->base + MMCIMASK0);
 
 		spin_unlock_irqrestore(&host->lock, flags);
-#ifdef CONFIG_ATH_WIFI
-if (1) {
-#else
-		if (host->plat->sdiowakeup_irq)
+		
+		if (host->plat->sdiowakeup_irq) {
+			pr_info("%s () disable sdiowakeup_irq %d\n", __func__, host->plat->sdiowakeup_irq);
 			disable_irq(host->plat->sdiowakeup_irq);
+		}
+		
+#ifdef CONFIG_ATH_WIFI
+               if (1) 
+#else
     #ifdef CONFIG_BCM_WIFI
 		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
 		#else
@@ -2118,9 +2123,6 @@ if (1) {
 			mmc_resume_host(mmc);
 		if (host->plat->status_irq)
               enable_irq(host->plat->status_irq);
-#ifdef CONFIG_ATH_WIFI
-}
-#endif
 
 #ifdef CONFIG_BCM_WIFI
 #ifdef BRCM_CRTL_HOST_POWER

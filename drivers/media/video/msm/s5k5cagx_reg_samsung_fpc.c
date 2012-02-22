@@ -17,7 +17,11 @@
  *
  * Created by guoyanling
  */
-
+/*-----------------------------------------------------------------------------------------
+  when         who          what, where, why                         comment tag
+  --------     ----         -------------------------------------    ----------------------
+  2011-06-02   lijing       fix bug of high current in sleep mode    ZTE_CAM_LJ_20110602
+------------------------------------------------------------------------------------------*/
 
 #include "s5k5cagx.h"
 
@@ -3321,7 +3325,10 @@ static struct s5k5cagx_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0F12, 0x0000, WORD_LEN, 1000},
 
 //===============================================================
-
+/*
+ * ZTE_CAM_LJ_20110602
+ * fix bug of high current in sleep mode
+ */
 #if 0
     {0xFCFC, 0xD000, WORD_LEN, 0},    
     {0x0028, 0x7000, WORD_LEN, 0},

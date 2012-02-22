@@ -20,6 +20,30 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-03-07   wt           change image_width and  image_height    WT_CAM_20110307
+                             of preview for zoom
+  2010-12-24   lijing       update pll setting to resolve init       ZTE_CAM_LJ_20101224
+                            failure problem
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-12-07   jia          modify pll setting to fix abnormal       ZTE_JIA_CAM_20101207
+                            preview problem
+  2010-11-25   jia          modify time delay in init process        ZTE_JIA_CAM_20101125
+                            recommended by Aptina
+  2010-10-22   jia          modify PLL setting to fix abnormal       ZTE_JIA_CAM_20100930
+                            preview problem
+  2010-09-30   lijing       update wb setting for invalidation       ZTE_LJ_CAM_20100930
+                            i.e., add time delay of 500ms for
+                            register of "0x8404" in MWB
+  2010-09-07   lijing       fix WB_AUTO setting error                ZTE_LJ_CAM_20100907
+  2010-08-24   lijing       update wb settings                       ZTE_LJ_CAM_20100824
+  2010-07-20   jia          Improve effect for lab test,             JIA_CAM_20100720
+                            Improve effect of AF
+  2010-06-22   ye.ganlin    Add config for loading LSC config        YGL_CAM_20100622
+                            from OTP memory
+  2010-06-14   ye.ganlin    add new settings such as effect          YGL_CAM_20100613
+  2010-01-25   li.jing      add new settings for 3.0 version         ZTE_MSM_CAMERA_LIJING_001
+  2010-01-18   li.jing      rotate camera preview and snapshot image ZTE_MSM_CAMERA_LIJING_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "mt9p111.h"
@@ -143,7 +167,7 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0xC870, 0x0014, WORD_LEN, 0}, 	// CAM_CORE_A_RX_FIFO_TRIGGER_MARK
     {0xC8B8, 0x0004, WORD_LEN, 0}, 	// CAM_OUTPUT_0_JPEG_CONTROL
     {0xC8AE, 0x0001, WORD_LEN, 0}, 	// CAM_OUTPUT_0_OUTPUT_FORMAT
-    // change image_width and image_height of preview for zoom
+    //WT_CAM_20110307 change image_width and image_height of preview for zoom
     {0xC8AA, 0x0400, WORD_LEN, 0}, 	// CAM_OUTPUT_0_IMAGE_WIDTH
     {0xC8AC, 0x0300, WORD_LEN, 0}, 	// CAM_OUTPUT_0_IMAGE_HEIGHT
     
@@ -689,7 +713,9 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     {0x098E, 0x0016, WORD_LEN, 0}, 	// LOGICAL_ADDRESS_ACCESS [MON_ADDRESS_LO]
     {0x8016, 0x086C, WORD_LEN, 0}, 	// MON_ADDRESS_LO                     
 
- 
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 100ms to 200ms recommended by Aptina
+     */
     {0x8002, 0x0001, WORD_LEN, 200},// MON_CMD
                                 
     //Char setting              
@@ -1306,7 +1332,9 @@ static struct mt9p111_i2c_reg_conf const pll_setup_tbl[] = {
     {0x001E, 0x0575, WORD_LEN, 0}, 	// PAD_SLEW_PAD_CONFIG
     {0x0022, 0x0030, WORD_LEN, 0}, 	// VDD_DIS_COUNTER
 
-
+    /* ZTE_JIA_CAM_20100930
+     * modify PLL setting to fix abnormal preview problem, from 0x7F78 to 0x7F7E
+     */
     {0x002A, 0x7F7E, WORD_LEN, 0},
 
     {0x002C, 0x0000, WORD_LEN, 0},
@@ -1316,13 +1344,17 @@ static struct mt9p111_i2c_reg_conf const pll_setup_tbl[] = {
 
 //new settings from USA for version 3.0
 static struct mt9p111_i2c_reg_conf const sequencer_tbl[] = {
- 
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 50ms to 150ms recommended by Aptina
+     */
     {0x8404, 0x05,   BYTE_LEN, 150}, 	// SEQ_CMD         
 
     {0xAC02, 0x00FF, WORD_LEN, 0}, 	    // AWB_ALGO      
     {0xAC02, 0x00FF, WORD_LEN, 0}, 	    // AWB_ALGO      
 
-
+    /* ZTE_JIA_CAM_20101125
+     * modify time delay from 50ms to 150ms recommended by Aptina
+     */
     {0x8404, 0x06,   BYTE_LEN, 150},    // SEQ_CMD         
 
     {0x0018, 0x2008, WORD_LEN, 100}, 	// STANDBY_CONTROL_AND_STATUS

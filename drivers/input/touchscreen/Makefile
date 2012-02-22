@@ -76,12 +76,13 @@ issp-firmware-objs := issp_driver_routines.o issp_routines.o download_main.o
 obj-$(CONFIG_TOUCHSCREEN_CYPRESS_I2C_RMI)	+= cypress_i2c_rmi.o
 #ZTE_TOUCH_WLY_001,@2010-03-29,end
 obj-$(CONFIG_TOUCHSCREEN_MXT224)       += mXT224_atmel.o atmel_config.o
+obj-$(CONFIG_TOUCHSCREEN_MXT224_NEW)       += mXT224_atmel_new.o atmel_config.o
 obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C)       += cyttsp-i2c.o
 #ZTE_TS_ZFJ_20110124, begin
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH)	+= ft5x0x_ts.o
 #ZTE_TS_ZFJ_20110124, end
 #ZTE_TS_XYM_20110711 begin
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	+= ft5x0x_ts_new.o
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	+= ft5x0x_ts_new.o ft5x0x_ts_fwup.o
 #ZTE_TS_XYM_20110711 end
 #ZTE_TS_XYM_20110715 begin
 obj-$(CONFIG_TOUCHSCREEN_CY8CTST241)		+= cy8ctst241.o

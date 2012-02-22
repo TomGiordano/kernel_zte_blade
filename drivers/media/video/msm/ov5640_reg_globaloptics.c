@@ -20,7 +20,19 @@
 /*-----------------------------------------------------------------------------------------
   when             who              what, where, why                                                 comment tag
   --------     --------     -------------------------------------   ---------------------------
-
+2011-07-08   ygl        Ken modified for SNR test                             ZTE_YGL_CAM_20110708
+2011-07-01   wangtao    neil modified for clolor special effect               WT_CAM_20110701
+                        cannt reserver reg(w/r )    
+2011-06-21   wangtao    kenxu add for reduce noise under dark condition       WT_CAM_20110621
+                        neil add color matrix              
+2011-05-06   wangtao    update lens shading(5800-583d)                        WT_CAM_20110506
+2011-04-28   wangtao    disable night model                                   WT_CAM_20110428
+2011-04-11   wangtao    change reg 5580 init position                         WT_CAM_20110411
+2011-03-31   wangtao    modified for lens shading and display green           WT_CAM_20110331
+2011-03-10   wangtao    add ov5640 5.0MP skate romer for orientation          WT_CAM_20110310
+2011-03-10   wangtao    add ov5640 5.0MP effect / wb / bright                 WT_CAM_20110127
+                        reduce snap time by neil ov            
+2011-01-27   wangtao    add ov5640 5.0MP af setting by set register            WT_CAM_20110127
 ------------------------------------------------------------------------------------------*/
 
 #include "ov5640.h"
@@ -77,12 +89,13 @@ static struct ov5640_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
 {0x3c0a, 0x009c, WORD_LEN, 0},
 {0x3c0b, 0x0040, WORD_LEN, 0},
 
-#if defined(CONFIG_MACH_ROAMER)||defined(CONFIG_MACH_BLADE2) 
+//ZTE_CAM_GYL_20110802
+#if defined(CONFIG_MACH_ROAMER) ||defined(CONFIG_MACH_BLADE2) ||defined(CONFIG_MACH_BLUETICK)||defined(CONFIG_MACH_SAILBOAT)//WT_CAM_20110310
 {0x3820, 0x0047, WORD_LEN, 0},//up down switch to change bit2  bit1 wangtao 20110127
 {0x3821, 0x0001, WORD_LEN, 0},//left right switch to change bit2  bit1 wangtao 20110127
 #endif
 
-#if defined(CONFIG_MACH_SKATE) 
+#if defined(CONFIG_MACH_SKATE) //WT_CAM_20110310
 {0x3820, 0x0041, WORD_LEN, 0},
 {0x3821, 0x0007, WORD_LEN, 0},
 #endif
@@ -693,7 +706,7 @@ static struct ov5640_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
 //Ken Xu add 20110325 for BLC auto update
 {0x4005, 0x001a, WORD_LEN, 0}, // always update BLC
 
-//ken , move from snapshot2preview_mode_array 
+//ken , move from snapshot2preview_mode_array WT_CAM_20110411
 {0x5580, 0x0002, WORD_LEN, 0},
 {0x5588, 0x0000, WORD_LEN, 0}, //enable uv adjust
 {0x5583, 0x0040, WORD_LEN, 0},
@@ -703,7 +716,11 @@ static struct ov5640_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
 {0x558b, 0x00f8, WORD_LEN, 0},
 };
 
-
+/*
+ *WT_CAM_20110127
+ *add af register default value 
+ */
+ //update the af firmware to improve the AF speed,YGL_CAM_20110711
 static struct ov5640_i2c_reg_conf const autofocus_value[] = {
 #if 0
 {0x3000, 0x0020, WORD_LEN, 0},

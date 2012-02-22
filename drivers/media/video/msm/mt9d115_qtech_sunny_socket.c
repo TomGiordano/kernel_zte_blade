@@ -21,6 +21,30 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-01-07   zt           add the configurations of exposure &     ZTE_ZT_CAM_20110107
+                            brightness
+  2010-12-09   jia          add failure process to avoid standby     ZTE_JIA_CAM_20101209
+                            current exception problem
+  2010-12-06   jia          add support for exposure compensation    ZTE_CAM_JIA_20101206
+  2010-09-08   jia          add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-09-07   lijing       modify ISO_AUTO setting to correct       ZTE_LJ_CAM_20100907
+                            yellowish effect;
+                            modify antibanding setting;
+                            modify process of switch between
+                            preview and snapshot mode
+  2010-09-04   lijing       add support for MT9D115 and MT9D113      ZTE_LJ_CAM_20100904
+                            adapter
+  2010-09-02   jia          modify device sub ID from 0x0011 to      ZTE_CAMERA_LIJING_20100902
+                            0x003F
+  2010-09-02   jia          add device sub ID                        ZTE_CAMERA_LIJING_20100902
+  2010-08-30   zt           modified the ISOAUTO configuration       ZTE_ZT_CAM_20100830
+  2010-08-20   jia.jia      modified for support for                 ZTE_LJ_CAM_20100820
+                            CONFIG_SENSOR_ADAPTER
+  2010-08-04   li.jing      update ISO settings                      ZTE_LJ_CAM_20100804
+  2010-07-23   li.jing      update sensor settings                   ZTE_LJ_CAM_20100723
+  2010-07-05   li.jing      update sensor reg settings               ZTE_CAM_LIJING_20100705
+                            set MCLK and MT9D115_MODEL_ID
+  2010-06-29   li.jing      created                                  ZTE_CAMERA_LIJING_20100629
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -144,7 +168,9 @@ static struct mt9d115_ctrl_t *mt9d115_ctrl = NULL;
  * For coexistence of MT9T111, MT9T112 and MT9D115
  */
 static uint16_t model_id;
-
+/* ZTE_ZT_CAM_20110107
+ * Set the global value of exposure & brightness 
+ */
 static int8_t current_brightness = CAMERA_BRIGHTNESS_3;
 static int8_t current_exposure = CAMERA_EXPOSURE_2;
 
@@ -525,7 +551,9 @@ static int32_t __attribute__((unused)) mt9d115_af_trigger(void)
     return 0;
 }
 
-
+/* ZTE_ZT_CAM_20110107
+ * Adjust the configurations according to the value of expusure & brightness
+ */
 static int32_t mt9d115_set_exposure_brightness(int8_t exposure, int8_t brightness)
 {
     int32_t rc = 0;
@@ -2557,6 +2585,13 @@ int mt9d115_sensor_probe(const struct msm_camera_sensor_info *info,
      */
     mt9d115_init_suspend();
 
+	/*
+	 * add sensor configuration
+	 * ZTE_CAM_LJ_20110413
+	 */ 
+    s->s_mount_angle = 0;
+    s->s_camera_type = BACK_CAMERA_2D;
+
     s->s_init       = mt9d115_sensor_init;
     s->s_config     = mt9d115_sensor_config;
     s->s_release    = mt9d115_sensor_release;
@@ -2624,7 +2659,12 @@ static void mt9d115_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
- 
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
     msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);
     return;
 #endif

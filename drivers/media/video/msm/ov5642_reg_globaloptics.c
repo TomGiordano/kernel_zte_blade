@@ -20,7 +20,36 @@
 /*-----------------------------------------------------------------------------------------
   when         who      what, where, why                        comment tag
   --------     ----     -------------------------------------   ---------------------------
- 
+  2010-10-26   zt       update the parameter for auto focus     ZTE_ZT_CAM_20101026
+  2010-10-26   zt       update the parameter for lab test       ZTE_ZT_CAM_20101026
+  2010-10-25   ygl      update the setting of auto focus to     ZTE_YGL_CAM_20101025
+                        remove OSD of auto focus frame
+  2010-09-30   zt       update the register configration for    ZTE_ZT_CAM_20100929
+                        objective test
+  2010-09-14   zt       modify the wb configration to           ZTE_ZT_CAM_20100921
+                        solve the photo color distortion
+  2010-09-14   zt       solve the problem that exit the         ZTE_ZT_CAM_20100914
+                        camera application when adjusting 
+                        the brightness
+  2010-09-08   jia      set PCLK mode as manul mode             ZTE_YGL_CAM_20100908
+                        set PCLK from 24M to 48M for preview
+  2010-08-31   ygl      modify the preview size for zoom        ZTE_YGL_CAM_20100831 
+  2010-08-20   zt       adjust the register parameter           ZT_CAM_20100820_001
+  2010-08-16   jia      refactor code                           JIA_CAM_20100816
+  2010-08-13   zt       modified the average luminance to       ZT_CAM_20100813_006
+                        solve the screen edge stripes
+  2010-08-13   zt       reduce the PCLK frequency from          ZT_CAM_20100813_005
+                        48Mhz to 24Mhz   
+  2010-08-13   zt       update the array of camera init         ZT_CAM_20100813_004
+  2010-02-23   lijing   add control for different projects      ZTE_MSM_CAMERA_LIJING_001
+  2010-01-29   lijing   adjust settings for P727A for flip      ZTE_MSM_CAMERA_LIJING_001
+                        and mirror
+  2010-01-28   lijing   adjust settings for P727A for flip      ZTE_MSM_CAMERA_LIJING_001
+                        and mirror              
+  2009-12-02   jia.jia  Improve effects of preview and          ZTE_MSM_CAMERA_JIA_001
+                        snapshot
+  2009-11-02   zh.shj   Add AF regs settings                    ZTE_MSM_CAMERA_ZHSHJ_001  
+  2009-10-24   jia.jia  Merged from kernel-v4515                ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "ov5642.h"
@@ -255,7 +284,13 @@ static struct ov5642_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
   {0x5583, 0x003a, WORD_LEN, 0},
   {0x5584, 0x003a, WORD_LEN, 0},
 
-  
+  /* ZTE_ZT_CAM_20100914
+   * enable the Special Digital Effects(SDE) functions we need
+   *
+   * Register 0x5580
+   * Bit[2]: 1, Contrast enable
+   * Bit[1]: 1, Saturation enable
+   */
   {0x5580, 0x0006, WORD_LEN, 0},                                      
 
   {0x5000, 0x00cf, WORD_LEN, 0},   
@@ -492,7 +527,12 @@ static struct ov5642_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
   {0x3806, 0x0003, WORD_LEN, 0},                                                           
   {0x3807, 0x00c0, WORD_LEN, 0},
  
-
+  /* ZTE_YGL_CAM_20100831
+   * modify the preview size for zoom
+   *
+   * PREVIEW_SIZE_WIDTH: 1024
+   * PREVIEW_SIZE_HEIGHT: 768   
+   */
   {0x3808, 0x0004, WORD_LEN, 0}, //dvp vga output           
   {0x3809, 0x0000, WORD_LEN, 0},          
   {0x380a, 0x0003, WORD_LEN, 0}, //dvp vga output              
@@ -522,7 +562,12 @@ static struct ov5642_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
   {0x3002, 0x005c, WORD_LEN, 0},                                                           
   {0x3503, 0x0000, WORD_LEN, 0}, 
   
-  
+  /* ZTE_YGL_CAM_20100831, ZTE_YGL_CAM_20100908
+   * modify the preview size for zoom
+   *
+   * set PCLK mode as manual mode, 
+   * i.e., to set 0x3815
+   */
   {0x460c, 0x0022, WORD_LEN, 0},
                                                          
   {0x460b, 0x0037, WORD_LEN, 0},                                                           
@@ -598,7 +643,11 @@ static struct ov5642_i2c_reg_conf const preview_snapshot_mode_reg_settings_array
 
   {0x3010, 0x0010, WORD_LEN, 0},
   
-  
+   /* ZTE_YGL_CAM_20100908     
+     *
+     * set PCLK from 24M to 48M (from 0x0007 to 0x0003)
+     * for preview mode
+     */
   {0x3815, 0x0003, WORD_LEN, 0}, //DVP CLOCK
 
   //AEC/AGC setting
@@ -6770,7 +6819,9 @@ static struct ov5642_i2c_reg_conf const autofocus_value[] = {
     {0x3027, 0x00FF, WORD_LEN, 0},
     {0x3000, 0x0000, WORD_LEN, 0}
 #else
-   
+    /* ZTE_YGL_CAM_20101025
+     * Autofocus with OSD of autofocus frame
+     */
     {0x3000, 0x0020, WORD_LEN, 0},
     {0x8000, 0x0002, WORD_LEN, 0},
     {0x8001, 0x0000, WORD_LEN, 0},
@@ -12841,7 +12892,12 @@ static struct ov5642_i2c_reg_conf const snapshot2preview_mode_array[] = {
     {0x3806, 0x0003, WORD_LEN, 0},                                                           
     {0x3807, 0x00c0, WORD_LEN, 0},   
     
-  
+    /* ZTE_YGL_CAM_20100831
+     * modify the preview size for zoom
+     *
+     * PREVIEW_SIZE_WIDTH: 1024
+     * PREVIEW_SIZE_HEIGHT: 768
+     */
     {0x3808, 0x0004, WORD_LEN, 0}, //0811, for preview output 1024*768              
     {0x3809, 0x0000, WORD_LEN, 0}, //0811, for preview output 1024*768              
     {0x380a, 0x0003, WORD_LEN, 0}, //0811, for preview output 1024*768              
@@ -12853,7 +12909,11 @@ static struct ov5642_i2c_reg_conf const snapshot2preview_mode_array[] = {
     {0x380f, 0x0040, WORD_LEN, 0}, //818,   //change frame rate to 14.3 fps, for flicker     
     {0x3810, 0x0040, WORD_LEN, 0}, 
     
-  
+    /* ZTE_YGL_CAM_20100908     
+     *
+     * set PCLK from 24M to 48M (from 0x0007 to 0x0003)
+     * for preview mode
+     */
     {0x3815, 0x0003, WORD_LEN, 0},//DVP PCKL divider is controlled ZT_CAM_20100813_005
 
 #if defined(CONFIG_MACH_RAISE)
@@ -12877,7 +12937,12 @@ static struct ov5642_i2c_reg_conf const snapshot2preview_mode_array[] = {
     {0x3a1f, 0x0030, WORD_LEN, 0},                                                           
     {0x460b, 0x0037, WORD_LEN, 0}, 
       
-  
+    /* ZTE_YGL_CAM_20100831, ZTE_YGL_CAM_20100908
+     * modify the preview size for zoom
+     *
+     * set PCLK mode as manual mode, 
+     * i.e., to set 0x3815
+     */
     {0x460c, 0x0022, WORD_LEN, 0},
                                                            
     {0x471d, 0x0005, WORD_LEN, 0},                                                           
@@ -12895,14 +12960,23 @@ static struct ov5642_i2c_reg_conf const snapshot2preview_mode_array[] = {
     {0x3002, 0x005c, WORD_LEN, 0},                                                           
     {0x3503, 0x0000, WORD_LEN, 0},  
     
-   
+    /* ZTE_YGL_CAM_20100831, ZTE_YGL_CAM_20100908
+     * modify the preview size for zoom
+     *
+     * set PCLK mode as manual mode, 
+     * i.e., to set 0x3815
+     */
     {0x460c, 0x0022, WORD_LEN, 0},
                                                         
     {0x460b, 0x0037, WORD_LEN, 0},                                                           
     {0x471c, 0x00d0, WORD_LEN, 0},                                                           
     {0x471d, 0x0005, WORD_LEN, 0},   
 
- 
+    /* ZTE_YGL_CAM_20100908     
+     *
+     * set PCLK from 24M to 48M (from 0x0007 to 0x0003)
+     * for preview mode
+     */
     {0x3815, 0x0003, WORD_LEN, 0},//DVP PCKL divider is controlled
 
 #if defined(CONFIG_MACH_RAISE)
@@ -12950,7 +13024,9 @@ static struct ov5642_i2c_reg_conf const snapshot2preview_mode_array[] = {
     //Do nothing
 #endif
 
-  
+    /* ZTE_ZT_CAM_20101026_02
+    * update the parameter for auto focus
+    */
     {0x3024, 0x0008, WORD_LEN, 0}, //set to idle mode
     {0x3024, 0x0012, WORD_LEN, 0}, //update zone
 };

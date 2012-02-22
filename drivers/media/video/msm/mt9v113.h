@@ -20,7 +20,7 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #ifndef MT9V113_H
@@ -54,6 +54,20 @@ struct mt9v113_reg_t {
     uint16_t stbl_size;
     struct mt9v113_i2c_reg_conf const *rftbl;
     uint16_t rftbl_size;
+    struct mt9v113_i2c_reg_conf const **contrast_tbl;
+    uint16_t const *contrast_tbl_sz;
+    struct mt9v113_i2c_reg_conf const **saturation_tbl;
+    uint16_t const *saturation_tbl_sz;
+    struct mt9v113_i2c_reg_conf const *wb_cloudy_tbl;
+    uint16_t wb_cloudy_tbl_sz;
+    struct mt9v113_i2c_reg_conf const *wb_daylight_tbl;
+    uint16_t wb_daylight_tbl_sz;
+    struct mt9v113_i2c_reg_conf const *wb_flourescant_tbl;
+    uint16_t wb_flourescant_tbl_sz;
+    struct mt9v113_i2c_reg_conf const *wb_incandescent_tbl;
+    uint16_t wb_incandescent_tbl_sz;
+    struct mt9v113_i2c_reg_conf const *wb_auto_tbl;
+    uint16_t wb_auto_tbl_sz;
 };
 
 #endif /* MT9V113_H */

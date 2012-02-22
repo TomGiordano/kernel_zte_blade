@@ -94,7 +94,7 @@ if MT9T11X
 config MT9T11X_QTECH_MCNEX_FPC
 	bool "Sensor mt9t111 or mt9t112 (YUV 3.1M) of FPC, Module QTECHGLOBAL or MCNEX"
 	depends on MSM_CAMERA
-	depends on MACH_BLADE || MACH_SMOOTH || MACH_RAISE || MACH_V9 || MACH_ROAMER || MACH_NOVA || MACH_SAILBOAT
+	depends on MACH_BLADE || MACH_SMOOTH || MACH_RAISE || MACH_V9 || MACH_ROAMER || MACH_NOVA || MACH_SAILBOAT|| MACH_TURIES
 	default y
 	---help---
 	  APTINA 3.1M YUV Sensor
@@ -139,6 +139,23 @@ config OV5640_GLOBALOPTICS
 	---help---
 	  OmniVision 5.0M YUV Sensor, Module GLOBALOPTICS
 endif # OV5640
+
+config OVM7690
+	bool "Sensor ovm7690 (YUV 0.3M)"
+	depends on MSM_CAMERA && !ARCH_MSM8X60
+	default n
+	---help---
+	  OmniVision 0.3M YUV Sensor
+
+if OVM7690
+config OVM7690_GLOBALOPTICS
+	bool "Sensor ovm7690 (YUV 0.3M), Module GLOBALOPTICS"
+	depends on MSM_CAMERA
+	default y
+	---help---
+	  OmniVision 0.3M YUV Sensor, Module GLOBALOPTICS
+endif # OVM7690
+
 config HI704	
   bool "Sensor hi704(YUV 0.3M)"	
   depends on MSM_CAMERA	

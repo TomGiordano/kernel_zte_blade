@@ -22,7 +22,22 @@
 /* FIXME: does region->active mean free */
 /* FIXME: check limits on command lenghts passed from userspace */
 /* FIXME: __msm_release: which queues should we flush when opencnt != 0 */
-
+/*-----------------------------------------------------------------------------------------
+  when         who          what, where, why                         comment tag
+  --------     ----        -------------------------------------    ----------------------
+  2011-08-10   yeganlin    modify for high current,merged from      ZTE_CAM_20110810
+                           patch CRs-Fixed: 280060
+  2011-05-19   lijing      add two camera support                   ZTE_CAM_LJ_20110519
+  2011-02-21   wt          enabel flash function                    ZTE_CAM_WT_20110221
+  2010-08-23   lijing      fix bug of NULL pointer issue for        ZTE_CAM_LIJING_20100823
+                           CONFIG_SENSOR_ADAPTER
+  2010-06-08   jia         redefine "msm_camera_dev_start"          JIA_CAM_20100608
+  2010-06-05   ye.ganlin   add process for flash LED                YGL_CAM_20100605
+  2009-05-20   ye.ganlin   add wake lock for suspend,               YGL_CAM_20100520
+                           replace "kmalloc" with "kzalloc"
+                           add exception process
+  2009-04-30   lijing      add for mt9t11x and ov5642 adapter       LIJING_CAM_20100430
+  ------------------------------------------------------------------------------------------*/
 
 #include <linux/slab.h>
 #include <linux/kernel.h>
@@ -59,53 +74,9 @@ int g_v4l2_opencnt;
 static int camera_node;
 static enum msm_camera_type camera_type[MSM_MAX_CAMERA_SENSORS];
 
-char * vfe_config_cmd[] = {
-    "CMD_GENERAL",
-    "CMD_AXI_CFG_OUT1",
-    "CMD_AXI_CFG_SNAP_O1_AND_O2",
-    "CMD_AXI_CFG_OUT2",
-    "CMD_PICT_T_AXI_CFG",
-    "CMD_PICT_M_AXI_CFG",
-    "CMD_RAW_PICT_AXI_CFG",
-    "CMD_FRAME_BUF_RELEASE",
-    "CMD_PREV_BUF_CFG",
-    "CMD_SNAP_BUF_RELEASE",
-    "CMD_SNAP_BUF_CFG",
-    "CMD_STATS_DISABLE",
-    "CMD_STATS_AEC_AWB_ENABLE",
-    "CMD_STATS_AF_ENABLE",
-    "CMD_STATS_AEC_ENABLE",
-    "CMD_STATS_AWB_ENABLE",
-    "CMD_STATS_ENABLE",
-    "CMD_STATS_AXI_CFG",
-    "CMD_STATS_AEC_AXI_CFG",
-    "CMD_STATS_AF_AXI_CFG",
-    "CMD_STATS_AWB_AXI_CFG",
-    "CMD_STATS_RS_AXI_CFG",
-    "CMD_STATS_CS_AXI_CFG",
-    "CMD_STATS_IHIST_AXI_CFG",
-    "CMD_STATS_SKIN_AXI_CFG",
-    "CMD_STATS_BUF_RELEASE",
-    "CMD_STATS_AEC_BUF_RELEASE",
-    "CMD_STATS_AF_BUF_RELEASE",
-    "CMD_STATS_AWB_BUF_RELEASE",
-    "CMD_STATS_RS_BUF_RELEASE",
-    "CMD_STATS_CS_BUF_RELEASE",
-    "CMD_STATS_IHIST_BUF_RELEASE",
-    "CMD_STATS_SKIN_BUF_RELEASE",
-    "UPDATE_STATS_INVALID",
-    "CMD_AXI_CFG_SNAP_GEMINI",
-    "CMD_AXI_CFG_SNAP",
-    "CMD_AXI_CFG_PREVIEW",
-    "CMD_AXI_CFG_VIDEO",
-    "CMD_STATS_IHIST_ENABLE",
-    "CMD_STATS_RS_ENABLE",
-    "CMD_STATS_CS_ENABLE",
-    "CMD_VPE",
-    "CMD_AXI_CFG_VPE",
-    NULL
-};
-
+/*
+ * add two camera support ZTE_CAM_LJ_20110519
+ */
 static uint32_t sensor_mount_angle[MSM_MAX_CAMERA_SENSORS];
 
 #define __CONTAINS(r, v, l, field) ({				\
@@ -199,7 +170,10 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 	spin_unlock_irqrestore(&queue->lock, flags);
 }
 
-
+/*
+ * YGL_CAM_20100520
+ * Fix bug of "spin_unlock_irqrestore"
+ */
 #if 0
 #define msm_dequeue(queue, member) ({				\
 	unsigned long flags;					\
@@ -251,7 +225,10 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 })
 #endif
 
-
+/*
+ * YGL_CAM_20100520
+ * Fix bug of "__q->len"
+ */
 #if 0
 #define msm_queue_drain(queue, member) do {			\
 	unsigned long flags;					\
@@ -369,7 +346,10 @@ static int msm_pmem_table_add(struct hlist_head *ptype,
 	spin_unlock_irqrestore(pmem_spinlock, flags);
 
 
-  
+    /*
+     * YGL_CAM_20100520
+     * Fix bug of "kmalloc"
+     */
 #if 0
 	region = kmalloc(sizeof(struct msm_pmem_region), GFP_KERNEL);
 #else
@@ -882,7 +862,10 @@ static struct msm_queue_cmd *__msm_control_nb(struct msm_sync *sync,
 	struct msm_ctrl_cmd *udata;
 	struct msm_ctrl_cmd *udata_to_copy = qcmd_to_copy->command;
 
- 
+    /*
+     * YGL_CAM_20100520
+     * Fix bug of "kmalloc"
+     */
 #if 0
 	struct msm_queue_cmd *qcmd =
 			kmalloc(sizeof(*qcmd_to_copy) +
@@ -1637,7 +1620,9 @@ static int msm_get_camera_info(void __user *arg)
 		info.has_3d_support[i] = 0;
 		info.is_internal_cam[i] = 0;
 
- 
+       /*
+        * add two camera support ZTE_CAM_LJ_20110519
+        */
 		info.s_mount_angle[i] = sensor_mount_angle[i];
 		
 		switch (camera_type[i]) {
@@ -1936,13 +1921,19 @@ static int __msm_get_pic(struct msm_sync *sync, struct msm_ctrl_cmd *ctrl)
 
 	qcmd = msm_dequeue(&sync->pict_q, list_pict);
 	BUG_ON(!qcmd);
-
+    /*
+     * YGL_CAM_20100520
+     * Add process for NULL ptr
+     */
 	if (!qcmd) {
 		rc = -EFAULT;
 		pr_err("%s: qcmd is NULL, rc %d\n", __func__, rc);
 		return rc;
 	}
-
+    /*
+     * YGL_CAM_20100520
+     * Add process for NULL ptr
+     */
     if (!qcmd) {
         rc = -EFAULT;
         pr_err("%s: qcmd is NULL, rc %d\n", __func__, rc);
@@ -2026,7 +2017,10 @@ static int msm_set_crop(struct msm_sync *sync, void __user *arg)
 	}
 
 	if (!sync->croplen) {
-  
+        /*
+          * YGL_CAM_20100520
+          * Fix bug of "kmalloc"
+          */
 #if 0
 		sync->cropinfo = kmalloc(crop.len, GFP_KERNEL);
 #else
@@ -2062,6 +2056,13 @@ static int msm_error_config(struct msm_sync *sync, void __user *arg)
 	struct msm_queue_cmd *qcmd =
 		kmalloc(sizeof(struct msm_queue_cmd), GFP_KERNEL);
 
+/*
+ * YGL_CAM_20110803
+ * set command to NULL, otherwise there will be NULL pointer when received err_config. 
+ * merged from 6150
+ */
+	qcmd->command = NULL;
+	
 	if (qcmd)
 		atomic_set(&(qcmd->on_heap), 1);
 
@@ -2333,7 +2334,7 @@ static long msm_ioctl_config(struct file *filep, unsigned int cmd,
 			rc = -EFAULT;
 		} else {
 			CDBG("msm_strobe_flash_init enter");
-			//rc = msm_strobe_flash_init(pmsm->sync, flash_type); 
+			//rc = msm_strobe_flash_init(pmsm->sync, flash_type); ZTE_CAM_WT_20110221
 		}
 		break;
 	}
@@ -2385,7 +2386,11 @@ static long msm_ioctl_config(struct file *filep, unsigned int cmd,
 		break;
 	}
 
-  
+    /*
+      * Commented by YGL_CAM_20100605 ZTE_CAM_WT_20110221
+      * Added for turning on/off flash LED,
+      * called by vfe_process_QDSP_VFETASK_MSG_VFE_RESET_ACK in HAL
+      */
 	case MSM_CAM_IOCTL_FLASH_LED_ON_OFF_CFG: {
         uint32_t flashled_switch;
         if (copy_from_user(&flashled_switch, argp, sizeof(flashled_switch))) {
@@ -2528,7 +2533,10 @@ static int __msm_release(struct msm_sync *sync)
 		}
 		msm_queue_drain(&sync->pict_q, list_pict);
 
-      
+        /*
+          * YGL_CAM_20100520
+          * Add wake lock for suspend
+          */
 		wake_unlock(&sync->wake_suspend_lock);
 		wake_unlock(&sync->wake_lock);
 		sync->apps_id = NULL;
@@ -2632,7 +2640,10 @@ static void *msm_vfe_sync_alloc(int size,
 			void *syncdata __attribute__((unused)),
 			gfp_t gfp)
 {
- 
+    /*
+     * YGL_CAM_20100520
+     * Fix bug of "kmalloc"
+     */
 #if 0
 	struct msm_queue_cmd *qcmd =
 		kmalloc(sizeof(struct msm_queue_cmd) + size, gfp);
@@ -2933,7 +2944,10 @@ static void msm_vpe_sync(struct msm_vpe_resp *vdata,
 		return;
 	}
 
-
+    /*
+     * YGL_CAM_20100520
+     * Add process for "opencnt"
+     */
 	if (!sync->opencnt) {
 		pr_err("%s: SPURIOUS INTERRUPT\n", __func__);
 		return;
@@ -3015,7 +3029,10 @@ static int __msm_open(struct msm_sync *sync, const char *const apps_id)
 	sync->apps_id = apps_id;
 
 	if (!sync->opencnt) {
-      
+        /*
+          * YGL_CAM_20100520
+          * Add wake lock for suspend
+          */
 		wake_lock(&sync->wake_suspend_lock);
 		wake_lock(&sync->wake_lock);
 
@@ -3033,7 +3050,10 @@ static int __msm_open(struct msm_sync *sync, const char *const apps_id)
 			if (rc < 0) {
 				pr_err("%s: sensor init failed: %d\n",
 					__func__, rc);
-                
+                /*
+                   * YGL_CAM_20100520
+                   * Add process of "vfe_release"
+                   */
 				sync->vfefn.vfe_release(sync->pdev);
 				goto msm_open_done;
 			}
@@ -3105,7 +3125,10 @@ static int msm_open_control(struct inode *inode, struct file *filep)
 {
 	int rc;
 
-  
+    /*
+      * YGL_CAM_20100520
+      * Add process of "kmalloc"
+      */
 #if 0
 	struct msm_control_device *ctrl_pmsm =
 		kmalloc(sizeof(struct msm_control_device), GFP_KERNEL);
@@ -3117,7 +3140,10 @@ static int msm_open_control(struct inode *inode, struct file *filep)
 		return -ENOMEM;
 
 	rc = msm_open_common(inode, filep, 0);
-  
+    /*
+      * YGL_CAM_20100520
+      * Add process of "kfree"
+      */
 #if 0
 	if (rc < 0)
 		return rc;
@@ -3150,7 +3176,10 @@ static int __msm_v4l2_control(struct msm_sync *sync,
 	struct msm_device_queue *v4l2_ctrl_q = &g_v4l2_control_device->ctrl_q;
 
 	/* wake up config thread, 4 is for V4L2 application */
- 
+    /*
+      * YGL_CAM_20100520
+      * Add process of "kmalloc"
+      */
 #if 0
 	qcmd = kmalloc(sizeof(struct msm_queue_cmd), GFP_KERNEL);
 #else
@@ -3293,7 +3322,10 @@ static int msm_sync_init(struct msm_sync *sync,
 	msm_queue_init(&sync->pict_q, "pict");
 	msm_queue_init(&sync->vpe_q, "vpe");
 
- 
+    /*
+      * YGL_CAM_20100520
+      * Add wake lock for suspend
+      */
 	wake_lock_init(&sync->wake_suspend_lock, WAKE_LOCK_SUSPEND, "msm_camera_wake");
 	wake_lock_init(&sync->wake_lock, WAKE_LOCK_IDLE, "msm_camera");
 
@@ -3312,7 +3344,10 @@ static int msm_sync_init(struct msm_sync *sync,
 		pr_err("%s: failed to initialize %s\n",
 			__func__,
 			sync->sdata->sensor_name);
-  
+        /*
+          * YGL_CAM_20100520
+          * Add wake lock for suspend
+          */
 		wake_lock_destroy(&sync->wake_suspend_lock);
 		wake_lock_destroy(&sync->wake_lock);
 		return rc;
@@ -3330,7 +3365,10 @@ static int msm_sync_init(struct msm_sync *sync,
 
 static int msm_sync_destroy(struct msm_sync *sync)
 {
- 
+    /*
+      * YGL_CAM_20100520
+      * Add wake lock for suspend
+      */
 	wake_lock_destroy(&sync->wake_suspend_lock);
 	wake_lock_destroy(&sync->wake_lock);
 	return 0;
@@ -3382,7 +3420,10 @@ static int msm_device_init(struct msm_cam_device *pmsm,
 	return rc;
 }
 
-
+/*
+ * modify for two cameras
+ * ZTE_CAM_LJ_20110324 ZTE_CAM_LJ_20110519
+ */
 DECLARE_MUTEX(msm_camera_sensor_init_sem);
 int msm_camera_drv_start(struct platform_device *dev,
 		int (*sensor_probe)(const struct msm_camera_sensor_info *,
@@ -3451,7 +3492,9 @@ int msm_camera_drv_start(struct platform_device *dev,
 	camera_type[camera_node] = sync->sctrl.s_camera_type;
     sensor_mount_angle[camera_node] = sync->sctrl.s_mount_angle;
 	camera_node++;
-	if (camera_node == 1) {
+	
+    //lijing modify for high current,merged from patch CRs-Fixed: 280060,ZTE_CAM_20110810
+	/*if (camera_node == 1) {
 		rc = add_axi_qos();
 		if (rc < 0) {
 			CDBG("%s: failed add_axi_qos. rc=%d", __func__, rc);
@@ -3459,7 +3502,7 @@ int msm_camera_drv_start(struct platform_device *dev,
 			kfree(pmsm);
 			return rc;
 		}
-	}
+	}*/
 
 	list_add(&sync->list, &msm_sensors);
 drv_start_failed:
@@ -3468,7 +3511,10 @@ drv_start_failed:
 	return rc;
 }
 EXPORT_SYMBOL(msm_camera_drv_start);
-
+/*
+ * LIJING_CAM_20100430
+ * modified for sensor adapter(mt9t11x-socket, mt9p111-socket, and ov5642)
+ */
 
 #define ENOINIT 100 /*have not power up,so don't need to power down*/
  
@@ -3499,7 +3545,11 @@ int msm_camera_dev_start(struct platform_device *dev,
         {
             CCRT("%s: i2c_dev_probe_on failed!\n", __func__);
 
-         
+            /*
+             * ZTE_CAM_LIJING_20100823
+             * before return,release msm_camera_sensor_dev_sem,
+             * or it will cause dead lock.
+             */
             up(&msm_camera_sensor_dev_sem);
             
             return -ENOINIT;
@@ -3545,6 +3595,7 @@ int msm_camera_dev_start(struct platform_device *dev,
     up(&msm_camera_sensor_dev_sem);
 
     /*
+     * ZTE_CAM_LIJING_20100823
      * rc < 0 :failed
      * rc >= 0:success
      */

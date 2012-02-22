@@ -20,6 +20,8 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
+  2011-07-06   wangtao       add sensor for 727d40  front camera     ZTE_MSM_CAMERA_WT
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -220,34 +222,32 @@ static int32_t mt9v113_i2c_write(unsigned short saddr,
     return rc;
 }
 
-/*static int32_t mt9v113_i2c_write_table(struct mt9v113_i2c_reg_conf const *reg_conf_tbl,
-                                             int num_of_items_in_table)
-{
 
-    int i;
-    int32_t rc = -EFAULT;
-    CCRT("%s: entry\n", __func__);
-    for (i = 0; i < num_of_items_in_table; i++)
+static int32_t mt9v113_i2c_write_table(struct mt9v113_i2c_reg_conf const *reg_conf_tbl,
+                                             int len)
+{
+    uint32_t i;
+    int32_t rc = 0;
+
+    for (i = 0; i < len; i++)
     {
         rc = mt9v113_i2c_write(mt9v113_client->addr,
-                               reg_conf_tbl->waddr,
-                               reg_conf_tbl->wdata,
-                               reg_conf_tbl->width);
+                               reg_conf_tbl[i].waddr,
+                               reg_conf_tbl[i].wdata,
+                               reg_conf_tbl[i].width);
         if (rc < 0)
         {
             break;
         }
 
-        if (reg_conf_tbl->mdelay_time != 0)
+        if (reg_conf_tbl[i].mdelay_time != 0)
         {
-            mdelay(reg_conf_tbl->mdelay_time);
+            mdelay(reg_conf_tbl[i].mdelay_time);
         }
-        
-        reg_conf_tbl++;
     }
 
     return rc;
-}*/
+}
 
 static int mt9v113_i2c_rxdata(unsigned short saddr,
                                     unsigned char *rxdata,
@@ -711,6 +711,895 @@ static long mt9v113_set_effect(int32_t mode, int32_t effect)
     return rc;
 }
 
+static long mt9v113_set_wb(int8_t wb_mode)
+{
+    long rc = 0;
+
+    CDBG("%s: entry: wb_mode=%d\n", __func__, wb_mode);
+#if 1
+    switch (wb_mode)
+    {
+        case CAMERA_WB_MODE_AWB:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.wb_auto_tbl, 
+                                         mt9v113_regs.wb_auto_tbl_sz);
+        }
+        break;
+
+        case CAMERA_WB_MODE_SUNLIGHT:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.wb_daylight_tbl,
+                                         mt9v113_regs.wb_daylight_tbl_sz);
+        }
+        break;
+
+        case CAMERA_WB_MODE_INCANDESCENT:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.wb_incandescent_tbl,
+                                         mt9v113_regs.wb_incandescent_tbl_sz);
+        }
+        break;
+        
+        case CAMERA_WB_MODE_FLUORESCENT:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.wb_flourescant_tbl,
+                                         mt9v113_regs.wb_flourescant_tbl_sz);
+        }
+        break; 
+
+        case CAMERA_WB_MODE_CLOUDY:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.wb_cloudy_tbl,
+                                         mt9v113_regs.wb_cloudy_tbl_sz);
+        }
+        break;
+
+        default:
+        {
+            pr_err("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+#endif
+    return rc;
+}
+
+static long mt9v113_set_brightness(int8_t brightness)
+{
+    long rc = 0;
+
+    pr_err("%s: entry: brightness=%d\n", __func__, brightness);
+#if 1
+     switch(brightness)
+    {
+        case CAMERA_BRIGHTNESS_0:
+        {
+        
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA24F, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x002B, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            
+        }
+        break;
+
+        case CAMERA_BRIGHTNESS_1:
+        {
+        
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA24F, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x003B, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            
+        }
+        break;
+
+        case CAMERA_BRIGHTNESS_2:
+        {
+        
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA24F, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x004B, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            
+        }
+        break;
+
+        case CAMERA_BRIGHTNESS_3:
+        {
+        
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA24F, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x004B, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            
+        }
+        break;
+
+        case CAMERA_BRIGHTNESS_4:
+        {
+        
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA24F, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x005B, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            
+        }
+        break;
+
+        default:
+        {
+            CCRT("%s: parameter error!\n", __func__);
+            return -EFAULT;
+        }            
+    }
+#endif
+    return rc;
+}
+
+static long mt9v113_set_contrast(int8_t contrast_val)
+{
+    long rc = 0;
+
+    CINF("%s: entry: contrast_val=%d\n", __func__, contrast_val);
+
+#if 1
+    switch (contrast_val)
+    {
+        case CAMERA_CONTRAST_0:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.contrast_tbl[0],
+                                         mt9v113_regs.contrast_tbl_sz[0]);
+        }
+        break;
+
+        case CAMERA_CONTRAST_1:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.contrast_tbl[1],
+                                         mt9v113_regs.contrast_tbl_sz[1]);
+        }
+        break;
+
+        case CAMERA_CONTRAST_2:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.contrast_tbl[2],
+                                         mt9v113_regs.contrast_tbl_sz[2]);
+        }
+        break;
+        
+        case CAMERA_CONTRAST_3:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.contrast_tbl[3],
+                                         mt9v113_regs.contrast_tbl_sz[3]);
+        }
+        break; 
+
+        case CAMERA_CONTRAST_4:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.contrast_tbl[4],
+                                         mt9v113_regs.contrast_tbl_sz[4]);
+        }
+        break;
+
+        default:
+        {
+            pr_err("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+#endif
+    return rc;
+}
+
+static long mt9v113_set_saturation(int8_t saturation_val)
+{
+    long rc = 0;
+
+
+    pr_err("%s: entry: saturation_val=%d\n", __func__, saturation_val);
+#if 1
+    switch (saturation_val)
+    {
+        case CAMERA_SATURATION_0:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.saturation_tbl[0],
+                                         mt9v113_regs.saturation_tbl_sz[0]);
+        }
+        break;
+
+        case CAMERA_SATURATION_1:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.saturation_tbl[1],
+                                         mt9v113_regs.saturation_tbl_sz[1]);
+        }
+        break;
+
+        case CAMERA_SATURATION_2:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.saturation_tbl[2],
+                                         mt9v113_regs.saturation_tbl_sz[2]);
+        }
+        break;
+        
+        case CAMERA_SATURATION_3:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.saturation_tbl[3],
+                                         mt9v113_regs.saturation_tbl_sz[3]);
+        }
+        break; 
+
+        case CAMERA_SATURATION_4:
+        {
+            rc = mt9v113_i2c_write_table(mt9v113_regs.saturation_tbl[4],
+                                         mt9v113_regs.saturation_tbl_sz[4]);
+        }
+        break;
+
+        default:
+        {
+            pr_err("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+#endif
+    return rc;
+}
+
+static int32_t mt9v113_set_iso(int8_t iso_val)
+{
+    int32_t rc = 0;
+
+    CDBG("%s: entry: iso_val=%d\n", __func__, iso_val);
+#if 0
+    switch (iso_val)
+    {
+        case CAMERA_ISO_SET_AUTO:
+        {
+            //WT_CAM_20110428 iso value
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A18 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            #if 1 // Ö÷¹Û²âÊÔ°æ±¾ 2011-06-16 ken
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x00f8, WORD_LEN);
+            #else
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x0040, WORD_LEN);
+            #endif
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_ISO_SET_HJR:
+        {
+            //add code here     
+        }
+        break;
+
+        case CAMERA_ISO_SET_100:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A18 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x0020, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_ISO_SET_200:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A18 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x0040, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_ISO_SET_400:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A18 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x0080, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_ISO_SET_800:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A18 ,0x0000, WORD_LEN);//ZTE_YGL_CAM_20110708,modifed for SNR
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3A19 ,0x00f8, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        default:
+        {
+            CCRT("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+#endif
+	return rc;
+}
+
+static int32_t  mt9v113_set_antibanding(int8_t antibanding)
+{
+    int32_t rc = 0;
+
+    pr_err("%s: entry: antibanding=%d\n", __func__, antibanding);
+#if 0
+    switch (antibanding)
+    {
+        case CAMERA_ANTIBANDING_SET_OFF:
+        {
+            pr_err("%s: CAMERA_ANTIBANDING_SET_OFF NOT supported!\n", __func__);
+        }
+        break;
+
+        case CAMERA_ANTIBANDING_SET_60HZ:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA118, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA11E, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA124, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA12A, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA404, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }  
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x00A0, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+        }            
+        break;
+        case CAMERA_ANTIBANDING_SET_50HZ:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA118, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA11E, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA124, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }    
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA12A, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }    
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA404, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x00E0, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }  
+        }
+        break;
+
+        case CAMERA_ANTIBANDING_SET_AUTO:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA118, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0001, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA11E, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0001, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            } 
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA124, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }    
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA12A, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0001, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }  
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x098C, 0xA103, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x0990, 0x0005, WORD_LEN);
+            if (rc < 0)
+            {
+                return rc;
+            }  
+        }
+        break;
+
+        default:
+        {
+            pr_err("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+#endif
+	return rc;
+}
+
+static int32_t mt9v113_set_sharpness(int8_t sharpness)
+{
+    int32_t rc = 0;
+
+    CDBG("%s: entry: sharpness=%d\n", __func__, sharpness);
+
+#if 0
+    switch (sharpness)
+    {
+        case CAMERA_SHARPNESS_0:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5308 ,0x0065, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5302 ,0x0018, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5303 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_SHARPNESS_1:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5308 ,0x0065, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5302 ,0x0010, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5303 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_SHARPNESS_2:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5308 ,0x0025, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5302 ,0x0010, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5303 ,0x0008, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+        
+        case CAMERA_SHARPNESS_3:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5308 ,0x0065, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5302 ,0x0008, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5303 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break; 
+
+        case CAMERA_SHARPNESS_4:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5308 ,0x0065, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5302 ,0x0002, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x5303 ,0x0000, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;        
+        
+        default:
+        {
+            CCRT("%s: parameter error!\n", __func__);
+            rc = -EFAULT;
+        }     
+    }
+
+#endif
+return rc;
+}
+
+static long mt9v113_set_exposure_compensation(int8_t exposure)
+{
+    long rc = 0;
+
+    pr_err("%s: entry: exposure=%d\n", __func__, exposure);
+#if 0
+    switch(exposure)
+    {
+        case CAMERA_EXPOSURE_0:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a0f, 0x0018, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a10, 0x0010, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a11, 0x0050, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1b, 0x0018, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1e, 0x0010, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1f, 0x0004, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }        
+        }
+        break;
+        
+        case CAMERA_EXPOSURE_1:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a0f, 0x0020, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a10, 0x0018, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a11, 0x0050, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1b, 0x0020, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1e, 0x0018, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1f, 0x0008, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }               
+        }
+        break;
+
+        case CAMERA_EXPOSURE_2:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a0f, 0x0038, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a10, 0x0030, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a11, 0x0060, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1b, 0x0038, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1e, 0x0030, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1f, 0x0014, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+        }
+        break;
+
+        case CAMERA_EXPOSURE_3:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a0f, 0x0048, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a10, 0x0040, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a11, 0x0070, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1b, 0x0048, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1e, 0x0040, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1f, 0x0020, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }            
+        }
+        break;
+
+        case CAMERA_EXPOSURE_4:
+        {
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a0f, 0x0058, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a10, 0x0050, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a11, 0x0080, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1b, 0x0058, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1e, 0x0050, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }
+            rc = mt9v113_i2c_write(mt9v113_client->addr, 0x3a1f, 0x0020, WORD_LEN);
+            if (rc < 0)
+            {
+               return rc;
+            }       
+        }
+        break;
+        
+        default:
+        {
+            pr_err("%s: parameter error!\n", __func__);
+            return -EFAULT;
+        }        
+    }
+#endif
+    return rc;
+}
+
 static long mt9v113_set_sensor_mode(int32_t mode)
 {
 
@@ -792,12 +1681,13 @@ static long mt9v113_set_sensor_mode(int32_t mode)
             {
                 return rc;
             }
-        
+#if 0        
             rc = mt9v113_set_effect(SENSOR_SNAPSHOT_MODE, CAMERA_EFFECT_OFF);
             if (rc < 0)
             {
                 return rc;
             }
+#endif
         }
         break;
 
@@ -1040,7 +1930,55 @@ int mt9v113_sensor_config(void __user *argp)
             rc = mt9v113_power_down();
         }
         break;
+		
+	 case CFG_SET_WB:
+        {
+            rc = mt9v113_set_wb(cfg_data.cfg.wb_mode);
+        }
+        break;
+
+        case CFG_SET_BRIGHTNESS:
+        {
+            rc = mt9v113_set_brightness(cfg_data.cfg.brightness);
+        }
+        break;
         
+        case CFG_SET_CONTRAST:
+        {
+            rc = mt9v113_set_contrast(cfg_data.cfg.contrast);
+        }
+        break;
+        
+        case CFG_SET_SATURATION:
+        {
+            rc = mt9v113_set_saturation(cfg_data.cfg.saturation);
+        }
+        break;
+
+        case CFG_SET_ISO:
+        {
+            rc = mt9v113_set_iso(cfg_data.cfg.iso_val);
+        }
+        break;
+
+        case CFG_SET_ANTIBANDING:
+        {
+            rc = mt9v113_set_antibanding(cfg_data.cfg.antibanding);
+        }
+        break;
+
+        case CFG_SET_SHARPNESS:
+        {
+            rc = mt9v113_set_sharpness(cfg_data.cfg.sharpness);
+        }
+        break;
+
+        case CFG_SET_EXPOSURE_COMPENSATION://ZTE_ZT_CAM_20101026_04
+        {
+            rc = mt9v113_set_exposure_compensation(cfg_data.cfg.exposure);
+        }
+        break;
+		
         default:
         {
             rc = -EFAULT;

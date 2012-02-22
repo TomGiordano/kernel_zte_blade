@@ -72,6 +72,7 @@ struct rmi4_function_info {
 	__u8 intr_offset;
 	__u8 intr_mask;
 	__u8 ctrl_base;
+	__u8 query_base;
 	__u8 data_offset;
 	__u8 data_len;
 };

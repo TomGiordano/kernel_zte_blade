@@ -2,7 +2,10 @@
 #define _LINUX_ATMEL_H
 
 #define ATMEL_QT602240_NAME "atmel_qt602240"
-
+#if defined(CONFIG_MACH_BLUETICK)||defined(CONFIG_MACH_BLADE2)||defined(CONFIG_MACH_SKATE)||defined(CONFIG_MACH_ROAMER)\
+	||defined(CONFIG_MACH_SAILBOAT)
+#define CONFIG_TS_NOTIFIER    //huangjinyu add 20110720
+#endif
 #define RESERVED_T0                               0u
 #define RESERVED_T1                               1u
 #define DEBUG_DELTAS_T2                           2u
@@ -36,7 +39,10 @@
 #define SPT_GATE_T30                              30u
 #define TOUCH_KEYSET_T31                          31u
 #define TOUCH_XSLIDERSET_T32                      32u
+#define NEW_CAL_T35 35u
 #define DIAGNOSTIC_T37			37u
+#define NEW_CAL_T59 59u
+
 struct info_id_t {
 	uint8_t family_id;
 	uint8_t variant_id;
@@ -86,8 +92,8 @@ struct atmel_i2c_platform_data {
 	int8_t config_T6[6];
 	int8_t config_T38[8];
 	int8_t config_T7[3];
-	int8_t config_T8[10];//adjust the frameware 2.0 huangjinyu changed @20110707
-	int8_t config_T9[32];//adjust the frameware 2.0 huangjinyu changed @20110707
+	int8_t config_T8[10];//adjust the firmware 2.0 huangjinyu changed @20110707
+	int8_t config_T9[32];//adjust the firmware 2.0 huangjinyu changed @20110707
 	int8_t config_T15[11];
 	int8_t config_T18[2];
 	int8_t config_T19[16];
@@ -98,6 +104,13 @@ struct atmel_i2c_platform_data {
 	int8_t config_T25[14];
 	int8_t config_T27[7];
 	int8_t config_T28[6];
+	int8_t config_T35[5];	
+	int8_t config_T59[6];
+
+#ifdef CONFIG_TS_NOTIFIER
+	int8_t config_T9_charge[4];
+	int8_t config_T28_charge[2];
+#endif
 	uint8_t object_crc[3];
 	int8_t cable_config[4];
 	int8_t cable_config_T7[3];
@@ -116,8 +129,17 @@ struct atmel_config_data {
 	int8_t *config_T7;
 	int8_t *config_T8;
 	int8_t *config_T9;
+	int8_t *config_T20;	
 	int8_t *config_T22;
 	int8_t *config_T28;
+	int8_t *config_T35;
+	int8_t *config_T59;
+
+#ifdef CONFIG_TS_NOTIFIER
+	int8_t *config_T9_charge;	
+	int8_t *config_T28_charge;
+#endif
+
 };
 
 #endif

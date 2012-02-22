@@ -21,7 +21,24 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
- 
+  2011-08-09   ygl          Adjust the configurations according      ZTE_YGL_CAM_20110809
+                            to the value of expusure & brightness
+							merged from mt9d115
+  2010-12-09   jia          add failure process to avoid standby     ZTE_JIA_CAM_20101209
+                            current exception problem
+  2010-12-06   jia          add support for exposure compensation    ZTE_CAM_JIA_20101206
+  2010-09-08   jia          add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-09-07   lijing       modify ISO_AUTO setting to correct       ZTE_LJ_CAM_20100907
+                            yellowish effect;
+                            modify process of switch between
+                            preview and snapshot mode
+  2010-09-04   lijing       add support for MT9D115 and MT9D113      ZTE_LJ_CAM_20100904
+                            adapter
+  2010-09-02   jia          modify device sub ID from 0x0003 to      ZTE_CAMERA_LIJING_20100902
+                            0x0075
+  2010-09-02   jia          add device sub ID                        ZTE_CAMERA_LIJING_20100902
+  2010-09-02   jia          created                                  ZTE_CAMERA_LIJING_20100902
+                            merged from mt9d115_qtech_sunny_socket.c
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -145,6 +162,11 @@ static struct mt9d113_ctrl_t *mt9d113_ctrl = NULL;
  * For coexistence of MT9T111, MT9T112 and MT9D113
  */
 static uint16_t model_id;
+/* ZTE_ZT_CAM_20110107,ZTE_YGL_CAM_20110809
+ * Set the global value of exposure & brightness 
+ */
+static int8_t current_brightness = CAMERA_BRIGHTNESS_3;
+static int8_t current_exposure = CAMERA_EXPOSURE_2;
 
 DECLARE_MUTEX(mt9d113_sem);
 
@@ -523,6 +545,20 @@ static int32_t __attribute__((unused)) mt9d113_af_trigger(void)
     return 0;
 }
 
+/* ZTE_ZT_CAM_20110107,ZTE_YGL_CAM_20110809
+ * Adjust the configurations according to the value of expusure & brightness
+ */
+static int32_t mt9d113_set_exposure_brightness(int8_t exposure, int8_t brightness)
+{
+    int32_t rc = 0;
+
+    CDBG("%s: entry: exposure=%d, brightness=%d\n", __func__, exposure, brightness);
+
+    rc = mt9d113_i2c_write_table(mt9d113_regs.brightness_exposure_tbl[exposure*CAMERA_BRIGHTNESS_MAX+brightness],
+                                         mt9d113_regs.brightness_exposure_tbl_sz[exposure*CAMERA_BRIGHTNESS_MAX+brightness]); 
+
+    return rc;
+}
 /*
  * White Balance Setting
  */
@@ -657,7 +693,14 @@ static int32_t mt9d113_set_brightness(int8_t brightness)
     int32_t rc = 0;
 
     CCRT("%s: entry: brightness=%d\n", __func__, brightness);
+	/* ZTE_ZT_CAM_20110107,ZTE_YGL_CAM_20110809
+     * Set the global value of exposure & brightness 
+     */
+	current_brightness = brightness;
 
+    rc = mt9d113_set_exposure_brightness(current_exposure, 
+        current_brightness);
+#if 0
     switch (brightness)
     {
         case CAMERA_BRIGHTNESS_0:
@@ -715,7 +758,7 @@ static int32_t mt9d113_set_brightness(int8_t brightness)
             rc = -EFAULT;
         }     
     }
-
+#endif
 	return rc;
 }    
 
@@ -1336,45 +1379,13 @@ static long mt9d113_set_exposure_compensation(int8_t exposure)
 
     CDBG("%s: entry: exposure=%d\n", __func__, exposure);
 
-    switch(exposure)
-    {
-        case CAMERA_EXPOSURE_0:
-        {
-            //add code here
-        }
-        break;
-        
-        case CAMERA_EXPOSURE_1:
-        {
-            //add code here
-        }
-        break;
+	/* ZTE_ZT_CAM_20110107,ZTE_YGL_CAM_20110809
+     * Set the global value of exposure & brightness 
+     */
+    current_exposure = exposure;
 
-        case CAMERA_EXPOSURE_2:
-        {
-            //add code here
-        }
-        break;
-
-        case CAMERA_EXPOSURE_3:
-        {
-            //add code here
-        }
-        break;
-
-        case CAMERA_EXPOSURE_4:
-        {
-            //add code here
-        }
-        break;
-        
-        default:
-        {
-            CCRT("%s: parameter error!\n", __func__);
-            return -EFAULT;
-        }        
-    }
-
+    rc = (int32_t)mt9d113_set_exposure_brightness(current_exposure, 
+        current_brightness);
     return rc;
 }
 
@@ -2601,6 +2612,13 @@ int mt9d113_sensor_probe(const struct msm_camera_sensor_info *info,
      */
     mt9d113_init_suspend();
 
+	/*
+	 * add sensor configuration
+	 * ZTE_CAM_LJ_20110413
+	 */ 
+    s->s_mount_angle = 0;
+    s->s_camera_type = BACK_CAMERA_2D;
+
     s->s_init       = mt9d113_sensor_init;
     s->s_config     = mt9d113_sensor_config;
     s->s_release    = mt9d113_sensor_release;
@@ -2668,7 +2686,12 @@ static void mt9d113_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
- 
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
     msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);
     return;
 #endif

@@ -19,6 +19,7 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----        -------------------------------------    ----------------------
+  2010-06-05   ye.ganlin   add process for flash LED                YGL_CAM_20100605
 ------------------------------------------------------------------------------------------*/
 #include <linux/kernel.h>
 #include <linux/errno.h>
@@ -30,7 +31,11 @@
 #include <mach/camera.h>
 #include <mach/gpio.h>
 
-
+/*
+ * Commented by YGL_CAM_20100605
+ * Add process for flash LED
+ * and for CONFIG_MACH_JOE ONLY
+ */
 #if defined(CONFIG_MSM_CAMERA_FLASH)
 
 /*

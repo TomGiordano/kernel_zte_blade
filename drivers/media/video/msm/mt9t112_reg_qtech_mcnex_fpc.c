@@ -20,7 +20,78 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
+  2011-10-26   lijing       update for A light fail of P727P         ZTE_CAM_LJ_20111026
+  2011-07-26   wangtao      modify display more red 727d40                 ZTE_CAM_WT_20110726
+  2011-06-24   lijng        modify the sharpness of data pin rising  ZTE_CAM_LJ_20110624
+                            edge.
+  2011-03-30   ygl          modified the focus mode to improve the   ZTE_CAM_WT_20110215
+                            focus time    
+  2010-12-16   zt           modify PLL setting                       ZTE_ZT_CAM_20101216
+                            modify clk
+                            modify init setting, i.e., prev_snap
+                            modify LSC
+                            modify setting of brightness
+                            modify setting of saturation
+                            modify setting of sharpness
+                            setting of lens_for_outdoor and
+                            lens_for_indoor are disused
+  2010-12-15   jia.jia      add support for exposure compensation    ZTE_MSM_CAMERA_JIA_20101215
+  2010-09-27   zt           eliminate the preview flash under the    ZTE_MSM_CAMERA_ZT_001
+                            specific A light source
+  2010-08-09   jia          modify setting of AWB and lensshading    ZTE_MSM_CAMERA_JIA_001
+                            to improve effects of preview and
+                            snapshot
+  2010-07-28   li.jing      fix bug of white line display during     ZTE_MSM_CAMERA_LIJING_001
+                            snapshot
+  2010-07-21   jia          fix bug of wrong ptr of                  ZTE_MSM_CAMERA_JIA_001
+                            "lens_for_indoor_tbl"
+  2010-05-13   zh.shj       modify config of AWB & LSC settings      ZTE_MSM_CAMERA_ZHSHJ_001
+                            for different projects
+  2010-05-06   zh.shj       modify config of lens shading for Mcnex  ZTE_MSM_CAMERA_ZHSHJ_001
+                            MT9T112 and add AF TWICE process to 
+                            improve AF effect 
+  2010-04-15   zh.shj       add process for different board types    ZTE_MSM_CAMERA_ZHSHJ_001
+                            e.g., CONFIG_MACH_BLADE and CONFIG_
+                            MACH_RAISE
+  2010-03-13   zh.shj       improve performance of auto WB,          ZTE_MSM_CAMERA_ZHSHJ_001
+                            contrast, and LS in indoor environment
+  2010-03-03   zh.shj       Add process of lens shading before       ZTE_MSM_CAMERA_ZHSHJ_001
+                            preview and snapshot
+  2010-02-21   zh.shj       set sharpenss value according to         ZTE_MSM_CAMERA_ZHSHJ_001
+                            different brightness level;
+                            patched from Aptina, USA;
+                            modify contrast value according to
+                            patch provided by Aptina, USA;
+                            enlarge AF windows;
+                            improve AWB effect for new sensor;
+  2010-02-04   zh.shj       improve effect of preview and snapshot   ZTE_MSM_CAMERA_ZHSHJ_001
+                            after new module is available
+  2010-01-28   zh.shj       modify setting of maximum brightness     ZTE_MSM_CAMERA_ZHSHJ_001
+  2010-01-26   zh.shj       fix bug of inconsistence during setting  ZTE_MSM_CAMERA_ZHSHJ_001
+                            minimum brightness
+  2010-01-22   zh.shj       improve effect of preview and snapshot   ZTE_MSM_CAMERA_ZHSHJ_001
+                            under poor light condition
+  2010-01-14   zh.shj       modify config of sharpness               ZTE_MSM_CAMERA_ZHSHJ_001
+  2010-01-06   zh.shj       modify config of PLL to make PCLK equal  ZTE_MSM_CAMERA_ZHSHJ_001
+                            to MCLK
+                            modify config of AWB and CCM
+                            modify config of auto mode of white balance
+                            modify config of brightness
+  2010-01-05   zh.shj       modify config of contrast                ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-28   zh.shj       add config for MT9T112-3.1Mp-AF          ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-28   jia.jia      merged from mt9t111_reg_qtech.c          ZTE_MSM_CAMERA_JIA_001
+  2009-12-21   zh.shj       improve effects of white balance         ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-21   chg          for vfe zoom                             CHG_CAM_20091217
+  2009-12-19   zh.shj       add config for contrast                  ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-12-11   jia.jia      rename file with mt9t111_reg_qtech       ZTE_MSM_CAMERA_JIA_001
+  2009-12-03   jia.jia      Improve efficiency of sensor init        ZTE_MSM_CAMERA_JIA_001
+  2009-12-01   jia.jia      Refactor code for sensor init            ZTE_MSM_CAMERA_JIA_001
+  2009-11-09   jia.jia      add wb and af settings                   ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-11-26   zh.shj       improve effects of AF, AWB and LSC;      ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-11-09   jia.jia      add orientation setting for preview      ZTE_MSM_CAMERA_ZHSHJ_001
+                            and snapshot
+  2009-11-05   zh.shj       mt9t111 preview function implemented     ZTE_MSM_CAMERA_ZHSHJ_001
+  2009-10-24   jia.jia      Merged from kernel-v4515                 ZTE_MSM_CAMERA_JIA_001
 ------------------------------------------------------------------------------------------*/
 
 #include "mt9t11x.h"
@@ -1076,6 +1147,196 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     /*
      * For narrow visual angle of lens only
      */
+     //resolve dispaly more red 20110726 wangtao
+     #if defined(CONFIG_MACH_SAILBOAT)
+    //[Lens Correction 95% 06/14/11 19:13:21]
+		//BITFIELD= 0x3210, 0x0008, 0 //PGA_ENABLE
+		{0x3210, 0x00B0, WORD_LEN,0}, 	// COLOR_PIPELINE_CONTROL
+		{0x3640, 0x00F0, WORD_LEN,0}, 	// P_G1_P0Q0
+		{0x3642, 0x932C, WORD_LEN,0}, 	// P_G1_P0Q1
+		{0x3644, 0x7C51, WORD_LEN,0}, 	// P_G1_P0Q2
+		{0x3646, 0xB36E, WORD_LEN,0}, 	// P_G1_P0Q3
+		{0x3648, 0xD731, WORD_LEN,0}, 	// P_G1_P0Q4
+		{0x364A, 0x0090, WORD_LEN,0}, 	// P_R_P0Q0
+		{0x364C, 0xB82B, WORD_LEN,0}, 	// P_R_P0Q1
+		{0x364E, 0x6931, WORD_LEN,0}, 	// P_R_P0Q2
+		{0x3650, 0xD6CD, WORD_LEN,0}, 	// P_R_P0Q3
+		{0x3652, 0xBB71, WORD_LEN,0}, 	// P_R_P0Q4
+		{0x3654, 0x0090, WORD_LEN,0}, 	// P_B_P0Q0
+		{0x3656, 0xC54B, WORD_LEN,0}, 	// P_B_P0Q1
+		{0x3658, 0x47B1, WORD_LEN,0}, 	// P_B_P0Q2
+		{0x365A, 0x8A0E, WORD_LEN,0}, 	// P_B_P0Q3
+		{0x365C, 0xC131, WORD_LEN,0}, 	// P_B_P0Q4
+		{0x365E, 0x7FEF, WORD_LEN,0}, 	// P_G2_P0Q0
+		{0x3660, 0x832C, WORD_LEN,0}, 	// P_G2_P0Q1
+		{0x3662, 0x7FF1, WORD_LEN,0}, 	// P_G2_P0Q2
+		{0x3664, 0xB02E, WORD_LEN,0}, 	// P_G2_P0Q3
+		{0x3666, 0xEA31, WORD_LEN,0}, 	// P_G2_P0Q4
+		{0x3680, 0x2A2C, WORD_LEN,0}, 	// P_G1_P1Q0
+		{0x3682, 0x852A, WORD_LEN,0}, 	// P_G1_P1Q1
+		{0x3684, 0x282F, WORD_LEN,0}, 	// P_G1_P1Q2
+		{0x3686, 0x0FCE, WORD_LEN,0}, 	// P_G1_P1Q3
+		{0x3688, 0xDC90, WORD_LEN,0}, 	// P_G1_P1Q4
+		{0x368A, 0x2D8D, WORD_LEN,0}, 	// P_R_P1Q0
+		{0x368C, 0x1BAD, WORD_LEN,0}, 	// P_R_P1Q1
+		{0x368E, 0x36EF, WORD_LEN,0}, 	// P_R_P1Q2
+		{0x3690, 0xF2ED, WORD_LEN,0}, 	// P_R_P1Q3
+		{0x3692, 0xD5B0, WORD_LEN,0}, 	// P_R_P1Q4
+		{0x3694, 0xA9ED, WORD_LEN,0}, 	// P_B_P1Q0
+		{0x3696, 0x61CB, WORD_LEN,0}, 	// P_B_P1Q1
+		{0x3698, 0xC72E, WORD_LEN,0}, 	// P_B_P1Q2
+		{0x369A, 0x208E, WORD_LEN,0}, 	// P_B_P1Q3
+		{0x369C, 0x0470, WORD_LEN,0}, 	// P_B_P1Q4
+		{0x369E, 0xFA2D, WORD_LEN,0}, 	// P_G2_P1Q0
+		{0x36A0, 0x0BAD, WORD_LEN,0}, 	// P_G2_P1Q1
+		{0x36A2, 0x878E, WORD_LEN,0}, 	// P_G2_P1Q2
+		{0x36A4, 0x7AAD, WORD_LEN,0}, 	// P_G2_P1Q3
+		{0x36A6, 0x454E, WORD_LEN,0}, 	// P_G2_P1Q4
+		{0x36C0, 0x3352, WORD_LEN,0}, 	// P_G1_P2Q0
+		{0x36C2, 0xE26E, WORD_LEN,0}, 	// P_G1_P2Q1
+		{0x36C4, 0xCF93, WORD_LEN,0}, 	// P_G1_P2Q2
+		{0x36C6, 0x1DF2, WORD_LEN,0}, 	// P_G1_P2Q3
+		{0x36C8, 0x0D55, WORD_LEN,0}, 	// P_G1_P2Q4
+		{0x36CA, 0x1A92, WORD_LEN,0}, 	// P_R_P2Q0
+		{0x36CC, 0xBD2F, WORD_LEN,0}, 	// P_R_P2Q1
+		{0x36CE, 0xD2B2, WORD_LEN,0}, 	// P_R_P2Q2
+		{0x36D0, 0x2DD2, WORD_LEN,0}, 	// P_R_P2Q3
+		{0x36D2, 0x6773, WORD_LEN,0}, 	// P_R_P2Q4
+		{0x36D4, 0x1472, WORD_LEN,0}, 	// P_B_P2Q0
+		{0x36D6, 0xC0EF, WORD_LEN,0}, 	// P_B_P2Q1
+		{0x36D8, 0xD833, WORD_LEN,0}, 	// P_B_P2Q2
+		{0x36DA, 0x1472, WORD_LEN,0}, 	// P_B_P2Q3
+		{0x36DC, 0x2555, WORD_LEN,0}, 	// P_B_P2Q4
+		{0x36DE, 0x39D2, WORD_LEN,0}, 	// P_G2_P2Q0
+		{0x36E0, 0xCDAF, WORD_LEN,0}, 	// P_G2_P2Q1
+		{0x36E2, 0xD7B3, WORD_LEN,0}, 	// P_G2_P2Q2
+		{0x36E4, 0x5252, WORD_LEN,0}, 	// P_G2_P2Q3
+		{0x36E6, 0x0BB5, WORD_LEN,0}, 	// P_G2_P2Q4
+		{0x3700, 0x2AEE, WORD_LEN,0}, 	// P_G1_P3Q0
+		{0x3702, 0xA2D0, WORD_LEN,0}, 	// P_G1_P3Q1
+		{0x3704, 0xAB92, WORD_LEN,0}, 	// P_G1_P3Q2
+		{0x3706, 0x0E71, WORD_LEN,0}, 	// P_G1_P3Q3
+		{0x3708, 0x2C34, WORD_LEN,0}, 	// P_G1_P3Q4
+		{0x370A, 0x384C, WORD_LEN,0}, 	// P_R_P3Q0
+		{0x370C, 0x9D50, WORD_LEN,0}, 	// P_R_P3Q1
+		{0x370E, 0x8A52, WORD_LEN,0}, 	// P_R_P3Q2
+		{0x3710, 0x2591, WORD_LEN,0}, 	// P_R_P3Q3
+		{0x3712, 0x1634, WORD_LEN,0}, 	// P_R_P3Q4
+		{0x3714, 0xC04E, WORD_LEN,0}, 	// P_B_P3Q0
+		{0x3716, 0xB7CE, WORD_LEN,0}, 	// P_B_P3Q1
+		{0x3718, 0x0D71, WORD_LEN,0}, 	// P_B_P3Q2
+		{0x371A, 0xAF8F, WORD_LEN,0}, 	// P_B_P3Q3
+		{0x371C, 0x9792, WORD_LEN,0}, 	// P_B_P3Q4
+		{0x371E, 0xC96E, WORD_LEN,0}, 	// P_G2_P3Q0
+		{0x3720, 0x5B2D, WORD_LEN,0}, 	// P_G2_P3Q1
+		{0x3722, 0xB40F, WORD_LEN,0}, 	// P_G2_P3Q2
+		{0x3724, 0x92D2, WORD_LEN,0}, 	// P_G2_P3Q3
+		{0x3726, 0x37D3, WORD_LEN,0}, 	// P_G2_P3Q4
+		{0x3740, 0x8C33, WORD_LEN,0}, 	// P_G1_P4Q0
+		{0x3742, 0xEE11, WORD_LEN,0}, 	// P_G1_P4Q1
+		{0x3744, 0x6290, WORD_LEN,0}, 	// P_G1_P4Q2
+		{0x3746, 0x1334, WORD_LEN,0}, 	// P_G1_P4Q3
+		{0x3748, 0x4517, WORD_LEN,0}, 	// P_G1_P4Q4
+		{0x374A, 0xCCF2, WORD_LEN,0}, 	// P_R_P4Q0
+		{0x374C, 0xF2D0, WORD_LEN,0}, 	// P_R_P4Q1
+		{0x374E, 0xB2B4, WORD_LEN,0}, 	// P_R_P4Q2
+		{0x3750, 0x0E13, WORD_LEN,0}, 	// P_R_P4Q3
+		{0x3752, 0x0D18, WORD_LEN,0}, 	// P_R_P4Q4
+		{0x3754, 0xE472, WORD_LEN,0}, 	// P_B_P4Q0
+		{0x3756, 0x96B1, WORD_LEN,0}, 	// P_B_P4Q1
+		{0x3758, 0x2BD4, WORD_LEN,0}, 	// P_B_P4Q2
+		{0x375A, 0x1794, WORD_LEN,0}, 	// P_B_P4Q3
+		{0x375C, 0x7D36, WORD_LEN,0}, 	// P_B_P4Q4
+		{0x375E, 0x9433, WORD_LEN,0}, 	// P_G2_P4Q0
+		{0x3760, 0x9771, WORD_LEN,0}, 	// P_G2_P4Q1
+		{0x3762, 0x914F, WORD_LEN,0}, 	// P_G2_P4Q2
+		{0x3764, 0x31F3, WORD_LEN,0}, 	// P_G2_P4Q3
+		{0x3766, 0x4E97, WORD_LEN,0}, 	// P_G2_P4Q4
+		{0x3782, 0x0310, WORD_LEN,0}, 	// CENTER_ROW
+		{0x3784, 0x0410, WORD_LEN,0}, 	// CENTER_COLUMN
+		//STATE= Lens Correction Falloff, 95
+		//BITFIELD= 0x3210, 0x0008, 1 //PGA_ENABLE
+		{0x3210, 0x00B8, WORD_LEN,0}, 	// COLOR_PIPELINE_CONTROL
+    
+    
+    
+        {0x098E, 0x48B0 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_0]
+		{0x0990, 0x0242 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48B2 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_1]
+		{0x0990, 0xFE23 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48B4 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_2]
+		{0x0990, 0x00B7 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48B6 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_3]
+		{0x0990, 0xFFC6 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48B8 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_4]
+		{0x0990, 0x0176 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48BA ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_5]
+		{0x0990, 0xFFDE ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48BC ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_6]
+		{0x0990, 0xFF9E ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48BE ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_7]
+		{0x0990, 0xFE81 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C0 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_8]
+		{0x0990, 0x02FC ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C2 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_9]
+		{0x0990, 0x001E ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C4 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_10]
+		{0x0990, 0x003A ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C6 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_0]
+		{0x0990, 0x0034 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C8 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_1]
+		{0x0990, 0x0041 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48CA ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_2]
+		{0x0990, 0xFF89 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48CC ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_3]
+		{0x0990, 0x001C ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48CE ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_4]
+		{0x0990, 0xFFF9 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D0 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_5]
+		{0x0990, 0xFFE9 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D2 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_6]
+		{0x0990, 0x0062 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D4 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_7]
+		{0x0990, 0x008A ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D6 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_8]
+		{0x0990, 0xFF12 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D8 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_9]
+		{0x0990, 0x0019 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48DA ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_10]
+		{0x0990, 0xFFE6 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x4906 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_XSHIFT_PRE_ADJ]
+		{0x0990, 0x002F ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x4908 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_YSHIFT_PRE_ADJ]
+		{0x0990, 0x0024 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0xC8F4 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_XSCALE]
+		{0x0990, 0x0004 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0xC8F5 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_YSCALE]
+		{0x0990, 0x0003 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48F6 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_0]
+		{0x0990, 0xCBEF ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48F8 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_1]
+		{0x0990, 0xEA40 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48FA ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_2]
+		{0x0990, 0x95A0 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48FC ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_3]
+		{0x0990, 0x509D ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48FE ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_4]
+		{0x0990, 0x1680 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x4900 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_5]
+		{0x0990, 0xAD6D ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x4902 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_6]
+		{0x0990, 0xFF4D ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x4904 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_7]
+		{0x0990, 0xC757 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C2 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_9]
+		{0x0990, 0x001E ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48C4 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_L_10]
+		{0x0990, 0x003E ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48D8 ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_9]
+		{0x0990, 0x0015 ,WORD_LEN,0},	// MCU_DATA_0
+		{0x098E, 0x48DA ,WORD_LEN,0},	// MCU_ADDRESS [CAM1_AWB_CCM_RL_10]
+		{0x0990, 0xFFE9 ,WORD_LEN,0},	// MCU_DATA_0    
+#else   
     //[85% with white paper in sunlight]
     {0x3640, 0x0230, WORD_LEN, 0}, 	// P_G1_P0Q0
     {0x3642, 0xCB8C, WORD_LEN, 0}, 	// P_G1_P0Q1
@@ -1257,6 +1518,7 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0990, 0x0015, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098E, 0x48DA, WORD_LEN, 0}, 	// MCU_ADDRESS [CAM1_AWB_CCM_RL_10]
     {0x0990, 0xFFE9, WORD_LEN, 0}, 	// MCU_DATA_0
+    #endif
 
     // Pa calib
     {0x098E, 0x6837, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_AE_TRACK_AE_MIN_VIRT_AGAIN]
@@ -1454,6 +1716,17 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x0990, 0x007E, WORD_LEN, 0}, 	// MCU_DATA_0
 
     // for A light
+//ZTE_CAM_LJ_20111026
+#if defined (CONFIG_MACH_SAILBOAT)
+    {0x098E, 0xE84A, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_AWB_K_R_L]
+    {0x0990, 0x0066, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098E, 0xE84C, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_AWB_K_B_L]
+    {0x0990, 0x008B, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098E, 0xEC4A, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_AWB_K_R_L]
+    {0x0990, 0x0066, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x098E, 0xEC4C, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_AWB_K_B_L]
+    {0x0990, 0x008B, WORD_LEN, 0}, 	// MCU_DATA_0
+#else
     {0x098E, 0xE84A, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_AWB_K_R_L]
     {0x0990, 0x0073, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098E, 0xE84C, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_AWB_K_B_L]
@@ -1461,13 +1734,18 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x098E, 0xEC4A, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_AWB_K_R_L]
     {0x0990, 0x0073, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098E, 0xEC4C, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_AWB_K_B_L]
-    {0x0990, 0x008B, WORD_LEN, 0}, 	// MCU_DATA_0
+    {0x0990, 0x008B, WORD_LEN, 0}, 	// MCU_DATA_0  
+#endif
 
     // Saturation / DDCCM
     {0x098E, 0x8400, WORD_LEN, 0}, 	// MCU_ADDRESS [SEQ_CMD]
     {0x0990, 0x0006, WORD_LEN, 200}, 	// MCU_DATA_0
     {0x098E, 0xE86F, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_LL_START_SATURATION]
+    #if defined(CONFIG_MACH_SAILBOAT) //ZTE_CAM_WT_20110726
+    {0x0990, 0x008c, WORD_LEN, 0}, 	// MCU_DATA_0
+    #else
     {0x0990, 0x0098, WORD_LEN, 0}, 	// MCU_DATA_0
+    #endif
     {0x098E, 0xE870, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_LL_END_SATURATION]
     {0x0990, 0x0038, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098E, 0xEC6F, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_LL_START_SATURATION]
@@ -1494,6 +1772,16 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x3C20, 0x0000, WORD_LEN, 0}, 	// TX_SS_CONTROL
 #endif
   
+#if defined (CONFIG_MACH_TURIES)
+    //do nothing
+#else
+    {0x3C20, 0x0000, WORD_LEN, 0}, 	// TX_SS_CONTROL
+
+    /*
+     * ZTE_CAM_LJ_20110624
+     * make data line rising edge more sharply for sailboat,
+     * else preview data is not correct.
+     */
 #if defined (CONFIG_MACH_SAILBOAT)
     {0x001E, 0x0701, WORD_LEN, 5}, 	// PAD_SLEW_PAD_CONFIG
 #else
@@ -1501,8 +1789,31 @@ static struct mt9t11x_i2c_reg_conf const prev_snap_tbl[] = {
     {0x001E, 0x0777, WORD_LEN, 5}, 	// PAD_SLEW_PAD_CONFIG
 #endif
 #endif
+#endif
     
     {0x0018, 0x002A, WORD_LEN, 20}, 	// STANDBY_CONTROL_AND_STATUS=
+#if defined (CONFIG_MACH_SAILBOAT)
+{0x098E, 0x48FE, WORD_LEN, 0}, 	// MCU_ADDRESS [CAM1_AWB_AWB_WEIGHTS_4]
+{0x0990, 0x1EEF, WORD_LEN, 0}, 	// MCU_DATA_0
+{0x098E, 0xE84F, WORD_LEN, 0},	// MCU_ADDRESS [PRI_A_CONFIG_AWB_K_B_R]
+{0x0990, 0x007D, WORD_LEN, 0}, 	// MCU_DATA_0
+#endif
+
+#if defined (CONFIG_MACH_TURIES)
+//[normal]
+{0x098E, 0x480C, WORD_LEN,0},	// MCU_ADDRESS [CAM1_CTX_A_READ_MODE]
+{0x0990, 0x046C, WORD_LEN,0},	// MCU_DATA_0
+{0x098E, 0xC80E, WORD_LEN,0},	// MCU_ADDRESS [CAM1_CTX_A_PIXEL_ORDER]
+{0x0990, 0x0000, WORD_LEN,0},	// MCU_DATA_0
+{0x098E, 0x4854, WORD_LEN,0},	// MCU_ADDRESS [CAM1_CTX_B_READ_MODE]
+{0x0990, 0x0024, WORD_LEN,0},	// MCU_DATA_0
+{0x098E, 0xC856, WORD_LEN,0},	// MCU_ADDRESS [CAM1_CTX_B_PIXEL_ORDER]
+{0x0990, 0x0000, WORD_LEN,0},	// MCU_DATA_0
+{0x098E, 0x8400, WORD_LEN,0},	// MCU_ADDRESS [SEQ_CMD]
+{0x0990, 0x0006, WORD_LEN,0},	// MCU_DATA_0
+#endif
+
+
 };
 
 static struct mt9t11x_i2c_reg_conf const wb_cloudy_tbl[] = {
@@ -1758,8 +2069,15 @@ static struct mt9t11x_i2c_reg_conf const af_tbl[] = {
     {0x0990, 0x03B6, WORD_LEN, 0},    // MCU_DATA_0
 
     //AF TWICE
+
+    /*
+     * ZTE_CAM_LJ_20110915,
+     * Fix bug of AF time too long in high light
+	 * 0x0002 -> 0x0042
+     */
     {0x098E, 0xB002, WORD_LEN, 0},    // MCU_ADDRESS [AFM_POS_MAX]
-    {0x0990, 0x0002, WORD_LEN, 0},    // MCU_DATA_0
+    {0x0990, 0x0042, WORD_LEN, 0},    // MCU_DATA_0
+    //{0x0990, 0x0002, WORD_LEN, 0},    // MCU_DATA_0
     
     {0x098E, 0x8400, WORD_LEN, 0},    // MCU_ADDRESS [SEQ_CMD]
     {0x0990, 0x0006, WORD_LEN, 50},// MCU_DATA_0
@@ -1771,7 +2089,11 @@ static struct mt9t11x_i2c_reg_conf const af_tbl[] = {
     {0x0990, 0x0000, WORD_LEN, 0},    // MCU_DATA_0
     {0x098E, 0x3003, WORD_LEN, 0},    // MCU_ADDRESS [AF_ALGO]
 
- 
+    /*
+     * ZTE_CAM_WT_20110215,
+     * modified the focus mode to improve the focus time
+	 * 0x0002 -> 0x0008
+     */
     //{0x0990, 0x0002, WORD_LEN, 0},    // MCU_DATA_0
 	{0x0990, 0x0008, WORD_LEN, 0},    // MCU_DATA_0
     //AF window enlarged    
@@ -2111,7 +2433,11 @@ static struct mt9t11x_i2c_reg_conf const saturation_tbl_1[] = {
 
 static struct mt9t11x_i2c_reg_conf const saturation_tbl_2[] = {
     {0x098E, 0xE86F, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_LL_START_SATURATION]
+    #if defined(CONFIG_MACH_SAILBOAT) //ZTE_CAM_WT_20110726
+    {0x0990, 0x008c, WORD_LEN, 0}, 	// MCU_DATA_0
+    #else
     {0x0990, 0x0098, WORD_LEN, 0}, 	// MCU_DATA_0
+    #endif
     {0x098E, 0xE870, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_A_CONFIG_LL_END_SATURATION]
     {0x0990, 0x0038, WORD_LEN, 0}, 	// MCU_DATA_0
     {0x098E, 0xEC6F, WORD_LEN, 0}, 	// MCU_ADDRESS [PRI_B_CONFIG_LL_START_SATURATION]
@@ -2321,7 +2647,7 @@ static uint16_t const exposure_tbl_sz[] = {
  * For wide visual angle of lens only
  */
 static struct mt9t11x_i2c_reg_conf const lens_for_outdoor_tbl[] ={
-#if 0 
+#if 0 // ZTE_ZT_CAM_20101216 disused
     //[85% with white paper in sunlight]
     {0x3640, 0x08B0, WORD_LEN, 0}, 	// P_G1_P0Q0
     {0x3642, 0x9F8E, WORD_LEN, 0}, 	// P_G1_P0Q1
@@ -2429,7 +2755,7 @@ static struct mt9t11x_i2c_reg_conf const lens_for_outdoor_tbl[] ={
 };
 
 static struct mt9t11x_i2c_reg_conf const lens_for_indoor_tbl[] ={
-#if 0 
+#if 0 //ZTE_ZT_CAM_20101216 disused
 #if defined(CONFIG_MACH_BLADE) || defined (CONFIG_MACH_SMOOTH)    
     //[Lens Correction 10/08/00]
     {0x3640, 0x0130, WORD_LEN, 0},

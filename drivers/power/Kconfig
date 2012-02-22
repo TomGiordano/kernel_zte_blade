@@ -200,6 +200,13 @@ config BATTERY_QCIBAT
 	help
 	 Say Y here if you want to use the Quanta battery driver for ST15
 	 platform.
+	 
+config CARKIT_FEATURE
+	tristate "ZTE carkit feature"
+	depends on BATTERY_MSM
+	default n
+	help
+	  Say Y to enable support for the battery in Qualcomm MSM.
 
 config TI_GAUGE
 	tristate "ti fuel gauge"

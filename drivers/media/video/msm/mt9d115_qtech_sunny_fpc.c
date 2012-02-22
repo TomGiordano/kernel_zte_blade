@@ -21,7 +21,17 @@
 /*-----------------------------------------------------------------------------------------
   when         who          what, where, why                         comment tag
   --------     ----         -------------------------------------    ----------------------
-
+  2011-06-24   wangtao      add sensor for 727d40                    ZTE_CAM_WT_20110706 
+  2011-06-24   lijing       optimize adaptor flow                    ZTE_CAM_LJ_20110624 
+  2010-12-09   jia          add failure process to avoid standby     ZTE_JIA_CAM_20101209
+                            current exception problem
+  2010-12-06   jia          add support for exposure compensation    ZTE_CAM_JIA_20101206
+  2010-09-08   jia          add exception process of i2c_del_driver  ZTE_JIA_CAM_20100908
+  2010-08-04   li.jing      update ISO settings                      ZTE_LJ_CAM_20100804
+  2010-07-23   li.jing      update sensor settings                   ZTE_LJ_CAM_20100723
+  2010-07-05   li.jing      update sensor reg settings               ZTE_CAM_LIJING_20100705
+                            set MCLK and MT9D115_MODEL_ID
+  2010-06-29   li.jing      created                                  ZTE_CAMERA_LIJING_20100629
 ------------------------------------------------------------------------------------------*/
 
 #include <linux/delay.h>
@@ -1392,6 +1402,10 @@ static long mt9d115_set_sensor_mode(int32_t mode)
 {
     long rc = 0;
 
+    uint16_t status = 0;
+
+    int i = 0;
+
     CDBG("%s: entry\n", __func__);
 
     switch (mode)
@@ -1421,17 +1435,51 @@ static long mt9d115_set_sensor_mode(int32_t mode)
             {
                 return rc;
             }
+            for(i = 0;i < 30;i++) {
+                rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA104, WORD_LEN);
+                if (rc < 0)
+                {
+                    return rc;
+                }
 
-            /*
-               * To improve efficiency of switch between preview and snapshot mode,
-               * decrease time delay from 200ms to 80ms
-               *
-               * Attention:
-               * The process of time delay should be set after process of setting
-               * manual mode for autofocus in order to avoid display exception during
-               * sensor initialization.
-               */
-            mdelay(80);
+                rc = mt9d115_i2c_read(mt9d115_client->addr, 0x0990, &status, WORD_LEN);
+                if (rc < 0)
+                {
+                    return rc;
+                }
+                if(0x03 == status){
+                    pr_err("read preview status successfully,i=%d\n",i);
+                    break;
+                }
+                else if (29 == i) {
+                    pr_err("read preview status fail,i=%d,status=0x%x\n",i,status);
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA115, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x0990, 0x0000, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA103, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x0990, 0x0001, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+                    msleep(150);
+                }
+                msleep(7);
+            }
         }
         break;
 
@@ -1459,6 +1507,51 @@ static long mt9d115_set_sensor_mode(int32_t mode)
             if (rc < 0)
             {
                 return rc;
+            }
+            for(i = 0;i < 30;i++) {
+                rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA104, WORD_LEN);
+                if (rc < 0)
+                {
+                    return rc;
+                }
+
+                rc = mt9d115_i2c_read(mt9d115_client->addr, 0x0990, &status, WORD_LEN);
+                if (rc < 0)
+                {
+                    return rc;
+                }
+                if(0x07 == status){
+                    pr_err("read snapshot status successfully,i=%d\n",i);
+                    break;
+                }
+                else if (29 == i) {
+                    pr_err("read snapshot status fail,i=%d,status=0x%x\n",i,status);
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA115, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x0990, 0x0002, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x098C, 0xA103, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+
+                    rc = mt9d115_i2c_write(mt9d115_client->addr, 0x0990, 0x0002, WORD_LEN);
+                    if (rc < 0)
+                    {
+                        return rc;
+                    }
+                    msleep(150);
+                }
+                msleep(7);
             }
 
             /*
@@ -2659,7 +2752,12 @@ static void mt9d115_workqueue(struct work_struct *work)
 
 probe_failed:
     CCRT("%s: rc = %d, failed!\n", __func__, rc);
- 
+    /* 
+      * ZTE_JIA_CAM_20101209
+      * to avoid standby current exception problem
+      *
+      * ignore "rc"
+      */
       if(rc != -ENOINIT){
 	 	pr_err("%s: rc != -ENOINIT\n", __func__);
     	msm_camera_power_backend(MSM_CAMERA_PWRDWN_MODE);

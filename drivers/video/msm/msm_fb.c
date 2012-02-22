@@ -14,7 +14,24 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+ /* 
+======================================================
+when         who           what, where, why                          comment tag
+--------     ----          -------------------------------------    ------------------------------
+2011-02-25	 lkej		modify the code for read lcd information 		ZTE_LCD_LKEJ_20110225_001
+2010-06-29   luya    	modify mdelay to msleep				ZTE_LCD_LUYA_20100629_001
+2010-06-22   lht		支持工程模式读屏信息						ZTE_LCD_LHT_20100622_001
+2010-06-17   lht		decrease FTM  backlight level				ZTE_LCD_LHT_20100617_001
+2010-06-11   lht		支持工程模式读屏信息						ZTE_LCD_LHT_20100611_001
+2010-06-10   luya		修改BKL level								LCD_LUYA_20100610_01
+2010-05-05   lht		修改fix-linelength，开机图片				ZTE_LCD_LHT_20100505_001
+2010-03-25   luya		修改开机背光亮度							ZTE_LCD_LUYA_20100325_001
+2010-02-21   luya		change delay when wakeup                    ZTE_LCD_LUYA_20100221_001        
+2009-12-21   luya    	change logo file name 					 	ZTE_LCD_LUYA_20091221_001
+2009-11-28   hp             decrease initial brightness of backlight  ZTE_BACKLIGHT_HP_002
 
+=======================================================
+*/
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
@@ -348,7 +365,7 @@ static int msm_fb_probe(struct platform_device *pdev)
 #ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
     if(zte_get_ftm_flag())
     {
-        mfd->bl_level = 3;
+        mfd->bl_level = 2;
     }
 #endif
 #endif
@@ -2889,57 +2906,57 @@ static int msm_lcd_read_proc(
 	{
 		case LCD_PANEL_P726_ILI9325C:
 			strcpy(module_name,"1");
-			//len = sprintf(page, "%s\n","1");
 			break;
 		case LCD_PANEL_P726_HX8347D:
 			strcpy(module_name,"2");
-			//len = sprintf(page, "%s\n","2");
 			break;
 		case LCD_PANEL_P726_S6D04M0X01:
 			strcpy(module_name,"3");
-			//len = sprintf(page, "%s\n","3");
 			break;
 		case LCD_PANEL_P722_HX8352A:
 			strcpy(module_name,"10");
-			//len = sprintf(page, "%s\n","10");
 			break;
 		case LCD_PANEL_P727_HX8352A:
 			strcpy(module_name,"20");
-			//len = sprintf(page, "%s\n","20");
 			break;
 		case LCD_PANEL_R750_ILI9481_1:
 			strcpy(module_name,"30");
-			//len = sprintf(page, "%s\n","30");
 			break;
 		case LCD_PANEL_R750_ILI9481_2:
 			strcpy(module_name,"31");
-			//len = sprintf(page, "%s\n","31");
 			break;
 		case LCD_PANEL_R750_ILI9481_3:
 			strcpy(module_name,"32");
-			//len = sprintf(page, "%s\n","32");
 			break;
 		case LCD_PANEL_P729_TL2796:
 			strcpy(module_name,"40");
-			//len = sprintf(page, "%s\n","40");
 			break;
 		case LCD_PANEL_P729_TFT_LEAD:
 			strcpy(module_name,"42");
-			//len = sprintf(page, "%s\n","40");
 			break;
 		case LCD_PANEL_P729_TFT_TRULY:
 			strcpy(module_name,"41");
-			//len = sprintf(page, "%s\n","40");
+			break;
+		case LCD_PANEL_P729_TFT_LEAD_CMI:
+			strcpy(module_name,"zteLEAD(Himax8363+CMI)_480*800_3.5Inch");
+			break;
+		case LCD_PANEL_P729_TFT_TRULY_LG:
+			strcpy(module_name,"zteTRULY(Himax8369+LG)_480*800_3.5Inch");
+			break;
+		case LCD_PANEL_P729_TFT_LEAD_CASIO:
+			strcpy(module_name,"zteLEAD(Himax8363+CASIO)_480*800_3.5Inch");
 			break;
 		case LCD_PANEL_V9_NT39416I:
 			strcpy(module_name,"50");
-			//len = sprintf(page, "%s\n","40");
 			break;	
 		case LCD_PANEL_4P3_NT35510:
-			strcpy(module_name,"60");//ZTE_LCD_LKEJ_20110225_001
+			strcpy(module_name,"60");
 			break;
 		case LCD_PANEL_4P3_HX8369A:
 			strcpy(module_name,"61");
+			break;
+		case 62:
+			strcpy(module_name,"zteBOE(NT35510+HYDIS)_WVGA_4.3Inch");
 			break;
 		case LCD_PANEL_3P8_NT35510_1:
 			strcpy(module_name,"70");
@@ -2964,6 +2981,14 @@ static int msm_lcd_read_proc(
 			break;
 		case LCD_PANEL_2P6_HX8368A_2:
 			strcpy(module_name,"91");
+			break;
+		case LCD_PANEL_3P5_HX8369_LG:
+			strcpy(module_name,"zteLEAD(Himax8369+LG)_480*800_3.5Inch");
+			break;
+		case LCD_PANEL_3P5_HX8369_HYDIS:
+			strcpy(module_name,"zteTRULYorYS(Himax8369+HYDIS)_480*800_3.5Inch");
+		case LCD_PANEL_MAX:
+		case LCD_PANEL_NOPANEL:
 			break;
 		default:
 			strcpy(module_name,"0");

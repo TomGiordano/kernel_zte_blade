@@ -114,9 +114,9 @@ static void lcdc_set_bl(struct msm_fb_data_type *mfd)
     {
         new_bl_level = 0;
     }
-    if (new_bl_level > 15)   //ZTE_LCD_LKEJ_20110422_001
+    if (new_bl_level > 12)   //ZTE_LCD_LKEJ_20110422_001
     {
-        new_bl_level = 15;//ZTE_LCD_LKEJ_20110425_001
+        new_bl_level = 12;//ZTE_LCD_LKEJ_20110425_001
     }
 
     if(0 == new_bl_level)
@@ -519,7 +519,7 @@ void lcd_panel_init(void)
 }
 
 static struct msm_fb_panel_data lcdc_tft_panel_data = {
-       .panel_info = {.bl_max = 15},//ZTE_LCD_LKEJ_20110425_001
+       .panel_info = {.bl_max = 12},//ZTE_LCD_LKEJ_20110425_001
 	.on = lcdc_panel_on,
 	.off = lcdc_panel_off,
        .set_backlight = lcdc_set_bl,

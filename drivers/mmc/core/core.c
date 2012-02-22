@@ -228,15 +228,15 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 	mrq->done = mmc_wait_done;
 
 	mmc_start_request(host, mrq);
-#ifdef CONFIG_BCM_WIFI
-    if(!wait_for_completion_timeout(&complete, 5*HZ))
-	{
-		printk("shaohua mmc 5 dec timeout \n");
-		mrq->cmd->error = -1;
-	}
-#else
+//#ifdef CONFIG_BCM_WIFI
+//    if(!wait_for_completion_timeout(&complete, 5*HZ))
+//	{
+//		printk("shaohua mmc 5 dec timeout \n");
+//		mrq->cmd->error = -1;
+//	}
+//#else
 	wait_for_completion(&complete);
-#endif
+//#endif
 }
 
 EXPORT_SYMBOL(mmc_wait_for_req);
@@ -1345,7 +1345,11 @@ int mmc_suspend_host(struct mmc_host *host, pm_message_t state)
 		mmc_power_off(host);
 
 #ifdef CONFIG_ATH_WIFI
-	host->last_suspend_error = err;
+	/*
+	 * Change to zero to turn off the clock
+	 */
+	if (err == -EBUSY)
+		err = 0;
 #endif
 
 	return err;
@@ -1369,8 +1373,14 @@ int mmc_resume_host(struct mmc_host *host)
 	}
 
 	if (host->bus_ops && !host->bus_dead) {
+#ifdef CONFIG_ATH_WIFI
+		if (!host->suspend_keep_power) {
+#endif		
 		mmc_power_up(host);
 		mmc_select_voltage(host, host->ocr);
+#ifdef CONFIG_ATH_WIFI
+		}
+#endif		
 		BUG_ON(!host->bus_ops->resume);
 		err = host->bus_ops->resume(host);
 		if (err) {
