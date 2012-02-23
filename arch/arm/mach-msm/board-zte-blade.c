@@ -3662,7 +3662,7 @@ static void __init msm7x2x_init(void)
 	}
 
 	if (cpu_is_msm7x27())
-		msm7x2x_clock_data.max_axi_khz = 200000;
+		msm7x2x_clock_data.max_axi_khz = 422400;
 
 	msm_acpu_clock_init(&msm7x2x_clock_data);
 #ifdef CONFIG_ZTE_PLATFORM
