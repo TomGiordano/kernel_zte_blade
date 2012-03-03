@@ -986,7 +986,15 @@ void zte_update_lateresume_2_earlysuspend_time(bool resume_or_earlysuspend)	// L
 	}
 }
 
+#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
 extern unsigned pm_modem_sleep_time_get(void);
+#else
+unsigned pm_modem_sleep_time_get(void)
+{
+       return  0;
+       }
+#endif
+
 /*BEGIN LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake*/
 struct timespec time_updated_when_sleep_awake;
 void record_sleep_awake_time(bool record_sleep_awake)
