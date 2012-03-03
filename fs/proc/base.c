@@ -2992,7 +2992,7 @@ static const struct pid_entry tid_base_stuff[] = {
 	REG("cgroup",  S_IRUGO, proc_cgroup_operations),
 #endif
 	INF("oom_score", S_IRUGO, proc_oom_score),
-	REG("oom_adj",   S_IRUGO|S_IWUSR, proc_oom_adjust_operations),
+	ANDROID("oom_adj",S_IRUGO|S_IWUSR, oom_adjust),
 #ifdef CONFIG_AUDITSYSCALL
 	REG("loginuid",  S_IWUSR|S_IRUGO, proc_loginuid_operations),
 	REG("sessionid",  S_IRUSR, proc_sessionid_operations),
