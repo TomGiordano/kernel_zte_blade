@@ -1,4 +1,4 @@
-make cm_blade_gen2_defconfig
+make cyanogen_blade_defconfig
 schedtool -B -n 1 -e ionice -n 1 make -j `cat /proc/cpuinfo | grep "^processor" | wc -l`
 mkdir ./output
 make >&1 | tee ./output/log.txt
