@@ -102,7 +102,7 @@ static int conf_askvalue(struct symbol *sym, const char *def)
 		check_stdin();
 	case ask_all:
 		fflush(stdout);
-		fgets(line, 128, stdin);
+		xfgets(line, 128, stdin);
 		return 1;
 	default:
 		break;
@@ -304,7 +304,7 @@ static int conf_choice(struct menu *menu)
 			check_stdin();
 		case ask_all:
 			fflush(stdout);
-			fgets(line, 128, stdin);
+			xfgets(line, 128, stdin);
 			strip(line);
 			if (line[0] == '?') {
 				print_help(menu);
@@ -614,4 +614,15 @@ int main(int ac, char **av)
 		}
 	}
 	return 0;
+}
+/*
+ * Helper function to facilitate fgets() by Jean Sacren.
+ */
+void xfgets(str, size, in)
+  char *str;
+  int size;
+  FILE *in;
+{
+  if (fgets(str, size, in) == NULL)
+    fprintf(stderr, "\nError in reading or end of file.\n");
 }

@@ -288,11 +288,13 @@ static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
 	old_index = stat->last_index;
 	new_index = freq_table_get_index(stat, freq->new);
 
-	cpufreq_stats_update(freq->cpu);
-	if (old_index == new_index)
+	/* We can't do stat->time_in_state[-1]= .. */
+        if (old_index == -1 || new_index == -1)
 		return 0;
 
-	if (old_index == -1 || new_index == -1)
+	cpufreq_stats_update(freq->cpu);
+
+        if (old_index == new_index)
 		return 0;
 
 	spin_lock(&cpufreq_stats_lock);
@@ -303,6 +305,26 @@ static int cpufreq_stat_notifier_trans(struct notifier_block *nb,
 	stat->total_trans++;
 	spin_unlock(&cpufreq_stats_lock);
 	return 0;
+}
+
+static int cpufreq_stats_create_table_cpu(unsigned int cpu)
+{
+  struct cpufreq_policy *policy;
+  struct cpufreq_frequency_table *table;
+  int ret = -ENODEV;
+  policy = cpufreq_cpu_get(cpu);
+  if (!policy)
+    return -ENODEV;
+  
+  table = cpufreq_frequency_get_table(cpu);
+  if (!table)
+    goto out;
+  
+  ret = cpufreq_stats_create_table(policy, table);
+  
+out:
+  cpufreq_cpu_put(policy);
+  return ret;
 }
 
 static int __cpuinit cpufreq_stat_cpu_callback(struct notifier_block *nfb,
@@ -316,10 +338,13 @@ static int __cpuinit cpufreq_stat_cpu_callback(struct notifier_block *nfb,
 	case CPU_ONLINE_FROZEN:
 		cpufreq_update_policy(cpu);
 		break;
-	case CPU_DEAD:
-	case CPU_DEAD_FROZEN:
+	case CPU_DOWN_PREPARE:
+        case CPU_DOWN_PREPARE_FROZEN:
 		cpufreq_stats_free_table(cpu);
 		break;
+        case CPU_DOWN_FAILED:
+        case CPU_DOWN_FAILED_FROZEN:
+                cpufreq_stats_create_table_cpu(cpu);
 	}
 	return NOTIFY_OK;
 }
@@ -327,6 +352,7 @@ static int __cpuinit cpufreq_stat_cpu_callback(struct notifier_block *nfb,
 static struct notifier_block cpufreq_stat_cpu_notifier __refdata =
 {
 	.notifier_call = cpufreq_stat_cpu_callback,
+        .priority = 1
 };
 
 static struct notifier_block notifier_policy_block = {

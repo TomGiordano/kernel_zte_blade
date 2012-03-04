@@ -209,11 +209,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 5, 122880 },
 #ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
 /* Conservative AHB overclocking */
-#ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK
-	{ 0, 396800, ACPU_PLL_2, 2, 2, 132267, 2, 5, 122880 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
-	{ 1, 595200, ACPU_PLL_2, 2, 1, 198400, 2, 7, 122880 },
-#else
 	{ 0, 403200, ACPU_PLL_2, 2, 2, 134400, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
 	{ 1, 604800, ACPU_PLL_2, 2, 1, 201600, 2, 7, 200000 },
@@ -231,26 +226,25 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 825600, ACPU_PLL_0, 4, 0, 275200, 2, 7, 200000 },
 	{ 1, 844800, ACPU_PLL_0, 4, 0, 281600, 2, 7, 200000 },
 	{ 1, 864000, ACPU_PLL_0, 4, 0, 288000, 2, 7, 200000 },
-#endif /* CONFIG_MSM_CPU_FREQ_OVERCLOCK */
 #else
 /* Agressive AHB overclocking */
-	{ 0, 403200, ACPU_PLL_2, 2, 2, 201600, 1, 4, 201600 },
-	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 5, 240000 },
-	{ 0, 595200, ACPU_PLL_2, 2, 1, 297600, 1, 7, 297600 },
-	{ 1, 604800, ACPU_PLL_2, 2, 1, 302400, 1, 7, 302400 },
-	{ 1, 614400, ACPU_PLL_0, 4, 0, 307200, 1, 7, 307200 },
-	{ 1, 633600, ACPU_PLL_0, 4, 0, 316800, 1, 7, 316800 },
-	{ 1, 652800, ACPU_PLL_0, 4, 0, 326400, 1, 7, 326400 },
-	{ 1, 672000, ACPU_PLL_0, 4, 0, 336000, 1, 7, 336000 },
-	{ 1, 691200, ACPU_PLL_0, 4, 0, 345600, 1, 7, 345600 },
-	{ 1, 710400, ACPU_PLL_0, 4, 0, 355200, 1, 7, 355200 },
-	{ 1, 729600, ACPU_PLL_0, 4, 0, 364800, 1, 7, 364800 },
-	{ 1, 748800, ACPU_PLL_0, 4, 0, 374400, 1, 7, 374400 },
-	{ 1, 768000, ACPU_PLL_0, 4, 0, 384000, 1, 7, 384000 },
-	{ 1, 787200, ACPU_PLL_0, 4, 0, 393600, 1, 7, 393600 },
-	{ 1, 806400, ACPU_PLL_0, 4, 0, 403200, 1, 7, 403200 },
-	{ 1, 825600, ACPU_PLL_0, 4, 0, 412800, 1, 7, 412800 },
-	{ 1, 844800, ACPU_PLL_0, 4, 0, 422400, 1, 7, 422400 },
+	{ 0, 403200, ACPU_PLL_2, 2, 2, 201600, 1, 5, 200000 },
+	{ 1, 480000, ACPU_PLL_0, 4, 1, 240000, 1, 6, 200000 },
+	{ 1, 604800, ACPU_PLL_2, 2, 1, 302400, 1, 7, 200000 },
+	{ 1, 614400, ACPU_PLL_0, 4, 0, 307200, 1, 7, 200000 },
+	{ 1, 633600, ACPU_PLL_0, 4, 0, 316800, 1, 7, 200000 },
+	{ 1, 652800, ACPU_PLL_0, 4, 0, 326400, 1, 7, 200000 },
+	{ 1, 672000, ACPU_PLL_0, 4, 0, 336000, 1, 7, 200000 },
+	{ 1, 691200, ACPU_PLL_0, 4, 0, 345600, 1, 7, 200000 },
+	{ 1, 710400, ACPU_PLL_0, 4, 0, 355200, 1, 7, 200000 },
+	{ 1, 729600, ACPU_PLL_0, 4, 0, 364800, 1, 7, 200000 },
+	{ 1, 748800, ACPU_PLL_0, 4, 0, 374400, 1, 7, 200000 },
+	{ 1, 768000, ACPU_PLL_0, 4, 0, 384000, 1, 7, 200000 },
+	{ 1, 787200, ACPU_PLL_0, 4, 0, 393600, 1, 7, 200000 },
+	{ 1, 806400, ACPU_PLL_0, 4, 0, 403200, 1, 7, 200000 },
+	{ 1, 825600, ACPU_PLL_0, 4, 0, 412800, 1, 7, 200000 },
+	{ 1, 844800, ACPU_PLL_0, 4, 0, 422400, 1, 7, 200000 },
+	{ 1, 864000, ACPU_PLL_0, 4, 0, 432000, 1, 7, 200000 },
 #endif /* CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB */
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
@@ -277,7 +271,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_800[] = {
 	{ 0, 200000, ACPU_PLL_2, 2, 3,  66667, 2, 4,  61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 122880, 1, 4,  61440 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 5, 122880 },
-#ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
+#ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB_800
 /* Conservative AHB overclocking */
 	{ 0, 396800, ACPU_PLL_2, 2, 1, 132267, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 6, 122880 },
@@ -317,7 +311,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_800[] = {
 	{ 1, 1017600, ACPU_PLL_2, 2, 0, 339200, 2, 7, 122880 },
 	{ 1, 1036800, ACPU_PLL_2, 2, 0, 345600, 2, 7, 122880 },
 #endif /* CONFIG_MSM_CPU_FREQ_OVERCLOCK_800 */
-#endif /* CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB */
+#endif /* CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB_800 */
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0}, {0, 0, 0} }
 };
 
@@ -342,11 +336,8 @@ static struct clkctl_acpu_speed pll0_960_pll1_196_pll2_800[] = {
 #define PLL_800_MHZ	41
 #define PLL_960_MHZ	50
 #define PLL_1056_MHZ	55
-#ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK
-#define PLL_1200_MHZ	62
-#else
+//#define PLL_1200_MHZ	62
 #define PLL_1200_MHZ	63
-#endif
 
 #define PLL_CONFIG(m0, m1, m2) { \
 	PLL_##m0##_MHZ, PLL_##m1##_MHZ, PLL_##m2##_MHZ, \
@@ -524,7 +515,7 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 		writel(reg_clksel, A11S_CLK_SEL_ADDR);
 	}
 
-#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK
+#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
 	// Perform overclocking if requested
 	if(hunt_s->a11clk_khz>604800) {
 		// Change the speed of PLL0
@@ -553,7 +544,7 @@ static void acpuclk_set_div(const struct clkctl_acpu_speed *hunt_s)
 	reg_clksel ^= 1;
 	writel(reg_clksel, A11S_CLK_SEL_ADDR);
 
-#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK
+#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
 	// Recover from overclocking
 	if(hunt_s->a11clk_khz<=604800) {
 		// Restore the speed of PLL0
@@ -853,7 +844,7 @@ static void __init acpu_freq_tbl_fixup(void)
 		cpu_relax();
 		udelay(50);
 	} while (pll1_l == 0);
-#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK
+#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
 	/* Overclock PLL2 to it's maximum frequency */
 	writel(PLL_1200_MHZ, PLLn_L_VAL(2));
 	udelay(50);
