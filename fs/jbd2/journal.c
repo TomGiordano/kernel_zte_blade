@@ -41,15 +41,16 @@
 #include <linux/hash.h>
 #include <linux/log2.h>
 #include <linux/vmalloc.h>
+#include <linux/backing-dev.h>
+#include <linux/bitops.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/jbd2.h>
 
 #include <asm/uaccess.h>
 #include <asm/page.h>
+#include <asm/system.h>
 
-EXPORT_SYMBOL(jbd2_journal_start);
-EXPORT_SYMBOL(jbd2_journal_restart);
 EXPORT_SYMBOL(jbd2_journal_extend);
 EXPORT_SYMBOL(jbd2_journal_stop);
 EXPORT_SYMBOL(jbd2_journal_lock_updates);
@@ -311,7 +312,17 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
 	 */
 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
 
-	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
+retry_alloc:
+	new_bh = alloc_buffer_head(GFP_NOFS);
+	if (!new_bh) {
+		/*
+		 * Failure is not an option, but __GFP_NOFAIL is going
+		 * away; so we retry ourselves here.
+		 */
+		congestion_wait(BLK_RW_ASYNC, HZ/50);
+		goto retry_alloc;
+	}
+
 	/* keep subsequent assertions sane */
 	new_bh->b_state = 0;
 	init_buffer(new_bh, NULL, NULL);
@@ -1392,7 +1403,6 @@ int jbd2_journal_check_used_features (journal_t *journal, unsigned long compat,
 int jbd2_journal_check_available_features (journal_t *journal, unsigned long compat,
 				      unsigned long ro, unsigned long incompat)
 {
-
 	if (!compat && !ro && !incompat)
 		return 1;
 
@@ -2196,13 +2206,12 @@ void jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode)
 void jbd2_journal_release_jbd_inode(journal_t *journal,
 				    struct jbd2_inode *jinode)
 {
-
 	if (!journal)
 		return;
 restart:
 	spin_lock(&journal->j_list_lock);
 	/* Is commit writing out inode - we have to wait */
-	if (jinode->i_flags & JI_COMMIT_RUNNING) {
+	if (test_bit(__JI_COMMIT_RUNNING, &jinode->i_flags)) {
 		wait_queue_head_t *wq;
 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
@@ -2289,12 +2298,12 @@ static int __init journal_init_handle_cache(void)
 	jbd2_handle_cache = KMEM_CACHE(jbd2_journal_handle, SLAB_TEMPORARY);
 	if (jbd2_handle_cache == NULL) {
 		printk(KERN_EMERG "JBD2: failed to create handle cache\n");
-                return -ENOMEM;
-        }
-        jbd2_inode_cache = KMEM_CACHE(jbd2_inode, 0);
-        if (jbd2_inode_cache == NULL) {
-                printk(KERN_EMERG "JBD2: failed to create inode cache\n");
-                kmem_cache_destroy(jbd2_handle_cache);
+		return -ENOMEM;
+	}
+	jbd2_inode_cache = KMEM_CACHE(jbd2_inode, 0);
+	if (jbd2_inode_cache == NULL) {
+		printk(KERN_EMERG "JBD2: failed to create inode cache\n");
+		kmem_cache_destroy(jbd2_handle_cache);
 		return -ENOMEM;
 	}
 	return 0;
@@ -2304,8 +2313,8 @@ static void jbd2_journal_destroy_handle_cache(void)
 {
 	if (jbd2_handle_cache)
 		kmem_cache_destroy(jbd2_handle_cache);
-        if (jbd2_inode_cache)
-                kmem_cache_destroy(jbd2_inode_cache);
+	if (jbd2_inode_cache)
+		kmem_cache_destroy(jbd2_inode_cache);
 
 }
 

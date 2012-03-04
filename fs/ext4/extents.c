@@ -402,8 +402,8 @@ static int ext4_valid_extent_entries(struct inode *inode,
 }
 
 static int __ext4_ext_check(const char *function, unsigned int line,
-          struct inode *inode, struct ext4_extent_header *eh,
-          int depth)
+			    struct inode *inode, struct ext4_extent_header *eh,
+			    int depth)
 {
 	const char *error_msg;
 	int max = 0;
@@ -820,6 +820,7 @@ static int ext4_ext_split(handle_t *handle, struct inode *inode,
 	struct buffer_head *bh = NULL;
 	int depth = ext_depth(inode);
 	struct ext4_extent_header *neh;
+	struct ext4_extent_idx *fidx;
 	struct ext4_extent *ex;
 	int i = at, k, m, a;
 	ext4_fsblk_t newblock, oldblock;
@@ -1082,7 +1083,6 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
 {
 	struct ext4_ext_path *curp = path;
 	struct ext4_extent_header *neh;
-	struct ext4_extent_idx *fidx;
 	struct buffer_head *bh;
 	ext4_fsblk_t newblock;
 	int err = 0;
@@ -1146,7 +1146,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
 	ext_debug("new root: num %d(%d), lblock %d, ptr %llu\n",
 		  le16_to_cpu(neh->eh_entries), le16_to_cpu(neh->eh_max),
 		  le32_to_cpu(EXT_FIRST_INDEX(neh)->ei_block),
-                  idx_pblock(EXT_FIRST_INDEX(neh)));
+		  idx_pblock(EXT_FIRST_INDEX(neh)));
 
 	neh->eh_depth = cpu_to_le16(path->p_depth + 1);
 	err = ext4_ext_dirty(handle, inode, curp);
@@ -3180,6 +3180,57 @@ static void unmap_underlying_metadata_blocks(struct block_device *bdev,
                 unmap_underlying_metadata(bdev, block + i);
 }
 
+/*
+ * Handle EOFBLOCKS_FL flag, clearing it if necessary
+ */
+static int check_eofblocks_fl(handle_t *handle, struct inode *inode,
+			      struct ext4_map_blocks *map,
+			      struct ext4_ext_path *path,
+			      unsigned int len)
+{
+	int i, depth;
+	struct ext4_extent_header *eh;
+	struct ext4_extent *ex, *last_ex;
+
+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))
+		return 0;
+
+	depth = ext_depth(inode);
+	eh = path[depth].p_hdr;
+	ex = path[depth].p_ext;
+
+	if (unlikely(!eh->eh_entries)) {
+		EXT4_ERROR_INODE(inode, "eh->eh_entries == 0 and "
+				 "EOFBLOCKS_FL set");
+		return -EIO;
+	}
+	last_ex = EXT_LAST_EXTENT(eh);
+	/*
+	 * We should clear the EOFBLOCKS_FL flag if we are writing the
+	 * last block in the last extent in the file.  We test this by
+	 * first checking to see if the caller to
+	 * ext4_ext_get_blocks() was interested in the last block (or
+	 * a block beyond the last block) in the current extent.  If
+	 * this turns out to be false, we can bail out from this
+	 * function immediately.
+	 */
+	if (map->m_lblk + len < le32_to_cpu(last_ex->ee_block) +
+	    ext4_ext_get_actual_len(last_ex))
+		return 0;
+	/*
+	 * If the caller does appear to be planning to write at or
+	 * beyond the end of the current extent, we then test to see
+	 * if the current extent is the last extent in the file, by
+	 * checking to make sure it was reached via the rightmost node
+	 * at each level of the tree.
+	 */
+	for (i = depth-1; i >= 0; i--)
+		if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
+			return 0;
+	ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
+	return ext4_mark_inode_dirty(handle, inode);
+}
+
 static int
 ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
 			struct ext4_map_blocks *map,
@@ -3217,8 +3268,12 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
 	if ((flags & EXT4_GET_BLOCKS_CONVERT)) {
 		ret = ext4_convert_unwritten_extents_endio(handle, inode,
 							path);
-		if (ret >= 0)
+		if (ret >= 0) {
 			ext4_update_inode_fsync_trans(handle, inode, 1);
+			err = check_eofblocks_fl(handle, inode, map, path,
+						 map->m_len);
+		} else
+			err = ret;
 		goto out2;
 	}
 	/* buffered IO case */
@@ -3244,8 +3299,13 @@ ext4_ext_handle_uninitialized_extents(handle_t *handle, struct inode *inode,
 
 	/* buffered write, writepage time, convert*/
 	ret = ext4_ext_convert_to_initialized(handle, inode, map, path);
-	if (ret >= 0)
+	if (ret >= 0) {
 		ext4_update_inode_fsync_trans(handle, inode, 1);
+		err = check_eofblocks_fl(handle, inode, map, path, map->m_len);
+		if (err < 0)
+			goto out2;
+	}
+
 out:
 	if (ret <= 0) {
 		err = ret;
@@ -3292,6 +3352,7 @@ out2:
 	}
 	return err ? err : allocated;
 }
+
 /*
  * Block allocation/map/preallocation routine for extents based files
  *
@@ -3315,9 +3376,9 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
 {
 	struct ext4_ext_path *path = NULL;
 	struct ext4_extent_header *eh;
-	struct ext4_extent newex, *ex, *last_ex;
+	struct ext4_extent newex, *ex;
 	ext4_fsblk_t newblock;
-	int i, err = 0, depth, ret, cache_type;
+	int err = 0, depth, ret, cache_type;
 	unsigned int allocated = 0;
 	struct ext4_allocation_request ar;
 	ext4_io_end_t *io = EXT4_I(inode)->cur_aio_dio;
@@ -3497,31 +3558,10 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
 			map->m_flags |= EXT4_MAP_UNINIT;
 	}
 
-	if (unlikely(ext4_test_inode_flag(inode, EXT4_INODE_EOFBLOCKS))) {
-		if (unlikely(!eh->eh_entries)) {
-			EXT4_ERROR_INODE(inode,
-					 "eh->eh_entries == 0 and "
-					 "EOFBLOCKS_FL set");
-			err = -EIO;
-			goto out2;
-		}
-		last_ex = EXT_LAST_EXTENT(eh);
-		/*
-		 * If the current leaf block was reached by looking at
-		 * the last index block all the way down the tree, and
-		 * we are extending the inode beyond the last extent
-		 * in the current leaf block, then clear the
-		 * EOFBLOCKS_FL flag.
-		 */
-		for (i = depth-1; i >= 0; i--) {
-			if (path[i].p_idx != EXT_LAST_INDEX(path[i].p_hdr))
-				break;
-		}
-		if ((i < 0) &&
-		    (map->m_lblk + ar.len > le32_to_cpu(last_ex->ee_block) +
-		     ext4_ext_get_actual_len(last_ex)))
-			ext4_clear_inode_flag(inode, EXT4_INODE_EOFBLOCKS);
-	}
+	err = check_eofblocks_fl(handle, inode, map, path, ar.len);
+	if (err)
+		goto out2;
+
 	err = ext4_ext_insert_extent(handle, inode, path, &newex, flags);
 	if (err) {
 		/* free data blocks we just allocated */
@@ -3683,6 +3723,10 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
 	int retries = 0;
 	struct ext4_map_blocks map;
 	unsigned int credits, blkbits = inode->i_blkbits;
+
+        /* We only support the FALLOC_FL_KEEP_SIZE mode */
+        if (mode && (mode != FALLOC_FL_KEEP_SIZE))
+          return -EOPNOTSUPP;
 
 	/*
 	 * currently supporting (pre)allocate mode for extent-based

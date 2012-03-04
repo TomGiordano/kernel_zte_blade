@@ -1088,8 +1088,8 @@ static int shmem_writepage(struct page *page, struct writeback_control *wbc)
 			inode = igrab(inode);
 		else
 			inode = NULL;
-		spin_unlock(&info->lock);
 		swap_shmem_alloc(swap);
+		spin_unlock(&info->lock);
 		BUG_ON(page_mapped(page));
 		page_cache_release(page);	/* pagecache ref */
 		swap_writepage(page, wbc);

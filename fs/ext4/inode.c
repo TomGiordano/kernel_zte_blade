@@ -228,6 +228,7 @@ void ext4_delete_inode(struct inode *inode)
 				     "couldn't extend journal (err %d)", err);
 		stop_handle:
 			ext4_journal_stop(handle);
+			ext4_orphan_del(NULL, inode);
 			goto no_delete;
 		}
 	}
@@ -348,7 +349,7 @@ static int __ext4_check_blockref(const char *function, unsigned int line,
 				 struct inode *inode,
 				 __le32 *p, unsigned int max)
 {
-        struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
 	__le32 *bref = p;
 	unsigned int blk;
 
@@ -357,7 +358,7 @@ static int __ext4_check_blockref(const char *function, unsigned int line,
 		if (blk &&
 		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
 						    blk, 1))) {
-                        es->s_last_error_block = cpu_to_le64(blk);
+			es->s_last_error_block = cpu_to_le64(blk);
 			ext4_error_inode(inode, function, line, blk,
 					 "invalid block");
 			return -EIO;
@@ -1533,9 +1534,25 @@ static int walk_page_buffers(handle_t *handle,
 static int do_journal_get_write_access(handle_t *handle,
 				       struct buffer_head *bh)
 {
+	int dirty = buffer_dirty(bh);
+	int ret;
+
 	if (!buffer_mapped(bh) || buffer_freed(bh))
 		return 0;
-	return ext4_journal_get_write_access(handle, bh);
+	/*
+	 * __block_prepare_write() could have dirtied some buffers. Clean
+	 * the dirty bit as jbd2_journal_get_write_access() could complain
+	 * otherwise about fs integrity issues. Setting of the dirty bit
+	 * by __block_prepare_write() isn't a real problem here as we clear
+	 * the bit before releasing a page lock and thus writeback cannot
+	 * ever write the buffer.
+	 */
+	if (dirty)
+		clear_buffer_dirty(bh);
+	ret = ext4_journal_get_write_access(handle, bh);
+	if (!ret && dirty)
+		ret = ext4_handle_dirty_metadata(handle, NULL, bh);
+	return ret;
 }
 
 /*
@@ -2208,7 +2225,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
 	BUG_ON(!handle);
 
 	/*
-	 * Call ext4_get_blocks() to allocate any delayed allocation
+	 * Call ext4_map_blocks() to allocate any delayed allocation
 	 * blocks, or to convert an uninitialized extent to be
 	 * initialized (in the case where we have written into
 	 * one or more preallocated blocks).
@@ -2217,7 +2234,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
 	 * indicate that we are on the delayed allocation path.  This
 	 * affects functions in many different parts of the allocation
 	 * call path.  This flag exists primarily because we don't
-	 * want to change *many* call functions, so ext4_get_blocks()
+	 * want to change *many* call functions, so ext4_map_blocks()
 	 * will set the magic i_delalloc_reserved_flag once the
 	 * inode's allocation semaphore is taken.
 	 *
@@ -2235,6 +2252,8 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
 
 	blks = ext4_map_blocks(handle, mpd->inode, &map, get_blocks_flags);
 	if (blks < 0) {
+		struct super_block *sb = mpd->inode->i_sb;
+
 		err = blks;
 		/*
 		 * If get block returns with error we simply
@@ -2245,7 +2264,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
 			return 0;
 
 		if (err == -ENOSPC &&
-		    ext4_count_free_blocks(mpd->inode->i_sb)) {
+		    ext4_count_free_blocks(sb)) {
 			mpd->retval = err;
 			return 0;
 		}
@@ -2257,16 +2276,17 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
 		 * writepage and writepages will again try to write
 		 * the same.
 		 */
-		ext4_msg(mpd->inode->i_sb, KERN_CRIT,
-			 "delayed block allocation failed for inode %lu at "
-			 "logical offset %llu with max blocks %zd with "
-			 "error %d", mpd->inode->i_ino,
-			 (unsigned long long) next,
-			 mpd->b_size >> mpd->inode->i_blkbits, err);
-		printk(KERN_CRIT "This should not happen!!  "
-		       "Data will be lost\n");
-		if (err == -ENOSPC) {
-			ext4_print_free_blocks(mpd->inode);
+		if (!(EXT4_SB(sb)->s_mount_flags & EXT4_MF_FS_ABORTED)) {
+			ext4_msg(sb, KERN_CRIT,
+				 "delayed block allocation failed for inode %lu "
+				 "at logical offset %llu with max blocks %zd "
+				 "with error %d", mpd->inode->i_ino,
+				 (unsigned long long) next,
+				 mpd->b_size >> mpd->inode->i_blkbits, err);
+			ext4_msg(sb, KERN_CRIT,
+				"This should not happen!! Data will be lost\n");
+			if (err == -ENOSPC)
+				ext4_print_free_blocks(mpd->inode);
 		}
 		/* invalidate all the pages */
 		ext4_da_block_invalidatepages(mpd, next,
@@ -2334,7 +2354,7 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
 	 * XXX Don't go larger than mballoc is willing to allocate
 	 * This is a stopgap solution.  We eventually need to fold
 	 * mpage_da_submit_io() into this function and then call
-	 * ext4_get_blocks() multiple times in a loop
+	 * ext4_map_blocks() multiple times in a loop
 	 */
 	if (nrblocks >= 8*1024*1024/mpd->inode->i_sb->s_blocksize)
 		goto flush_it;
@@ -3955,7 +3975,7 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
 				return -ENOMEM;
 			/*
 			 * we save the io structure for current async
-			 * direct IO, so that later ext4_get_blocks()
+			 * direct IO, so that later ext4_map_blocks()
 			 * could flag the io structure whether there
 			 * is a unwritten extents needs to be converted
 			 * when IO is completed.
@@ -4508,27 +4528,6 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 					depth);
 
 			/*
-			 * We've probably journalled the indirect block several
-			 * times during the truncate.  But it's no longer
-			 * needed and we now drop it from the transaction via
-			 * jbd2_journal_revoke().
-			 *
-			 * That's easy if it's exclusively part of this
-			 * transaction.  But if it's part of the committing
-			 * transaction then jbd2_journal_forget() will simply
-			 * brelse() it.  That means that if the underlying
-			 * block is reallocated in ext4_get_block(),
-			 * unmap_underlying_metadata() will find this block
-			 * and will try to get rid of it.  damn, damn.
-			 *
-			 * If this block has already been committed to the
-			 * journal, a revoke record will be written.  And
-			 * revoke records must be emitted *before* clearing
-			 * this block's bit in the bitmaps.
-			 */
-			ext4_forget(handle, 1, inode, bh, bh->b_blocknr);
-
-			/*
 			 * Everything below this this pointer has been
 			 * released.  Now let this top-of-subtree go.
 			 *
@@ -4552,8 +4551,20 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 					    blocks_for_truncate(inode));
 			}
 
+			/*
+			 * The forget flag here is critical because if
+			 * we are journaling (and not doing data
+			 * journaling), we have to make sure a revoke
+			 * record is written to prevent the journal
+			 * replay from overwriting the (former)
+			 * indirect block if it gets reallocated as a
+			 * data block.  This must happen in the same
+			 * transaction where the data blocks are
+			 * actually freed.
+			 */
 			ext4_free_blocks(handle, inode, 0, nr, 1,
-					 EXT4_FREE_BLOCKS_METADATA);
+					 EXT4_FREE_BLOCKS_METADATA|
+					 EXT4_FREE_BLOCKS_FORGET);
 
 			if (parent_bh) {
 				/*
@@ -5692,7 +5703,7 @@ int ext4_writepage_trans_blocks(struct inode *inode)
  * Calculate the journal credits for a chunk of data modification.
  *
  * This is called from DIO, fallocate or whoever calling
- * ext4_get_blocks() to map/allocate a chunk of contiguous disk blocks.
+ * ext4_map_blocks() to map/allocate a chunk of contiguous disk blocks.
  *
  * journal buffers for data blocks are not included here, as DIO
  * and fallocate do no need to journal data buffers.

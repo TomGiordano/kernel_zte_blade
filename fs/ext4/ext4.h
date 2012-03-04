@@ -205,6 +205,7 @@ typedef struct ext4_io_end {
 #define EXT4_MIN_BLOCK_SIZE		1024
 #define	EXT4_MAX_BLOCK_SIZE		65536
 #define EXT4_MIN_BLOCK_LOG_SIZE		10
+#define EXT4_MAX_BLOCK_LOG_SIZE         16
 #ifdef __KERNEL__
 # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
 #else
@@ -465,7 +466,7 @@ struct ext4_new_group_data {
 };
 
 /*
- * Flags used by ext4_get_blocks()
+ * Flags used by ext4_map_blocks()
  */
 	/* Allocate any needed blocks and/or convert an unitialized
 	   extent to be an initialized ext4 */
@@ -1011,20 +1012,21 @@ struct ext4_super_block {
 	__u8	s_reserved_char_pad2;
 	__le16  s_reserved_pad;
 	__le64	s_kbytes_written;	/* nr of lifetime kilobytes written */
-	#define EXT4_S_ERR_START offsetof(struct ext4_super_block, s_error_count)
-        __le32  s_error_count;          /* number of fs errors */
-        __le32  s_first_error_time;     /* first time an error happened */
-        __le32  s_first_error_ino;      /* inode involved in first error */
-        __le64  s_first_error_block;    /* block involved of first error */
-        __u8  s_first_error_func[32];   /* function where the error happened */
-        __le32  s_first_error_line;     /* line number where error happened */
-        __le32  s_last_error_time;      /* most recent time of an error */
-        __le32  s_last_error_ino;       /* inode involved in last error */
-        __le32  s_last_error_line;      /* line number where error happened */
-        __le64  s_last_error_block;     /* block involved of last error */
-        __u8  s_last_error_func[32];    /* function where the error happened */
-        #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_reserved)
-        __le32   s_reserved[128];        /* Padding to the end of the block */
+#define EXT4_S_ERR_START offsetof(struct ext4_super_block, s_error_count)
+	__le32	s_error_count;		/* number of fs errors */
+	__le32	s_first_error_time;	/* first time an error happened */
+	__le32	s_first_error_ino;	/* inode involved in first error */
+	__le64	s_first_error_block;	/* block involved of first error */
+	__u8	s_first_error_func[32];	/* function where the error happened */
+	__le32	s_first_error_line;	/* line number where error happened */
+	__le32	s_last_error_time;	/* most recent time of an error */
+	__le32	s_last_error_ino;	/* inode involved in last error */
+	__le32	s_last_error_line;	/* line number where error happened */
+	__le64	s_last_error_block;	/* block involved of last error */
+	__u8	s_last_error_func[32];	/* function where the error happened */
+#define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_mount_opts)
+	__u8	s_mount_opts[64];
+	__le32	s_reserved[112];        /* Padding to the end of the block */
 };
 
 #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
@@ -1166,6 +1168,9 @@ struct ext4_sb_info {
 
 	/* workqueue for dio unwritten */
 	struct workqueue_struct *dio_unwritten_wq;
+
+	/* timer for periodic error stats printing */
+	struct timer_list s_err_report;
 };
 
 static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
@@ -1350,6 +1355,10 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
 #define EXT4_DEFM_JMODE_DATA	0x0020
 #define EXT4_DEFM_JMODE_ORDERED	0x0040
 #define EXT4_DEFM_JMODE_WBACK	0x0060
+#define EXT4_DEFM_NOBARRIER	0x0100
+#define EXT4_DEFM_BLOCK_VALIDITY 0x0200
+#define EXT4_DEFM_DISCARD	0x0400
+#define EXT4_DEFM_NODELALLOC	0x0800
 
 /*
  * Default journal batch times
@@ -1414,6 +1423,43 @@ struct ext4_dir_entry_2 {
 #define EXT4_DIR_REC_LEN(name_len)	(((name_len) + 8 + EXT4_DIR_ROUND) & \
 					 ~EXT4_DIR_ROUND)
 #define EXT4_MAX_REC_LEN		((1<<16)-1)
+
+/*
+ * If we ever get support for fs block sizes > page_size, we'll need
+ * to remove the #if statements in the next two functions...
+ */
+static inline unsigned int
+ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize)
+{
+	unsigned len = le16_to_cpu(dlen);
+
+#if (PAGE_CACHE_SIZE >= 65536)
+	if (len == EXT4_MAX_REC_LEN || len == 0)
+		return blocksize;
+	return (len & 65532) | ((len & 3) << 16);
+#else
+	return len;
+#endif
+}
+
+static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+{
+	if ((len > blocksize) || (blocksize > (1 << 18)) || (len & 3))
+		BUG();
+#if (PAGE_CACHE_SIZE >= 65536)
+	if (len < 65536)
+		return cpu_to_le16(len);
+	if (len == blocksize) {
+		if (blocksize == 65536)
+			return cpu_to_le16(EXT4_MAX_REC_LEN);
+		else
+			return cpu_to_le16(0);
+	}
+	return cpu_to_le16((len & 65532) | ((len >> 16) & 3));
+#else
+	return cpu_to_le16(len);
+#endif
+}
 
 /*
  * Hash Tree Directory indexing
@@ -1640,8 +1686,6 @@ extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
 extern int ext4_ext_migrate(struct inode *);
 
 /* namei.c */
-extern unsigned int ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize);
-extern __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize);
 extern int ext4_orphan_add(handle_t *, struct inode *);
 extern int ext4_orphan_del(handle_t *, struct inode *);
 extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
@@ -1963,9 +2007,6 @@ extern int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
 			  ssize_t len);
 extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
 			   struct ext4_map_blocks *map, int flags);
-extern int ext4_get_blocks(handle_t *handle, struct inode *inode,
-			   sector_t block, unsigned int max_blocks,
-			   struct buffer_head *bh, int flags);
 extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 			__u64 start, __u64 len);
 /* move_extent.c */
