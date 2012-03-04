@@ -183,6 +183,10 @@ config COMPACTION
 	help
 	  Allows the compaction of memory for the allocation of huge pages.
 
+config CLEANCACHE
+        bool "Enable cleancache driver to cache clean pages if tmem is present"
+        default y
+
 #
 # support for page migration
 #
