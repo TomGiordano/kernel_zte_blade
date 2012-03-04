@@ -94,7 +94,7 @@ extern void jbd2_free(void *ptr, size_t size);
  *
  * This is an opaque datatype.
  **/
-typedef struct handle_s		handle_t;	/* Atomic operation type */
+typedef struct jbd2_journal_handle		handle_t;	/* Atomic operation type */
 
 
 /**
@@ -401,7 +401,7 @@ struct jbd2_inode {
 struct jbd2_revoke_table_s;
 
 /**
- * struct handle_s - The handle_s type is the concrete type associated with
+ * struct jbd2_journal_handle - The jbd2_journal_handle type is the concrete type associated with
  *     handle_t.
  * @h_transaction: Which compound transaction is this update a part of?
  * @h_buffer_credits: Number of remaining buffers we are allowed to dirty.
@@ -416,7 +416,7 @@ struct jbd2_revoke_table_s;
  * in so it can be fixed later.
  */
 
-struct handle_s
+struct jbd2_journal_handle
 {
 	/* Which compound transaction is this update a part of? */
 	transaction_t		*h_transaction;
@@ -1154,6 +1154,22 @@ static inline handle_t *jbd2_alloc_handle(gfp_t gfp_flags)
 static inline void jbd2_free_handle(handle_t *handle)
 {
 	kmem_cache_free(jbd2_handle_cache, handle);
+}
+
+/*
+ * jbd2_inode management (optional, for those file systems that want to use
+ * dynamically allocated jbd2_inode structures)
+ */
+extern struct kmem_cache *jbd2_inode_cache;
+
+static inline struct jbd2_inode *jbd2_alloc_inode(gfp_t gfp_flags)
+{
+  return kmem_cache_alloc(jbd2_inode_cache, gfp_flags);
+}
+
+static inline void jbd2_free_inode(struct jbd2_inode *jinode)
+{
+  kmem_cache_free(jbd2_inode_cache, jinode);
 }
 
 /* Primary revoke support */

@@ -53,10 +53,17 @@
 static inline int ext4_begin_ordered_truncate(struct inode *inode,
 					      loff_t new_size)
 {
-	return jbd2_journal_begin_ordered_truncate(
-					EXT4_SB(inode->i_sb)->s_journal,
-					&EXT4_I(inode)->jinode,
-					new_size);
+	/*
+         * If jinode is zero, then we never opened the file for
+         * writing, so there's no need to call
+         * jbd2_journal_begin_ordered_truncate() since there's no
+         * outstanding writes we need to flush.
+         */
+        if (!EXT4_I(inode)->jinode)
+          return 0;
+        return jbd2_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
+                     EXT4_I(inode)->jinode,
+                     new_size);
 }
 
 static void ext4_invalidatepage(struct page *page, unsigned long offset);
@@ -1128,8 +1135,8 @@ void ext4_da_update_reserve_space(struct inode *inode,
 		ext4_discard_preallocations(inode);
 }
 
-static int check_block_validity(struct inode *inode, const char *func,
-				struct ext4_map_blocks *map)
+static int __check_block_validity(struct inode *inode, const char *func,
+          struct ext4_map_blocks *map)
 {
 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
 				   map->m_len)) {
@@ -1141,6 +1148,9 @@ static int check_block_validity(struct inode *inode, const char *func,
 	}
 	return 0;
 }
+
+#define check_block_validity(inode, map)  \
+  __check_block_validity((inode), __func__, (map))
 
 /*
  * Return the number of contiguous dirty pages in a given inode
@@ -1244,7 +1254,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
 	up_read((&EXT4_I(inode)->i_data_sem));
 
 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-		int ret = check_block_validity(inode, __func__, map);
+		int ret = check_block_validity(inode, map);
 		if (ret != 0)
 			return ret;
 	}
@@ -1324,9 +1334,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
 
 	up_write((&EXT4_I(inode)->i_data_sem));
 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
-		int ret = check_block_validity(inode,
-					       "ext4_map_blocks_after_alloc",
-					       map);
+		int ret = check_block_validity(inode, map);
 		if (ret != 0)
 			return ret;
 	}
@@ -2749,9 +2757,7 @@ static int ext4_writepage(struct page *page,
 		return __ext4_journalled_writepage(page, len);
 	}
 
-	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-		ret = nobh_writepage(page, noalloc_get_block_write, wbc);
-	else if (page_bufs && buffer_uninit(page_bufs)) {
+	if (page_bufs && buffer_uninit(page_bufs)) {
 		ext4_set_bh_endio(page_bufs, inode);
 		ret = block_write_full_page_endio(page, noalloc_get_block_write,
 					    wbc, ext4_end_io_buffer_write);
@@ -3146,13 +3152,10 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
 	int ret, retries = 0;
 	struct page *page;
 	pgoff_t index;
-	unsigned from, to;
 	struct inode *inode = mapping->host;
 	handle_t *handle;
 
 	index = pos >> PAGE_CACHE_SHIFT;
-	from = pos & (PAGE_CACHE_SIZE - 1);
-	to = from + len;
 
 	if (ext4_nonda_switch(inode->i_sb)) {
 		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
@@ -4139,17 +4142,6 @@ int ext4_block_truncate_page(handle_t *handle,
 	length = blocksize - (offset & (blocksize - 1));
 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
 
-	/*
-	 * For "nobh" option,  we can only work if we don't need to
-	 * read-in the page - otherwise we create buffers to do the IO.
-	 */
-	if (!page_has_buffers(page) && test_opt(inode->i_sb, NOBH) &&
-	     ext4_should_writeback_data(inode) && PageUptodate(page)) {
-		zero_user(page, offset, length);
-		set_page_dirty(page);
-		goto unlock;
-	}
-
 	if (!page_has_buffers(page))
 		create_empty_buffers(page, blocksize, 0);
 
@@ -4206,7 +4198,7 @@ int ext4_block_truncate_page(handle_t *handle,
 	if (ext4_should_journal_data(inode)) {
 		err = ext4_handle_dirty_metadata(handle, inode, bh);
 	} else {
-		if (ext4_should_order_data(inode))
+		if (ext4_should_order_data(inode) && EXT4_I(inode)->jinode)
 			err = ext4_jbd2_file_inode(handle, inode);
 		mark_buffer_dirty(bh);
 	}
@@ -4987,7 +4979,7 @@ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
 		/* we are using combined 48 bit field */
 		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
 					le32_to_cpu(raw_inode->i_blocks_lo);
-		if (ei->i_flags & EXT4_HUGE_FILE_FL) {
+		if (ext4_test_inode_flag(inode, EXT4_INODE_HUGE_FILE)) {
 			/* i_blocks represent file system block size */
 			return i_blocks  << (inode->i_blkbits - 9);
 		} else {
@@ -5030,7 +5022,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 	}
 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
 
-	ei->i_state_flags = 0;
+	ext4_clear_state_flags(ei);  /* Only relevant on 32-bit archs */
 	ei->i_dir_start_lookup = 0;
 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
 	/* We now have enough fields to check if the inode was active or not.
@@ -5137,7 +5129,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 				 ei->i_file_acl);
 		ret = -EIO;
 		goto bad_inode;
-	} else if (ei->i_flags & EXT4_EXTENTS_FL) {
+	} else if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
 		if (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
 		    (S_ISLNK(inode->i_mode) &&
 		     !ext4_inode_is_fast_symlink(inode)))
@@ -5289,7 +5281,7 @@ static int ext4_do_update_inode(handle_t *handle,
 	if (ext4_inode_blocks_set(handle, raw_inode, ei))
 		goto out_brelse;
 	raw_inode->i_dtime = cpu_to_le32(ei->i_dtime);
-	raw_inode->i_flags = cpu_to_le32(ei->i_flags);
+	raw_inode->i_flags = cpu_to_le32(ei->i_flags & 0xFFFFFFFF);
 	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
 	    cpu_to_le32(EXT4_OS_HURD))
 		raw_inode->i_file_acl_high =
@@ -5765,7 +5757,6 @@ static int ext4_expand_extra_isize(struct inode *inode,
 {
 	struct ext4_inode *raw_inode;
 	struct ext4_xattr_ibody_header *header;
-	struct ext4_xattr_entry *entry;
 
 	if (EXT4_I(inode)->i_extra_isize >= new_extra_isize)
 		return 0;
@@ -5773,7 +5764,6 @@ static int ext4_expand_extra_isize(struct inode *inode,
 	raw_inode = ext4_raw_inode(&iloc);
 
 	header = IHDR(inode, raw_inode);
-	entry = IFIRST(header);
 
 	/* No extended attributes present */
 	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR) ||

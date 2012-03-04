@@ -92,6 +92,7 @@ EXPORT_SYMBOL(jbd2_journal_file_inode);
 EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
 EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
 EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+EXPORT_SYMBOL(jbd2_inode_cache);
 
 static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
 static void __journal_abort_soft (journal_t *journal, int errno);
@@ -1391,12 +1392,9 @@ int jbd2_journal_check_used_features (journal_t *journal, unsigned long compat,
 int jbd2_journal_check_available_features (journal_t *journal, unsigned long compat,
 				      unsigned long ro, unsigned long incompat)
 {
-	journal_superblock_t *sb;
 
 	if (!compat && !ro && !incompat)
 		return 1;
-
-	sb = journal->j_superblock;
 
 	/* We can support any known requested features iff the
 	 * superblock is in version 2.  Otherwise we fail to support any
@@ -1617,7 +1615,6 @@ int jbd2_journal_flush(journal_t *journal)
 
 int jbd2_journal_wipe(journal_t *journal, int write)
 {
-	journal_superblock_t *sb;
 	int err = 0;
 
 	J_ASSERT (!(journal->j_flags & JBD2_LOADED));
@@ -1625,8 +1622,6 @@ int jbd2_journal_wipe(journal_t *journal, int write)
 	err = load_superblock(journal);
 	if (err)
 		return err;
-
-	sb = journal->j_superblock;
 
 	if (!journal->j_tail)
 		goto no_recovery;
@@ -2201,7 +2196,6 @@ void jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode)
 void jbd2_journal_release_jbd_inode(journal_t *journal,
 				    struct jbd2_inode *jinode)
 {
-	int writeout = 0;
 
 	if (!journal)
 		return;
@@ -2219,9 +2213,6 @@ restart:
 		goto restart;
 	}
 
-	/* Do we need to wait for data writeback? */
-	if (journal->j_committing_transaction == jinode->i_transaction)
-		writeout = 1;
 	if (jinode->i_transaction) {
 		list_del(&jinode->i_list);
 		jinode->i_transaction = NULL;
@@ -2291,17 +2282,19 @@ static void __exit jbd2_remove_jbd_stats_proc_entry(void)
 
 #endif
 
-struct kmem_cache *jbd2_handle_cache;
+struct kmem_cache *jbd2_handle_cache, *jbd2_inode_cache;
 
 static int __init journal_init_handle_cache(void)
 {
-	jbd2_handle_cache = kmem_cache_create("jbd2_journal_handle",
-				sizeof(handle_t),
-				0,		/* offset */
-				SLAB_TEMPORARY,	/* flags */
-				NULL);		/* ctor */
+	jbd2_handle_cache = KMEM_CACHE(jbd2_journal_handle, SLAB_TEMPORARY);
 	if (jbd2_handle_cache == NULL) {
-		printk(KERN_EMERG "JBD: failed to create handle cache\n");
+		printk(KERN_EMERG "JBD2: failed to create handle cache\n");
+                return -ENOMEM;
+        }
+        jbd2_inode_cache = KMEM_CACHE(jbd2_inode, 0);
+        if (jbd2_inode_cache == NULL) {
+                printk(KERN_EMERG "JBD2: failed to create inode cache\n");
+                kmem_cache_destroy(jbd2_handle_cache);
 		return -ENOMEM;
 	}
 	return 0;
@@ -2311,6 +2304,9 @@ static void jbd2_journal_destroy_handle_cache(void)
 {
 	if (jbd2_handle_cache)
 		kmem_cache_destroy(jbd2_handle_cache);
+        if (jbd2_inode_cache)
+                kmem_cache_destroy(jbd2_inode_cache);
+
 }
 
 /*

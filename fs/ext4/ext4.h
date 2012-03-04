@@ -747,10 +747,12 @@ struct ext4_inode_info {
 	 * near to their parent directory's inode.
 	 */
 	ext4_group_t	i_block_group;
+        ext4_lblk_t     i_dir_start_lookup;
+#if (BITS_PER_LONG < 64)
 	unsigned long	i_state_flags;		/* Dynamic state flags */
+#endif
 	unsigned long	i_flags;
 
-	ext4_lblk_t		i_dir_start_lookup;
 #ifdef CONFIG_EXT4_FS_XATTR
 	/*
 	 * Extended attributes can be read independently of the main file
@@ -793,7 +795,7 @@ struct ext4_inode_info {
 	 */
 	struct rw_semaphore i_data_sem;
 	struct inode vfs_inode;
-	struct jbd2_inode jinode;
+	struct jbd2_inode *jinode;
 
 	struct ext4_ext_cache i_cached_extent;
 	/*
@@ -820,7 +822,7 @@ struct ext4_inode_info {
 	/* on-disk additional length */
 	__u16 i_extra_isize;
 
-	spinlock_t i_block_reservation_lock;
+
 #ifdef CONFIG_QUOTA
 	/* quota space reservation, managed internally by quota code */
 	qsize_t i_reserved_quota;
@@ -829,8 +831,11 @@ struct ext4_inode_info {
 	/* completed IOs that might need unwritten extents handling */
 	struct list_head i_completed_io_list;
 	spinlock_t i_completed_io_lock;
-	/* current io_end structure for async DIO write*/
+	atomic_t i_ioend_count;  /* Number of outstanding io_end structs
+        current io_end structure for async DIO write*/
 	ext4_io_end_t *cur_aio_dio;
+
+        spinlock_t i_block_reservation_lock;
 
 	/*
 	 * Transactions that contain inode's metadata needed to complete
@@ -875,7 +880,6 @@ struct ext4_inode_info {
 #define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
 #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
 #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
-#define EXT4_MOUNT_NOBH			0x40000 /* No bufferheads */
 #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
 #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
 #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
@@ -1185,22 +1189,36 @@ enum {
 	EXT4_STATE_NEWENTRY,		/* File just added to dir */
 };
 
-#define EXT4_INODE_BIT_FNS(name, field)					\
+#define EXT4_INODE_BIT_FNS(name, field, offset)				\
 static inline int ext4_test_inode_##name(struct inode *inode, int bit)	\
 {									\
-	return test_bit(bit, &EXT4_I(inode)->i_##field);		\
+	return test_bit(bit + (offset), &EXT4_I(inode)->i_##field);	\
 }									\
 static inline void ext4_set_inode_##name(struct inode *inode, int bit)	\
 {									\
-	set_bit(bit, &EXT4_I(inode)->i_##field);			\
+	set_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
 }									\
 static inline void ext4_clear_inode_##name(struct inode *inode, int bit) \
 {									\
-	clear_bit(bit, &EXT4_I(inode)->i_##field);			\
+	clear_bit(bit + (offset), &EXT4_I(inode)->i_##field);		\
 }
 
-EXT4_INODE_BIT_FNS(flag, flags)
-EXT4_INODE_BIT_FNS(state, state_flags)
+EXT4_INODE_BIT_FNS(flag, flags, 0)
+#if (BITS_PER_LONG < 64)
+EXT4_INODE_BIT_FNS(state, state_flags, 0)
+
+static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+{
+  (ei)->i_state_flags = 0;
+}
+#else
+EXT4_INODE_BIT_FNS(state, flags, 32)
+
+static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+{
+  /* We depend on the fact that callers will set i_flags */
+}
+#endif
 #else
 /* Assume that user mode programs are passing in an ext4fs superblock, not
  * a kernel struct super_block.  This will allow us to call the feature-test
@@ -1626,17 +1644,23 @@ extern void ext4_error_inode(const char *, struct inode *, const char *, ...)
 extern void ext4_error_file(const char *, struct file *, const char *, ...)
 	__attribute__ ((format (printf, 3, 4)));
 extern void __ext4_std_error(struct super_block *, const char *, int);
-extern void ext4_abort(struct super_block *, const char *, const char *, ...)
+extern void __ext4_abort(struct super_block *, const char *, const char *, ...)
 	__attribute__ ((format (printf, 3, 4)));
+#define ext4_abort(sb, message...)  __ext4_abort(sb, __func__, \
+                 ## message)
 extern void __ext4_warning(struct super_block *, const char *,
 			  const char *, ...)
 	__attribute__ ((format (printf, 3, 4)));
 #define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
 extern void ext4_msg(struct super_block *, const char *, const char *, ...)
 	__attribute__ ((format (printf, 3, 4)));
-extern void ext4_grp_locked_error(struct super_block *, ext4_group_t,
-				const char *, const char *, ...)
-	__attribute__ ((format (printf, 4, 5)));
+extern void __ext4_grp_locked_error(const char *, unsigned int, \
+            struct super_block *, ext4_group_t, \
+            unsigned long, ext4_fsblk_t, \
+            const char *, ...)
+  __attribute__ ((format (printf, 7, 8)));
+#define ext4_grp_locked_error(sb, grp, message...) \
+  __ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
 extern void ext4_update_dynamic_rev(struct super_block *sb);
 extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
 					__u32 compat);
@@ -1860,6 +1884,12 @@ static inline void ext4_unlock_group(struct super_block *sb,
 					ext4_group_t group)
 {
 	spin_unlock(ext4_group_lock_ptr(sb, group));
+}
+
+static inline void ext4_mark_super_dirty(struct super_block *sb)
+{
+  if (EXT4_SB(sb)->s_journal == NULL)
+    sb->s_dirt =1;
 }
 
 /*

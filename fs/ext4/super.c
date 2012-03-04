@@ -63,6 +63,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
 static int ext4_sync_fs(struct super_block *sb, int wait);
 static const char *ext4_decode_error(struct super_block *sb, int errno,
 				     char nbuf[16]);
+static int ext4_feature_set_ok(struct super_block *sb, int readonly);
 static int ext4_remount(struct super_block *sb, int *flags, char *data);
 static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
 static int ext4_unfreeze(struct super_block *sb);
@@ -248,7 +249,7 @@ handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
 	journal = EXT4_SB(sb)->s_journal;
 	if (journal) {
 		if (is_journal_aborted(journal)) {
-			ext4_abort(sb, __func__, "Detected aborted journal");
+			ext4_abort(sb, "Detected aborted journal");
 			return ERR_PTR(-EROFS);
 		}
 		return jbd2_journal_start(journal, nblocks);
@@ -283,8 +284,9 @@ int __ext4_journal_stop(const char *where, handle_t *handle)
 	return err;
 }
 
-void ext4_journal_abort_handle(const char *caller, const char *err_fn,
-		struct buffer_head *bh, handle_t *handle, int err)
+void ext4_journal_abort_handle(const char *caller, unsigned int line,
+             const char *err_fn, struct buffer_head *bh,
+             handle_t *handle, int err)
 {
 	char nbuf[16];
 	const char *errstr = ext4_decode_error(NULL, err, nbuf);
@@ -300,8 +302,8 @@ void ext4_journal_abort_handle(const char *caller, const char *err_fn,
 	if (is_handle_aborted(handle))
 		return;
 
-	printk(KERN_ERR "%s: aborting transaction: %s in %s\n",
-	       caller, errstr, err_fn);
+	printk(KERN_ERR "%s:%d: aborting transaction: %s in %s\n",
+         caller, line, errstr, err_fn);
 
 	jbd2_journal_abort_handle(handle);
 }
@@ -464,8 +466,8 @@ void __ext4_std_error(struct super_block *sb, const char *function, int errno)
  * case we take the easy way out and panic immediately.
  */
 
-void ext4_abort(struct super_block *sb, const char *function,
-		const char *fmt, ...)
+void __ext4_abort(struct super_block *sb, const char *function,
+      const char *fmt, ...)
 {
 	va_list args;
 
@@ -514,8 +516,10 @@ void __ext4_warning(struct super_block *sb, const char *function,
 	va_end(args);
 }
 
-void ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
-			   const char *function, const char *fmt, ...)
+void __ext4_grp_locked_error(const char *function, unsigned int line,
+           struct super_block *sb, ext4_group_t grp,
+           unsigned long ino, ext4_fsblk_t block,
+           const char *fmt, ...)
 __releases(bitlock)
 __acquires(bitlock)
 {
@@ -523,7 +527,12 @@ __acquires(bitlock)
 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
 
 	va_start(args, fmt);
-	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
+	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: group %u",
+         sb->s_id, function, line, grp);
+        if (ino)
+          printk("inode %lu: ", ino);
+        if (block)
+          printk("block %llu:", (unsigned long long) block);
 	vprintk(fmt, args);
 	printk("\n");
 	va_end(args);
@@ -660,8 +669,7 @@ static void ext4_put_super(struct super_block *sb)
 		err = jbd2_journal_destroy(sbi->s_journal);
 		sbi->s_journal = NULL;
 		if (err < 0)
-			ext4_abort(sb, __func__,
-				   "Couldn't clean up the journal");
+			ext4_abort(sb, "Couldn't clean up the journal");
 	}
 
 	ext4_release_system_zone(sb);
@@ -746,12 +754,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
 	INIT_LIST_HEAD(&ei->i_prealloc_list);
 	spin_lock_init(&ei->i_prealloc_lock);
-	/*
-	 * Note:  We can be called before EXT4_SB(sb)->s_journal is set,
-	 * therefore it can be null here.  Don't check it, just initialize
-	 * jinode.
-	 */
-	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
 	ei->i_reserved_data_blocks = 0;
 	ei->i_reserved_meta_blocks = 0;
 	ei->i_allocated_meta_blocks = 0;
@@ -761,6 +763,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
 #ifdef CONFIG_QUOTA
 	ei->i_reserved_quota = 0;
 #endif
+        ei->jinode = NULL;
 	INIT_LIST_HEAD(&ei->i_completed_io_list);
 	spin_lock_init(&ei->i_completed_io_lock);
 	ei->cur_aio_dio = NULL;
@@ -817,9 +820,12 @@ static void ext4_clear_inode(struct inode *inode)
 {
 	dquot_drop(inode);
 	ext4_discard_preallocations(inode);
-	if (EXT4_JOURNAL(inode))
-		jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
-				       &EXT4_I(inode)->jinode);
+	if (EXT4_I(inode)->jinode) {
+          jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
+                       EXT4_I(inode)->jinode);
+          jbd2_free_inode(EXT4_I(inode)->jinode);
+          EXT4_I(inode)->jinode = NULL;
+        }
 }
 
 static inline void ext4_show_quota_options(struct seq_file *seq,
@@ -946,8 +952,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
 		seq_puts(seq, ",journal_async_commit");
 	else if (test_opt(sb, JOURNAL_CHECKSUM))
 		seq_puts(seq, ",journal_checksum");
-	if (test_opt(sb, NOBH))
-		seq_puts(seq, ",nobh");
 	if (test_opt(sb, I_VERSION))
 		seq_puts(seq, ",i_version");
 	if (!test_opt(sb, DELALLOC))
@@ -1624,10 +1628,12 @@ set_qf_format:
 			*n_blocks_count = option;
 			break;
 		case Opt_nobh:
-			set_opt(sbi->s_mount_opt, NOBH);
+			ext4_msg(sb, KERN_WARNING,
+                           "Ignoring deprecated nobh option");
 			break;
 		case Opt_bh:
-			clear_opt(sbi->s_mount_opt, NOBH);
+			ext4_msg(sb, KERN_WARNING,
+                           "Ignoring deprecated bh option");
 			break;
 		case Opt_i_version:
 			set_opt(sbi->s_mount_opt, I_VERSION);
@@ -1985,6 +1991,14 @@ static void ext4_orphan_cleanup(struct super_block *sb,
 			"unavailable, skipping orphan cleanup");
 		return;
 	}
+
+        /* Check if feature set would not allow a r/w mount */
+
+        if (!ext4_feature_set_ok(sb, 0)) {
+                ext4_msg(sb, KERN_INFO, "Skipping orphan cleanup due to "
+                    "unknown ROCOMPAT features");
+                return;
+        }
 
 	if (EXT4_SB(sb)->s_mount_state & EXT4_ERROR_FS) {
 		if (es->s_last_orphan)
@@ -2912,18 +2926,7 @@ no_journal:
 		ext4_msg(sb, KERN_ERR, "insufficient memory");
 		goto failed_mount_wq;
 	}
-	if (test_opt(sb, NOBH)) {
-		if (!(test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)) {
-			ext4_msg(sb, KERN_WARNING, "Ignoring nobh option - "
-				"its supported only with writeback mode");
-			clear_opt(sbi->s_mount_opt, NOBH);
-		}
-		if (test_opt(sb, DIOREAD_NOLOCK)) {
-			ext4_msg(sb, KERN_WARNING, "dioread_nolock option is "
-				"not supported with nobh mode");
-			goto failed_mount_wq;
-		}
-	}
+	
 	EXT4_SB(sb)->dio_unwritten_wq = create_workqueue("ext4-dio-unwritten");
 	if (!EXT4_SB(sb)->dio_unwritten_wq) {
 		printk(KERN_ERR "EXT4-fs: failed to create DIO workqueue\n");
@@ -3616,7 +3619,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 	}
 
 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
-		ext4_abort(sb, __func__, "Abort forced by user");
+		ext4_abort(sb, "Abort forced by user");
 
 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
 		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
