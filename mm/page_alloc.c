@@ -165,8 +165,13 @@ static char * const zone_names[MAX_NR_ZONES] = {
 	 "Movable",
 };
 
+#ifdef CONFIG_KERNELIZER
+int min_free_kbytes = 4096;
+int min_free_order_shift = 4;
+#else
 int min_free_kbytes = 1024;
 int min_free_order_shift = 1;
+#endif
 
 static unsigned long __meminitdata nr_kernel_pages;
 static unsigned long __meminitdata nr_all_pages;
@@ -531,8 +536,6 @@ static inline void __free_one_page(struct page *page,
                 higher_page = page + (combined_idx - page_idx);
                 buddy_idx = __find_buddy_index(combined_idx, order + 1);
                 higher_buddy = page + (buddy_idx - combined_idx);
-		higher_page = page + combined_idx - page_idx;
-		higher_buddy = __page_find_buddy(higher_page, combined_idx, order + 1);
 		if (page_is_buddy(higher_page, higher_buddy, order + 1)) {
 			list_add_tail(&page->lru,
 				&zone->free_area[order].free_list[migratetype]);

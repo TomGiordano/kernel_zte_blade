@@ -183,6 +183,22 @@ config COMPACTION
 	help
 	  Allows the compaction of memory for the allocation of huge pages.
 
+config FRONTSWAP
+        bool "Enable frontswap pseudo-RAM driver to cache swap pages"
+        default y
+        help
+          Frontswap is so named because it can be thought of as the opposite of
+          a "backing" store for a swap device.  The storage is assumed to be
+          a synchronous concurrency-safe page-oriented pseudo-RAM device (such
+          as Xen's Transcendent Memory, aka "tmem") which is not directly
+          accessible or addressable by the kernel and is of unknown (and
+          possibly time-varying) size.  When a pseudo-RAM device is available,
+          a signficant swap I/O reduction may be achieved.  When none is
+          available, all frontswap calls are reduced to a single pointer-
+          compare-against-NULL resulting in a negligible performance hit.
+
+          If unsure, say Y to enable frontswap.
+
 config CLEANCACHE
         bool "Enable cleancache driver to cache clean pages if tmem is present"
         default y

@@ -1,5 +1,11 @@
 if ARCH_MSM
 
+config KERNELIZER
+       bool "Kernelizer"
+       default y
+       help
+         Enables Kernelizer tweaks
+
 choice
 	prompt "MSM SoC Type"
 	default ARCH_MSM7X00A
