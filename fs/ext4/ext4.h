@@ -57,10 +57,13 @@
 #endif
 
 #define EXT4_ERROR_INODE(inode, fmt, a...) \
-	ext4_error_inode(__func__, (inode), (fmt), ## a)
+	ext4_error_inode((inode), __func__, __LINE__, 0, (fmt), ## a)
+
+#define EXT4_ERROR_INODE_BLOCK(inode, block, fmt, a...)			\
+	ext4_error_inode((inode), __func__, __LINE__, (block), (fmt), ## a)
 
 #define EXT4_ERROR_FILE(file, fmt, a...)	\
-	ext4_error_file(__func__, (file), (fmt), ## a)
+	ext4_error_file(__func__, __LINE__, (file), (fmt), ## a)
 
 /* data type for block offset of block group */
 typedef int ext4_grpblk_t;
@@ -747,7 +750,7 @@ struct ext4_inode_info {
 	 * near to their parent directory's inode.
 	 */
 	ext4_group_t	i_block_group;
-        ext4_lblk_t     i_dir_start_lookup;
+	ext4_lblk_t	i_dir_start_lookup;
 #if (BITS_PER_LONG < 64)
 	unsigned long	i_state_flags;		/* Dynamic state flags */
 #endif
@@ -821,8 +824,7 @@ struct ext4_inode_info {
 
 	/* on-disk additional length */
 	__u16 i_extra_isize;
-
-
+	
 #ifdef CONFIG_QUOTA
 	/* quota space reservation, managed internally by quota code */
 	qsize_t i_reserved_quota;
@@ -831,11 +833,11 @@ struct ext4_inode_info {
 	/* completed IOs that might need unwritten extents handling */
 	struct list_head i_completed_io_list;
 	spinlock_t i_completed_io_lock;
-	atomic_t i_ioend_count;  /* Number of outstanding io_end structs
-        current io_end structure for async DIO write*/
+	atomic_t i_ioend_count;	/* Number of outstanding io_end structs
+	current io_end structure for async DIO write*/
 	ext4_io_end_t *cur_aio_dio;
 
-        spinlock_t i_block_reservation_lock;
+	spinlock_t i_block_reservation_lock;
 
 	/*
 	 * Transactions that contain inode's metadata needed to complete
@@ -1009,8 +1011,23 @@ struct ext4_super_block {
 	__u8	s_reserved_char_pad2;
 	__le16  s_reserved_pad;
 	__le64	s_kbytes_written;	/* nr of lifetime kilobytes written */
-	__u32   s_reserved[160];        /* Padding to the end of the block */
+	#define EXT4_S_ERR_START offsetof(struct ext4_super_block, s_error_count)
+        __le32  s_error_count;          /* number of fs errors */
+        __le32  s_first_error_time;     /* first time an error happened */
+        __le32  s_first_error_ino;      /* inode involved in first error */
+        __le64  s_first_error_block;    /* block involved of first error */
+        __u8  s_first_error_func[32];   /* function where the error happened */
+        __le32  s_first_error_line;     /* line number where error happened */
+        __le32  s_last_error_time;      /* most recent time of an error */
+        __le32  s_last_error_ino;       /* inode involved in last error */
+        __le32  s_last_error_line;      /* line number where error happened */
+        __le64  s_last_error_block;     /* block involved of last error */
+        __u8  s_last_error_func[32];    /* function where the error happened */
+        #define EXT4_S_ERR_END offsetof(struct ext4_super_block, s_reserved)
+        __le32   s_reserved[128];        /* Padding to the end of the block */
 };
+
+#define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
 
 #ifdef __KERNEL__
 
@@ -1209,14 +1226,14 @@ EXT4_INODE_BIT_FNS(state, state_flags, 0)
 
 static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
 {
-  (ei)->i_state_flags = 0;
+	(ei)->i_state_flags = 0;
 }
 #else
 EXT4_INODE_BIT_FNS(state, flags, 32)
 
 static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
 {
-  /* We depend on the fact that callers will set i_flags */
+	/* We depend on the fact that callers will set i_flags */
 }
 #endif
 #else
@@ -1530,9 +1547,11 @@ extern unsigned ext4_init_block_bitmap(struct super_block *sb,
 		ext4_init_block_bitmap(sb, NULL, group, desc)
 
 /* dir.c */
-extern int ext4_check_dir_entry(const char *, struct inode *,
-				struct ext4_dir_entry_2 *,
-				struct buffer_head *, unsigned int);
+extern int __ext4_check_dir_entry(const char *, unsigned int, struct inode *,
+				  struct ext4_dir_entry_2 *,
+				  struct buffer_head *, unsigned int);
+#define ext4_check_dir_entry(dir, de, bh, offset) \
+	__ext4_check_dir_entry(__func__, __LINE__, (dir), (de), (bh), (offset))
 extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
 				    __u32 minor_hash,
 				    struct ext4_dir_entry_2 *dirent);
@@ -1636,31 +1655,38 @@ extern int ext4_group_extend(struct super_block *sb,
 				ext4_fsblk_t n_blocks_count);
 
 /* super.c */
-extern void __ext4_error(struct super_block *, const char *, const char *, ...)
-	__attribute__ ((format (printf, 3, 4)));
-#define ext4_error(sb, message...)	__ext4_error(sb, __func__, ## message)
-extern void ext4_error_inode(const char *, struct inode *, const char *, ...)
-	__attribute__ ((format (printf, 3, 4)));
-extern void ext4_error_file(const char *, struct file *, const char *, ...)
-	__attribute__ ((format (printf, 3, 4)));
-extern void __ext4_std_error(struct super_block *, const char *, int);
-extern void __ext4_abort(struct super_block *, const char *, const char *, ...)
-	__attribute__ ((format (printf, 3, 4)));
-#define ext4_abort(sb, message...)  __ext4_abort(sb, __func__, \
-                 ## message)
-extern void __ext4_warning(struct super_block *, const char *,
+extern void __ext4_error(struct super_block *, const char *, unsigned int,
+			 const char *, ...)
+	__attribute__ ((format (printf, 4, 5)));
+#define ext4_error(sb, message...)	__ext4_error(sb, __func__,	\
+						     __LINE__, ## message)
+extern void ext4_error_inode(struct inode *, const char *, unsigned int,
+			     ext4_fsblk_t, const char *, ...)
+	__attribute__ ((format (printf, 5, 6)));
+extern void ext4_error_file(struct file *, const char *, unsigned int,
+			    const char *, ...)
+	__attribute__ ((format (printf, 4, 5)));
+extern void __ext4_std_error(struct super_block *, const char *,
+			     unsigned int, int);
+extern void __ext4_abort(struct super_block *, const char *, unsigned int,
+		       const char *, ...)
+	__attribute__ ((format (printf, 4, 5)));
+#define ext4_abort(sb, message...)	__ext4_abort(sb, __func__, \
+						       __LINE__, ## message)
+extern void __ext4_warning(struct super_block *, const char *, unsigned int,
 			  const char *, ...)
-	__attribute__ ((format (printf, 3, 4)));
-#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, ## message)
+	__attribute__ ((format (printf, 4, 5)));
+#define ext4_warning(sb, message...)	__ext4_warning(sb, __func__, \
+						       __LINE__, ## message)
 extern void ext4_msg(struct super_block *, const char *, const char *, ...)
 	__attribute__ ((format (printf, 3, 4)));
 extern void __ext4_grp_locked_error(const char *, unsigned int, \
-            struct super_block *, ext4_group_t, \
-            unsigned long, ext4_fsblk_t, \
-            const char *, ...)
-  __attribute__ ((format (printf, 7, 8)));
+				    struct super_block *, ext4_group_t, \
+				    unsigned long, ext4_fsblk_t, \
+				    const char *, ...)
+	__attribute__ ((format (printf, 7, 8)));
 #define ext4_grp_locked_error(sb, grp, message...) \
-  __ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
+	__ext4_grp_locked_error(__func__, __LINE__, (sb), (grp), ## message)
 extern void ext4_update_dynamic_rev(struct super_block *sb);
 extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
 					__u32 compat);
@@ -1794,7 +1820,7 @@ static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
 #define ext4_std_error(sb, errno)				\
 do {								\
 	if ((errno))						\
-		__ext4_std_error((sb), __func__, (errno));	\
+		__ext4_std_error((sb), __func__, __LINE__, (errno));	\
 } while (0)
 
 #ifdef CONFIG_SMP
@@ -1888,8 +1914,8 @@ static inline void ext4_unlock_group(struct super_block *sb,
 
 static inline void ext4_mark_super_dirty(struct super_block *sb)
 {
-  if (EXT4_SB(sb)->s_journal == NULL)
-    sb->s_dirt =1;
+	if (EXT4_SB(sb)->s_journal == NULL)
+		sb->s_dirt =1;
 }
 
 /*

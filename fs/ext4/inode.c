@@ -54,16 +54,16 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
 					      loff_t new_size)
 {
 	/*
-         * If jinode is zero, then we never opened the file for
-         * writing, so there's no need to call
-         * jbd2_journal_begin_ordered_truncate() since there's no
-         * outstanding writes we need to flush.
-         */
-        if (!EXT4_I(inode)->jinode)
-          return 0;
-        return jbd2_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
-                     EXT4_I(inode)->jinode,
-                     new_size);
+	 * If jinode is zero, then we never opened the file for
+	 * writing, so there's no need to call
+	 * jbd2_journal_begin_ordered_truncate() since there's no
+	 * outstanding writes we need to flush.
+	 */
+	if (!EXT4_I(inode)->jinode)
+		return 0;
+	return jbd2_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
+						   EXT4_I(inode)->jinode,
+						   new_size);
 }
 
 static void ext4_invalidatepage(struct page *page, unsigned long offset);
@@ -344,9 +344,11 @@ static int ext4_block_to_path(struct inode *inode,
 	return n;
 }
 
-static int __ext4_check_blockref(const char *function, struct inode *inode,
+static int __ext4_check_blockref(const char *function, unsigned int line,
+				 struct inode *inode,
 				 __le32 *p, unsigned int max)
 {
+        struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
 	__le32 *bref = p;
 	unsigned int blk;
 
@@ -355,8 +357,9 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
 		if (blk &&
 		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
 						    blk, 1))) {
-			ext4_error_inode(function, inode,
-					 "invalid block reference %u", blk);
+                        es->s_last_error_block = cpu_to_le64(blk);
+			ext4_error_inode(inode, function, line, blk,
+					 "invalid block");
 			return -EIO;
 		}
 	}
@@ -365,11 +368,13 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
 
 
 #define ext4_check_indirect_blockref(inode, bh)                         \
-	__ext4_check_blockref(__func__, inode, (__le32 *)(bh)->b_data,  \
+	__ext4_check_blockref(__func__, __LINE__, inode,		\
+			      (__le32 *)(bh)->b_data,			\
 			      EXT4_ADDR_PER_BLOCK((inode)->i_sb))
 
 #define ext4_check_inode_blockref(inode)                                \
-	__ext4_check_blockref(__func__, inode, EXT4_I(inode)->i_data,   \
+	__ext4_check_blockref(__func__, __LINE__, inode,		\
+			      EXT4_I(inode)->i_data,			\
 			      EXT4_NDIR_BLOCKS)
 
 /**
@@ -1136,21 +1141,22 @@ void ext4_da_update_reserve_space(struct inode *inode,
 }
 
 static int __check_block_validity(struct inode *inode, const char *func,
-          struct ext4_map_blocks *map)
+				unsigned int line,
+				struct ext4_map_blocks *map)
 {
 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
 				   map->m_len)) {
-		ext4_error_inode(func, inode,
-			   "lblock %lu mapped to illegal pblock %llu "
-			   "(length %d)", (unsigned long) map->m_lblk,
-				 map->m_pblk, map->m_len);
+		ext4_error_inode(inode, func, line, map->m_pblk,
+				 "lblock %lu mapped to illegal pblock "
+				 "(length %d)", (unsigned long) map->m_lblk,
+				 map->m_len);
 		return -EIO;
 	}
 	return 0;
 }
 
-#define check_block_validity(inode, map)  \
-  __check_block_validity((inode), __func__, (map))
+#define check_block_validity(inode, map)	\
+	__check_block_validity((inode), __func__, __LINE__, (map))
 
 /*
  * Return the number of contiguous dirty pages in a given inode
@@ -2561,18 +2567,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
 /*
  * This function is used as a standard get_block_t calback function
  * when there is no desire to allocate any blocks.  It is used as a
- * callback function for block_prepare_write(), nobh_writepage(), and
- * block_write_full_page().  These functions should only try to map a
- * single block at a time.
+ * callback function for block_prepare_write() and block_write_full_page().
+ * These functions should only try to map a single block at a time.
  *
  * Since this function doesn't do block allocations even if the caller
  * requests it by passing in create=1, it is critically important that
  * any caller checks to make sure that any buffer heads are returned
  * by this function are either all already mapped or marked for
- * delayed allocation before calling nobh_writepage() or
- * block_write_full_page().  Otherwise, b_blocknr could be left
- * unitialized, and the page write functions will be taken by
- * surprise.
+ * delayed allocation before calling  block_write_full_page().  Otherwise,
+ * b_blocknr could be left unitialized, and the page write functions will
+ * be taken by surprise.
  */
 static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
 				   struct buffer_head *bh_result, int create)
@@ -4491,9 +4495,8 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
 			 * (should be rare).
 			 */
 			if (!bh) {
-				EXT4_ERROR_INODE(inode,
-						 "Read failure block=%llu",
-						 (unsigned long long) nr);
+				EXT4_ERROR_INODE_BLOCK(inode, nr,
+						       "Read failure");
 				continue;
 			}
 
@@ -4808,8 +4811,8 @@ static int __ext4_get_inode_loc(struct inode *inode,
 
 	bh = sb_getblk(sb, block);
 	if (!bh) {
-		EXT4_ERROR_INODE(inode, "unable to read inode block - "
-				 "block %llu", block);
+		EXT4_ERROR_INODE_BLOCK(inode, block,
+				       "unable to read itable block");
 		return -EIO;
 	}
 	if (!buffer_uptodate(bh)) {
@@ -4907,8 +4910,8 @@ make_io:
 		submit_bh(READ_META, bh);
 		wait_on_buffer(bh);
 		if (!buffer_uptodate(bh)) {
-			EXT4_ERROR_INODE(inode, "unable to read inode "
-					 "block %llu", block);
+			EXT4_ERROR_INODE_BLOCK(inode, block,
+					       "unable to read itable block");
 			brelse(bh);
 			return -EIO;
 		}
@@ -5022,7 +5025,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
 	}
 	inode->i_nlink = le16_to_cpu(raw_inode->i_links_count);
 
-	ext4_clear_state_flags(ei);  /* Only relevant on 32-bit archs */
+	ext4_clear_state_flags(ei);	/* Only relevant on 32-bit archs */
 	ei->i_dir_start_lookup = 0;
 	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
 	/* We now have enough fields to check if the inode was active or not.
@@ -5409,9 +5412,8 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
 		if (wbc->sync_mode == WB_SYNC_ALL)
 			sync_dirty_buffer(iloc.bh);
 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
-			EXT4_ERROR_INODE(inode,
-				"IO error syncing inode (block=%llu)",
-				(unsigned long long) iloc.bh->b_blocknr);
+			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
+					 "IO error syncing inode");
 			err = -EIO;
 		}
 		brelse(iloc.bh);
@@ -5585,13 +5587,12 @@ static int ext4_indirect_trans_blocks(struct inode *inode, int nrblocks,
 	/* if nrblocks are contiguous */
 	if (chunk) {
 		/*
-		 * With N contiguous data blocks, it need at most
-		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) indirect blocks
-		 * 2 dindirect blocks
-		 * 1 tindirect block
+		 * With N contiguous data blocks, we need at most
+		 * N/EXT4_ADDR_PER_BLOCK(inode->i_sb) + 1 indirect blocks,
+		 * 2 dindirect blocks, and 1 tindirect block
 		 */
-		indirects = nrblocks / EXT4_ADDR_PER_BLOCK(inode->i_sb);
-		return indirects + 3;
+		return DIV_ROUND_UP(nrblocks,
+				    EXT4_ADDR_PER_BLOCK(inode->i_sb)) + 4;
 	}
 	/*
 	 * if nrblocks are not contiguous, worse case, each block touch
