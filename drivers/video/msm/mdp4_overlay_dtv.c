@@ -367,9 +367,6 @@ int mdp4_overlay_dtv_unset(struct msm_fb_data_type *mfd,
 {
 	int result = 0;
 
-	pipe->flags &= ~MDP_OV_PLAY_NOWAIT;
-	mdp4_overlay_dtv_ov_done_push(mfd, pipe);
-
 	if (pipe->mixer_stage == MDP4_MIXER_STAGE_BASE &&
 			pipe->pipe_type == OVERLAY_TYPE_RGB) {
 		result = mdp4_dtv_stop(mfd);
@@ -470,8 +467,6 @@ static void mdp4_overlay_dtv_wait4_ov_done(struct msm_fb_data_type *mfd,
 void mdp4_overlay_dtv_ov_done_push(struct msm_fb_data_type *mfd,
 			struct mdp4_overlay_pipe *pipe)
 {
-
-	mdp4_overlay_reg_flush(pipe, 1);
 	mdp4_overlay_dtv_ov_start(mfd);
 
 	if (pipe->flags & MDP_OV_PLAY_NOWAIT)

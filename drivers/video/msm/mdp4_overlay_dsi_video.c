@@ -271,8 +271,6 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
-	ret = panel_next_off(pdev);
-
 	/* dis-engage rgb0 from mixer0 */
 	if (dsi_pipe)
 		mdp4_mixer_stage_down(dsi_pipe);
