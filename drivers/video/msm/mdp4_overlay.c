@@ -2032,7 +2032,8 @@ static uint32 mdp4_overlay_get_perf_level(uint32 width, uint32 height,
 	}
 }
 
-static uint32 mdp4_overlay_get_perf_level(struct mdp_overlay *req)
+static uint32 mdp4_overlay_get_perf_level(struct mdp_overlay *req,
+					  struct msm_fb_data_type *mfd)
 {
 	int is_fg, i, cnt;
 
