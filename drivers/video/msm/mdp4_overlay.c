@@ -1349,14 +1349,8 @@ static void mdp4_mixer_stage_commit(int mixer)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
 
-	if (data) {
-		if (pipe_cnt == 1) {
-			mdp4_update_perf_level(OVERLAY_PERF_LEVEL4);
-#ifdef CONFIG_MSM_BUS_SCALING
-			mdp_bus_scale_update_request(2);
-#endif
-		}
-	}
+	if (data && pipe_cnt == 1)
+		mdp4_update_perf_level(OVERLAY_PERF_LEVEL4);
 }
 
 void mdp4_mixer_stage_up(struct mdp4_overlay_pipe *pipe)
