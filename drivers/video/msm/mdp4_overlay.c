@@ -440,7 +440,6 @@ void mdp4_overlay_rgb_setup(struct mdp4_overlay_pipe *pipe)
 	uint32 format, pattern;
 	uint32 curr, mask;
 	uint32 offset = 0;
-	int pnum;
 
 	pnum = pipe->pipe_num - OVERLAY_PIPE_RGB1; /* start from 0 */
 	rgb_base = MDP_BASE + MDP4_RGB_BASE;
