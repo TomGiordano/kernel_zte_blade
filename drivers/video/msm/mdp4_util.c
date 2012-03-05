@@ -536,9 +536,21 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 			dma = &dma_s_data;
 #endif
 
-			dma->busy = FALSE;
-			mdp_pipe_ctrl(MDP_DMA_S_BLOCK,
-					MDP_BLOCK_POWER_OFF, TRUE);
+		dma->busy = FALSE;
+		mdp_pipe_ctrl(MDP_DMA_S_BLOCK,
+				MDP_BLOCK_POWER_OFF, TRUE);
+		complete(&dma->comp);
+	}
+	if (isr & INTR_DMA_E_DONE) {
+		mdp4_stat.intr_dma_e++;
+		dma = &dma_e_data;
+		spin_lock(&mdp_spin_lock);
+		mdp_intr_mask &= ~INTR_DMA_E_DONE;
+		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+		dma->busy = FALSE;
+		mdp4_dma_e_done_dtv();
+		if (dma->waiting) {
+			dma->waiting = FALSE;
 			complete(&dma->comp);
 		}
 		spin_unlock(&mdp_spin_lock);
