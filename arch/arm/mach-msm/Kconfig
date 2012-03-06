@@ -1363,6 +1363,12 @@ choice
 		bool "Reset the entire chip"
 endchoice
 
+config KERNELIZER
+        bool "Kernelizer"
+        default y
+        help
+          Enables tweaks kernel
+
 config MSM_IDLE_WAIT_ON_MODEM
 	int "Wait for Modem to become ready for idle power collapse"
 	default 0

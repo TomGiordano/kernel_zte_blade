@@ -35,7 +35,11 @@
 #include <linux/hardirq.h>
 #include "internal.h"
 
-int sysctl_vfs_cache_pressure __read_mostly = 25;
+#ifdef CONFIG_KERNELIZER
+int sysctl_vfs_cache_pressure __read_mostly = 20;
+#else
+int sysctl_vfs_cache_pressure __read_mostly = 50;
+#endif
 EXPORT_SYMBOL_GPL(sysctl_vfs_cache_pressure);
 
  __cacheline_aligned_in_smp DEFINE_SPINLOCK(dcache_lock);
