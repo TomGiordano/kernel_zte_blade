@@ -1511,6 +1511,7 @@ void mdp4_mixer_blend_setup(struct mdp4_overlay_pipe *pipe)
 
 void mdp4_overlay_reg_flush(struct mdp4_overlay_pipe *pipe, int all)
 {
+	struct mdp4_overlay_pipe *bg_pipe;
 	uint32 bits = 0;
 
 	if (all) {
@@ -1522,6 +1523,11 @@ void mdp4_overlay_reg_flush(struct mdp4_overlay_pipe *pipe, int all)
 
 	if (pipe->pipe_num <= OVERLAY_PIPE_RGB2)
 		bits |= 1 << (2 + pipe->pipe_num);
+	if (pipe->is_fg && pipe->alpha == 0xFF) {
+		bg_pipe = mdp4_overlay_stage_pipe(pipe->mixer_num,
+						  MDP4_MIXER_STAGE_BASE);
+		bits |= 1 << (2 + bg_pipe->pipe_num);
+	}
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	outpdw(MDP_BASE + 0x18000, bits);	/* MDP_OVERLAY_REG_FLUSH */
