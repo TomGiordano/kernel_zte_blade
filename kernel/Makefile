@@ -26,6 +26,7 @@ CFLAGS_REMOVE_perf_event.o = -pg
 endif
 
 obj-$(CONFIG_FREEZER) += freezer.o
+obj-$(CONFIG_CGROUP_TIMER_SLACK) += cgroup_timer_slack.o
 obj-$(CONFIG_PROFILING) += profile.o
 obj-$(CONFIG_SYSCTL_SYSCALL_CHECK) += sysctl_check.o
 obj-$(CONFIG_STACKTRACE) += stacktrace.o
