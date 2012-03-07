@@ -19,3 +19,4 @@ config RAMZSWAP_STATS
 	help
 	  Enable statistics collection for ramzswap. This adds only a minimal
 	  overhead. In unsure, say Y.
+

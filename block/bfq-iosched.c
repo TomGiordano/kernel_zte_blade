@@ -1212,7 +1212,7 @@ static int __bfq_dispatch_requests(struct bfq_data *bfqd,
 		dispatched++;
 
 		if (bfqd->active_cic == NULL) {
-			atomic_inc(&RQ_CIC(rq)->ioc->refcount);
+			atomic_long_inc(&RQ_CIC(rq)->ioc->refcount);
 			bfqd->active_cic = RQ_CIC(rq);
 		}
 

@@ -131,6 +131,13 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  you to get a full dynamic cpu frequency capable system by simply
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
+
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVEX
+        bool "interactivex"
+        select CPU_FREQ_GOV_INTERACTIVEX
+        help
+          Use the CPUFreq governor 'interactivex' as default.
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -231,5 +238,11 @@ config CPU_FREQ_GOV_SMARTASS2
 	  'smartassV2' - a "smart" optimized governor for the hero!
 
 	  If in doubt, say N.
+
+config CPU_FREQ_GOV_INTERACTIVEX
+        tristate "'interactivex' cpufreq policy governor"
+        help
+          'interactivex' - This driver adds a dynamic cpufreq policy governor
+          designed for latency-sensitive workloads.
 
 endif	# CPU_FREQ

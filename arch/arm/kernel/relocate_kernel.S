@@ -51,7 +51,8 @@ relocate_new_kernel:
 	mov r0,#0
 	ldr r1,kexec_mach_type
 	ldr r2,kexec_boot_atags
-	mov pc,lr
+	ARM(  mov pc, lr  )
+        THUMB(  bx lr    )
 
 	.globl kexec_start_address
 kexec_start_address:

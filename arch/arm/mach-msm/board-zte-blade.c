@@ -125,7 +125,7 @@ when         who        what, where, why                             comment tag
 
 #ifdef CONFIG_ARCH_MSM7X27
 #define MSM_PMEM_MDP_SIZE	0x1B76000
-#define MSM_PMEM_ADSP_SIZE	0xB71000
+#define MSM_PMEM_ADSP_SIZE	0xAE4000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define MSM_FB_SIZE		0x177000
 #define MSM_GPU_PHYS_SIZE	SZ_2M
@@ -3391,7 +3391,7 @@ static struct msm_i2c_platform_data msm_i2c_pdata = {
       *
       * Set frequency of I2C clock as 100K
       */
-	.clk_freq = 100000,
+	.clk_freq = 400000,
 	.rmutex  = 0,
 	.pri_clk = 60,
 	.pri_dat = 61,
@@ -3656,7 +3656,7 @@ static void __init msm7x2x_init(void)
 	}
 
 	if (cpu_is_msm7x27())
-		msm7x2x_clock_data.max_axi_khz = 422400;
+		msm7x2x_clock_data.max_axi_khz = 200000;
 
 	msm_acpu_clock_init(&msm7x2x_clock_data);
 #ifdef CONFIG_ZTE_PLATFORM

@@ -144,7 +144,7 @@ static int rpcrouter_smd_remote_probe(struct platform_device *pdev)
 {
 	int rc;
 
-	smd_remote_xprt.xprt.name = "rpcrotuer_smd_xprt";
+	smd_remote_xprt.xprt.name = "rpcrouter_smd_xprt";
 	smd_remote_xprt.xprt.read_avail = rpcrouter_smd_remote_read_avail;
 	smd_remote_xprt.xprt.read = rpcrouter_smd_remote_read;
 	smd_remote_xprt.xprt.write_avail = rpcrouter_smd_remote_write_avail;
