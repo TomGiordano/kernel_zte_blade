@@ -318,3 +318,6 @@ config FRONTSWAP
 
           If unsure, say Y to enable frontswap.
 
+config CLEANCACHE
+        bool "Enable cleancache driver to cache clean pages if tmem is present"
+        default y
