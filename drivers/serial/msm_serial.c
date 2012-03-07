@@ -1148,12 +1148,9 @@ static struct platform_driver msm_platform_driver = {
 	},
 };
 
-extern int get_ftm_from_tag(void);
 static int __init msm_serial_init(void)
 {
 	int ret;
-	if (!get_ftm_from_tag())//true is ftm
-		return 0;
 
 	ret = uart_register_driver(&msm_uart_driver);
 	if (unlikely(ret))
