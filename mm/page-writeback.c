@@ -85,7 +85,7 @@ int vm_highmem_is_dirtyable;
 int vm_dirty_ratio = 95;
 #else
 int vm_dirty_ratio = 20;
-#endif;
+#endif
 
 /*
  * vm_dirty_bytes starts at 0 (disabled) so that it is a function of
