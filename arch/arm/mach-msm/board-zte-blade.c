@@ -125,7 +125,7 @@ when         who        what, where, why                             comment tag
 
 #ifdef CONFIG_ARCH_MSM7X27
 #define MSM_PMEM_MDP_SIZE	0x1B76000
-#define MSM_PMEM_ADSP_SIZE	0xAE4000
+#define MSM_PMEM_ADSP_SIZE	0x9DE000
 #define MSM_PMEM_AUDIO_SIZE	0x5B000
 #define MSM_FB_SIZE		0x177000
 #define MSM_GPU_PHYS_SIZE	SZ_2M
@@ -2689,13 +2689,13 @@ static const BattFuelCapacity fuelCapacity[] = {
    {3500, 10},                     /*  10%,3580 is 15% when 3660 is 20 */
    {3660, 20},                     /*  20% */
    {3710, 30},                     /*  30% */
-   {3761, 40},                     /*  40% */
-   {3801, 50},                     /*  50% */
-   {3842, 60},                     /*  60% */
-   {3909, 70},                     /*  70% */
-   {3977, 80},                     /*  80% */
-   {4066, 90},                     /*  90% */
-   {4150, 100}                     /* 100% */
+   {3786, 40},                     /*  40% */
+   {3826, 50},                     /*  50% */
+   {3867, 60},                     /*  60% */
+   {3934, 70},                     /*  70% */
+   {4002, 80},                     /*  80% */
+   {4091, 90},                     /*  90% */
+   {4200, 100}                     /* 100% */
 };
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
@@ -3024,7 +3024,7 @@ static void __init msm7x2x_init_irq(void)
 
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
 	.acpu_switch_time_us = 50,
-	.max_speed_delta_khz = 400000,
+	.max_speed_delta_khz = 256000,
 	.vdd_switch_time_us = 62,
 	.max_axi_khz = 160000,
 };
