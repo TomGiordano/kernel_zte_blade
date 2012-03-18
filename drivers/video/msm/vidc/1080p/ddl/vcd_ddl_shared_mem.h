@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -176,6 +176,4 @@ void vidc_sm_set_decoder_sei_enable(struct ddl_buf_addr *shared_mem,
 	u32 sei_enable);
 void vidc_sm_get_decoder_sei_enable(struct ddl_buf_addr *shared_mem,
 	u32 *sei_enable);
-void vidc_sm_set_error_concealment_config(struct ddl_buf_addr *shared_mem,
-	u32 inter_slice, u32 intra_slice, u32 conceal_config_enable);
 #endif
