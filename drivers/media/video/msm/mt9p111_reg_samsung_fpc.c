@@ -166,7 +166,12 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     /* ZTE_JIA_CAM_20101124 WT_CAM_20110314
      * setting for preview orientation
      */
+#if defined (CONFIG_MACH_BLADE)
+    // Set orientation for blade. Flip vertically and horizontally.
+    {0xC850, 0x03,   BYTE_LEN, 0}, 	// CAM_CORE_A_ORIENTATION
+#else
     {0xC850, 0x00,   BYTE_LEN, 0}, 	// CAM_CORE_A_ORIENTATION
+#endif
     {0xC851, 0x00, 	 BYTE_LEN, 0},// CAM_CORE_A_PIXEL_ORDER
     {0xC852, 0x019C, WORD_LEN, 0}, 	// CAM_CORE_A_FINE_CORRECTION
     {0xC854, 0x0732, WORD_LEN, 0}, 	// CAM_CORE_A_FINE_ITMIN
@@ -205,7 +210,12 @@ static struct mt9p111_i2c_reg_conf const preview_snapshot_mode_reg_settings_arra
     /* ZTE_JIA_CAM_20101124
      * setting for snapshot orientation
      */
+#if defined (CONFIG_MACH_BLADE)
+    // Set orientation for blade. Flip vertically and horizontally.
+    {0xC888, 0x03,   BYTE_LEN, 0},  // CAM_CORE_B_ORIENTATION
+#else
     {0xC888, 0x00,   BYTE_LEN, 0},  // CAM_CORE_B_ORIENTATION
+#endif
     {0xC889, 0x00, 	 BYTE_LEN, 0},// CAM_CORE_B_PIXEL_ORDER
     {0xC88A, 0x009C, WORD_LEN, 0}, 	// CAM_CORE_B_FINE_CORRECTION
     {0xC88C, 0x034A, WORD_LEN, 0}, 	// CAM_CORE_B_FINE_ITMIN
