@@ -51,6 +51,14 @@ extern uint32 mdp4_extn_disp;
 #define MDP4_RGB_BASE 0x40000
 #define MDP4_RGB_OFF 0x10000
 
+enum mdp4_overlay_status {
+        MDP4_OVERLAY_TYPE_UNSET,
+        MDP4_OVERLAY_TYPE_SET,
+        MDP4_OVERLAY_TYPE_MAX
+};
+
+typedef int (*cmd_fxn_t)(struct platform_device *pdev);
+
 enum {		/* display */
 	PRIMARY_INTF_SEL,
 	SECONDARY_INTF_SEL,
@@ -557,8 +565,6 @@ void mdp4_lcdc_overlay_blt_stop(struct msm_fb_data_type *mfd);
 
 int mdp4_mddi_overlay_blt_offset(int *off);
 void mdp4_mddi_overlay_blt(ulong addr);
-int mdp4_lcdc_overlay_blt_offset(int *off);
-void mdp4_lcdc_overlay_blt(ulong addr);
 void mdp4_overlay_panel_mode(int mixer_num, uint32 mode);
 int mdp4_overlay_mixer_play(int mixer_num);
 uint32 mdp4_overlay_panel_list(void);

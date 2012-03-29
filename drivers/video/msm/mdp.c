@@ -129,6 +129,8 @@ struct timeval mdp_ppp_timeval;
 static struct early_suspend early_suspend;
 #endif
 
+static u32 mdp_irq;
+
 #ifndef CONFIG_FB_MSM_MDP22
 DEFINE_MUTEX(mdp_lut_push_sem);
 static int mdp_lut_i;

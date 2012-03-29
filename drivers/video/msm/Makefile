@@ -140,6 +140,19 @@ obj-$(CONFIG_FB_MSM_LCDC_ST15_WXGA) += lcdc_st15.o
 obj-$(CONFIG_FB_MSM_HDMI_MSM_PANEL) += hdmi_msm.o
 obj-$(CONFIG_FB_MSM_EXT_INTERFACE_COMMON) += external_common.o
 
+obj-$(CONFIG_FB_MSM_LCDC_HIMAX_QVGA725A) += lcdc_panel_qvga725A.o
+obj-$(CONFIG_FB_MSM_LCDC_LEAD_HVGA) += lcdc_panel_hvga_lead.o
+obj-$(CONFIG_FB_MSM_LCDC_OLED_WVGA) += lcdc_panel_wvga_oled.o
+obj-$(CONFIG_FB_MSM_LCDC_SKATE_WVGA) += lcdc_panel_wvga_skate.o
+obj-$(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA) += lcdc_panel_wvga_skate_test_sample.o
+obj-$(CONFIG_FB_MSM_LCDC_NOVA_HVGA) += lcdc_panel_hvga_nova.o
+obj-$(CONFIG_FB_MSM_LCDC_SAILBOAT_HVGA) += lcdc_panel_hvga_sailboat.o
+
+obj-$(CONFIG_FB_MSM_LCDC_QRDC_WXGA) += lcdc_qrdc.o
+obj-$(CONFIG_FB_MSM_LCDC_V9_WVGA) += lcdc_panel_wvga_v9.o
+obj-$(CONFIG_FB_MSM_LCDC_BLADE2_WVGA) += lcdc_panel_wvga_p736v.o
+
+
 obj-$(CONFIG_FB_MSM_TVOUT) += tvout_msm.o
 
 obj-$(CONFIG_FB_MSM_EXTMDDI_SVGA) += mddi_ext_lcd.o
