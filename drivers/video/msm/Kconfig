@@ -163,6 +163,46 @@ config FB_MSM_LCDC_WXGA
 	select FB_MSM_LCDC_PANEL
 	default n
 
+config FB_MSM_LCDC_QRDC_WXGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_OLED_WVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_V9_WVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_BLADE2_WVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_LEAD_HVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_NOVA_HVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_SAILBOAT_HVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_HIMAX_QVGA725A
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
 	bool
 	select FB_MSM_MIPI_DSI_TOSHIBA
@@ -400,11 +440,60 @@ config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
 	---help---
 	  Support for EBI2 TMD QVGA (240x320) and Epson QCIF (176x220) panel
 
+config FB_MSM_LCDC_HIMAX_WQVGA_PANEL727
+	bool "Himax WQVGA 727"
+	select FB_MSM_LCDC_HIMAX_WQVGA727
+
+config FB_MSM_LCDC_HIMAX_WQVGA_PANEL722
+	bool "Himax WQVGA 722"
+	select FB_MSM_LCDC_HIMAX_WQVGA722
+
+config FB_MSM_LCDC_SKATE_WVGA_PANEL
+	bool "Skate WVGA Panel"
+	select FB_MSM_LCDC_SKATE_WVGA
+
+config FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA_PANEL
+	bool "Skate WVGA test Panel"
+	select FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA
+
+config FB_MSM_LCDC_HVGA_ROAMER_PANEL
+	bool "Roamer HVGA Panel"
+	select FB_MSM_LCDC_HVGA_ROAMER
+
+config FB_MSM_LCDC_OLED_WVGA_PANEL
+	bool "Blade WVGA OLED LCD Panel"
+	select FB_MSM_LCDC_OLED_WVGA
+
+config FB_MSM_LCDC_V9_WVGA_PANEL
+	bool "V9 WVGA Panel"
+	select FB_MSM_LCDC_V9_WVGA
+
+config FB_MSM_LCDC_BLADE2_WVGA_PANEL
+	bool "Blade2 WVGA Panel"
+	select FB_MSM_LCDC_BLADE2_WVGA
+
+config FB_MSM_LCDC_LEAD_HVGA_PANEL
+	bool "Lead HVGA Panel"
+	select FB_MSM_LCDC_LEAD_HVGA
+
+config FB_MSM_LCDC_NOVA_HVGA_PANEL
+	bool "Nova HVGA Panel"
+	select FB_MSM_LCDC_NOVA_HVGA
+
+config FB_MSM_LCDC_SAILBOAT_HVGA_PANEL
+	bool "Sailboat HVGA Panel"
+	select FB_MSM_LCDC_SAILBOAT_HVGA
+
+config FB_MSM_LCDC_HIMAX_QVGA_725A_PANEL
+	bool "725A QVGA Panel"
+	select FB_MSM_LCDC_HIMAX_QVGA725A
+
 config FB_MSM_PANEL_NONE
 	bool "NONE"
 	---help---
 	  This will disable LCD panel
 endchoice
+
 
 choice
 	prompt "Secondary LCD Panel"

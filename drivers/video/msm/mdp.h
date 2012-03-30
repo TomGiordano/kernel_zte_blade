@@ -55,6 +55,8 @@
 
 extern uint32 mdp_hw_revision;
 extern ulong mdp4_display_intf;
+extern spinlock_t mdp_spin_lock;
+extern int mdp_rev;
 
 #define MDP4_REVISION_V1		0
 #define MDP4_REVISION_V2		1

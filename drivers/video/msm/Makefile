@@ -142,6 +142,9 @@ obj-$(CONFIG_FB_MSM_LCDC_ST15_WXGA) += lcdc_st15.o
 obj-$(CONFIG_FB_MSM_HDMI_MSM_PANEL) += hdmi_msm.o
 obj-$(CONFIG_FB_MSM_EXT_INTERFACE_COMMON) += external_common.o
 
+obj-$(CONFIG_FB_MSM_LCDC_HVGA_ROAMER) += lcdc_panel_hvga_roamer.o
+obj-$(CONFIG_FB_MSM_LCDC_HIMAX_WQVGA727) += lcdc_panel_wqvga727.o
+obj-$(CONFIG_FB_MSM_LCDC_HIMAX_WQVGA722) += lcdc_panel_wqvga722.o
 obj-$(CONFIG_FB_MSM_LCDC_HIMAX_QVGA725A) += lcdc_panel_qvga725A.o
 obj-$(CONFIG_FB_MSM_LCDC_LEAD_HVGA) += lcdc_panel_hvga_lead.o
 obj-$(CONFIG_FB_MSM_LCDC_OLED_WVGA) += lcdc_panel_wvga_oled.o
