@@ -1136,33 +1136,33 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		if ((mdp_all_blocks_off) && (mdp_current_clk_on)) {
 			mutex_lock(&mdp_suspend_mutex);
 			if (block == MDP_MASTER_BLOCK || mdp_suspended) {
-				if ((mdp_prim_panel_type == MIPI_CMD_PANEL) &&
-					(mdp_rev == MDP_REV_303)) {
-					mdp_hist_force_stop = TRUE;
-					complete(&mdp_hist_comp);
-				}
-
-				mdp_current_clk_on = FALSE;
-				if (footswitch != NULL)
-					regulator_disable(footswitch);
-				/* turn off MDP clks */
-				mdp_vsync_clk_disable();
-				for (i = 0; i < pdev_list_cnt; i++) {
-					pdata = (struct msm_fb_panel_data *)
-						pdev_list[i]->dev.platform_data;
-					if (pdata && pdata->clk_func)
-						pdata->clk_func(0);
-				}
-				if (mdp_clk != NULL) {
-					clk_disable(mdp_clk);
-					MSM_FB_DEBUG("MDP CLK OFF\n");
-				}
-				if (mdp_pclk != NULL) {
-					clk_disable(mdp_pclk);
-					MSM_FB_DEBUG("MDP PCLK OFF\n");
-				}
-				if (mdp_lut_clk != NULL)
-					clk_disable(mdp_lut_clk);
+                                mdp_current_clk_on = FALSE;
+                                mb();
+                                /* turn off MDP clks */
+                                mdp_vsync_clk_disable();
+                                for (i = 0; i < pdev_list_cnt; i++) {
+                                        pdata = (struct msm_fb_panel_data *)
+                                                pdev_list[i]->dev.platform_data;
+                                        if (pdata && pdata->clk_func)
+                                                pdata->clk_func(0);
+                                }
+                                if (mdp_clk != NULL) {
+                                        mdp_clk_rate = clk_get_rate(mdp_clk);
+                                        clk_disable(mdp_clk);
+                                        if (mdp_hw_revision <=
+                                                MDP4_REVISION_V2_1 &&
+                                                mdp_clk_rate > 122880000) {
+                                                clk_set_rate(mdp_clk,
+                                                         122880000);
+                                        }
+                                        MSM_FB_DEBUG("MDP CLK OFF\n");
+                                }
+                                if (mdp_pclk != NULL) {
+                                        clk_disable(mdp_pclk);
+                                        MSM_FB_DEBUG("MDP PCLK OFF\n");
+                                }
+                                if (mdp_lut_clk != NULL)
+                                        clk_disable(mdp_lut_clk);
 			} else {
 				/* send workqueue to turn off mdp power */
 				queue_delayed_work(mdp_pipe_ctrl_wq,
@@ -1180,6 +1180,12 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 					pdata->clk_func(1);
 			}
 			if (mdp_clk != NULL) {
+                                if (mdp_hw_revision <=
+                                        MDP4_REVISION_V2_1 &&
+                                        mdp_clk_rate > 122880000) {
+                                        clk_set_rate(mdp_clk,
+                                                 mdp_clk_rate);
+                                }
 				clk_enable(mdp_clk);
 				MSM_FB_DEBUG("MDP CLK ON\n");
 			}
@@ -1875,6 +1881,7 @@ static int mdp_probe(struct platform_device *pdev)
 	pdata->off = mdp_off;
 	pdata->next = pdev;
 
+        mdp_prim_panel_type = mfd->panel.type;
 	switch (mfd->panel.type) {
 	case EXT_MDDI_PANEL:
 	case MDDI_PANEL:

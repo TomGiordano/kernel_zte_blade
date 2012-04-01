@@ -495,52 +495,116 @@ config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
 	  Support for EBI2 TMD QVGA (240x320) and Epson QCIF (176x220) panel
 
 config FB_MSM_LCDC_HIMAX_WQVGA_PANEL727
-	bool "Himax WQVGA 727"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC HiMax WQVGA Panel Joe"
 	select FB_MSM_LCDC_HIMAX_WQVGA727
-
+	---help---
+	  Support for LCDC HiMax WQVGA (400x240) panel
 config FB_MSM_LCDC_HIMAX_WQVGA_PANEL722
-	bool "Himax WQVGA 722"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC HiMax WQVGA Panel Raise"
 	select FB_MSM_LCDC_HIMAX_WQVGA722
-
+	---help---
+	  Support for LCDC HiMax WQVGA (400x240) panel
 config FB_MSM_LCDC_SKATE_WVGA_PANEL
-	bool "Skate WVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC skate WVGA Panel"
 	select FB_MSM_LCDC_SKATE_WVGA
-
+	---help---
+	  Support for LCDC skate WVGA (480x800) panel
 config FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA_PANEL
-	bool "Skate WVGA test Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC skate (test sample) WVGA Panel"
 	select FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA
+	---help---
+	  Support for LCDC skate (dev phone) WVGA (480x800) panel
+config FB_MSM_LCDC_LEAD_QVGA_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC Lead QVGA Panel"
+	select FB_MSM_LCDC_LEAD_QVGA
+	---help---
+	  Support for LCDC Lead QVGA (240x320) panel
 
+config FB_MSM_LCDC_HIMAX_QVGA_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC HIMAX QVGA Panel"
+	select FB_MSM_LCDC_HIMAX_QVGA
+	---help---
+	  Support for LCDC HIMAX QVGA (240x320) panel
 config FB_MSM_LCDC_HVGA_ROAMER_PANEL
-	bool "Roamer HVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC HVGA ROAMER Panel"
 	select FB_MSM_LCDC_HVGA_ROAMER
+	---help---
+	  Support for LCDC HVGA ROAMER (320x480) panel
+config FB_MSM_LCDC_SAMSUNG_QVGA_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC SAMSUNG QVGA Panel"
+	select FB_MSM_LCDC_SAMSUNG_QVGA
+	---help---
+	  Support for LCDC SAMSUNG QVGA (240x320) panel
 
 config FB_MSM_LCDC_OLED_WVGA_PANEL
-	bool "Blade WVGA OLED LCD Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC Oled WVGA Panel"
 	select FB_MSM_LCDC_OLED_WVGA
+	---help---
+	  Support for LCDC Samsung Oled WVGA (480x800) panel
 
 config FB_MSM_LCDC_V9_WVGA_PANEL
-	bool "V9 WVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC V9 WVGA Panel"
 	select FB_MSM_LCDC_V9_WVGA
-
+	---help---
+	  Support for LCDC V9 WVGA (800x480) panel
+	  
 config FB_MSM_LCDC_BLADE2_WVGA_PANEL
-	bool "Blade2 WVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC BLADE2 WVGA Panel"
 	select FB_MSM_LCDC_BLADE2_WVGA
-
+	---help---
+	  Support for LCDC BLADE2 WVGA (800x480) panel
+	  
 config FB_MSM_LCDC_LEAD_HVGA_PANEL
-	bool "Lead HVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC LEAD HVGA Panel"
 	select FB_MSM_LCDC_LEAD_HVGA
+	---help---
+	  Support for LCDC LEAD TFT HVGA (320x480) panel
 
 config FB_MSM_LCDC_NOVA_HVGA_PANEL
-	bool "Nova HVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC NOVA HVGA Panel"
 	select FB_MSM_LCDC_NOVA_HVGA
-
+	---help---
+	  Support for LCDC NOVA TFT HVGA (320x480) panel
+	  
 config FB_MSM_LCDC_SAILBOAT_HVGA_PANEL
-	bool "Sailboat HVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC SAILBOAT HVGA Panel"
 	select FB_MSM_LCDC_SAILBOAT_HVGA
+	---help---
+	  Support for LCDC SAILBOAT TFT HVGA (320x480) panel
 
+config FB_MSM_LCDC_TOSHIBA_WVGA_PT_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC Toshiba WVGA PT Panel"
+	select FB_MSM_LCDC_TOSHIBA_WVGA_PT
+	---help---
+	  Support for LCDC Toshiba WVGA PT (480x800) panel
+
+config FB_MSM_LCDC_SHARP_WVGA_PT_PANEL
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC Sharp WVGA PT Panel"
+	select FB_MSM_LCDC_SHARP_WVGA_PT
+	---help---
+	  Support for LCDC Sharp WVGA PT (480x800) panel
 config FB_MSM_LCDC_HIMAX_QVGA_725A_PANEL
-	bool "725A QVGA Panel"
+	depends on FB_MSM_LCDC_HW
+	bool "LCDC HIMAX QVGA Panel 725A"
 	select FB_MSM_LCDC_HIMAX_QVGA725A
+	---help---
+	Support for LCDC Himax qvga (320x240) panel
 
 config FB_MSM_HDMI_AS_PRIMARY
 	depends on FB_MSM_HDMI_COMMON
