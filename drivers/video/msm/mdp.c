@@ -103,6 +103,7 @@ ulong mdp4_display_intf;
 #else
 static struct mdp_dma_data dma2_data;
 static struct mdp_dma_data dma_s_data;
+#ifndef CONFIG_FB_MSM_MDP303
 static struct mdp_dma_data dma_e_data;
 #endif
 #endif
@@ -142,6 +143,7 @@ static struct early_suspend early_suspend;
 
 static u32 mdp_irq;
 
+static uint32 mdp_prim_panel_type = NO_PANEL;
 #ifndef CONFIG_FB_MSM_MDP22
 DEFINE_MUTEX(mdp_lut_push_sem);
 static int mdp_lut_i;
@@ -906,7 +908,7 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 				mdp_dma2_timeval.tv_usec =
 				    now.tv_usec - mdp_dma2_timeval.tv_usec;
 			}
-
+#ifndef CONFIG_FB_MSM_MDP303
 			dma = &dma2_data;
 			dma->busy = FALSE;
 			mdp_pipe_ctrl(MDP_DMA2_BLOCK, MDP_BLOCK_POWER_OFF,
@@ -979,6 +981,7 @@ static void mdp_drv_init(void)
 	init_completion(&dma_s_data.comp);
 	init_MUTEX(&dma_s_data.mutex);
 
+#ifndef CONFIG_FB_MSM_MDP303
 	dma_e_data.busy = FALSE;
 	dma_e_data.waiting = FALSE;
 	init_completion(&dma_e_data.comp);

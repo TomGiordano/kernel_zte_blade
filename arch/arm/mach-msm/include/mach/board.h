@@ -249,6 +249,9 @@ struct msm_panel_common_pdata {
 #endif
         int mdp_rev;
         int (*writeback_offset)(void);
+        u32 ov0_wb_size;  /* overlay0 writeback size */
+        u32 ov1_wb_size;  /* overlay1 writeback size */
+        u32 mem_hid;
 };
 
 struct lcdc_platform_data {
