@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -32,8 +32,7 @@
 
 #include <linux/msm_vidc_enc.h>
 #include <linux/cdev.h>
-
-#include "vidc_init.h"
+#include <media/msm/vidc_init.h>
 
 #define VID_ENC_MAX_NUM_OF_BUFF 100
 
@@ -84,6 +83,9 @@ u32 vid_enc_set_get_framerate(struct video_client_ctx *client_ctx,
 
 u32 vid_enc_set_get_live_mode(struct video_client_ctx *client_ctx,
 		struct venc_switch *encoder_switch, u32 set_flag);
+
+u32 vid_enc_set_get_extradata(struct video_client_ctx *client_ctx,
+		u32 *extradata_flag, u32 set_flag);
 
 u32 vid_enc_set_get_short_header(struct video_client_ctx *client_ctx,
 		struct venc_switch *encoder_switch, u32 set_flag);
@@ -159,7 +161,8 @@ u32 vid_enc_fill_output_buffer(struct video_client_ctx *client_ctx,
 u32 vid_enc_set_recon_buffers(struct video_client_ctx *client_ctx,
 		struct venc_recon_addr *venc_recon);
 
-u32 vid_enc_free_recon_buffers(struct video_client_ctx *client_ctx);
+u32 vid_enc_free_recon_buffers(struct video_client_ctx *client_ctx,
+		struct venc_recon_addr *venc_recon);
 
 u32 vid_enc_get_recon_buffer_size(struct video_client_ctx *client_ctx,
 		struct venc_recon_buff_size *venc_recon_size);

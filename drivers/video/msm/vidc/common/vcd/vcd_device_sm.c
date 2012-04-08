@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,7 +16,7 @@
  *
  */
 
-#include "vidc_type.h"
+#include <media/msm/vidc_type.h>
 #include "vcd.h"
 
 static const struct vcd_dev_state_table *vcd_dev_state_table[];
@@ -528,8 +528,8 @@ static u32 vcd_init_cmn
 		config->map_dev_base_addr
 		|| dev_ctxt->config.un_map_dev_base_addr !=
 		config->un_map_dev_base_addr) {
-		VCD_MSG_ERROR("Device config mismatch");
-		VCD_MSG_HIGH("VCD will be using config from 1st vcd_init");
+		VCD_MSG_HIGH("Device config mismatch. "
+			"VCD will be using config from 1st vcd_init");
 	}
 
 	*driver_handle = 0;

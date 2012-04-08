@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,11 +32,12 @@
 #include <linux/workqueue.h>
 #include <linux/android_pmem.h>
 #include <linux/clk.h>
+#include <media/msm/vidc_type.h>
+#include <media/msm/vcd_api.h>
+#include <media/msm/vidc_init.h>
 
-#include "vidc_type.h"
-#include "vcd_api.h"
 #include "venc_internal.h"
-#include "vidc_init.h"
+#include "vcd_res_tracker_api.h"
 
 #define VID_ENC_NAME	"msm_vidc_enc"
 
@@ -408,21 +409,24 @@ static u32 vid_enc_msg_pending(struct video_client_ctx *client_ctx)
 	return !islist_empty;
 }
 
-static u32 vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
+static int vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
 		struct venc_msg *venc_msg_info)
 {
 	int rc;
 	struct vid_enc_msg *vid_enc_msg = NULL;
 
 	if (!client_ctx)
-		return false;
+		return -EIO;
 
 	rc = wait_event_interruptible(client_ctx->msg_wait,
 		vid_enc_msg_pending(client_ctx));
 
-	if (rc < 0 || client_ctx->stop_msg) {
-		DBG("rc = %d, stop_msg = %u\n", rc, client_ctx->stop_msg);
-		return false;
+	if (rc < 0) {
+		DBG("rc = %d,stop_msg= %u\n", rc, client_ctx->stop_msg);
+		return rc;
+	} else if (client_ctx->stop_msg) {
+		DBG("stopped stop_msg = %u\n", client_ctx->stop_msg);
+		return -EIO;
 	}
 
 	mutex_lock(&client_ctx->msg_queue_lock);
@@ -437,7 +441,7 @@ static u32 vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
 		kfree(vid_enc_msg);
 	}
 	mutex_unlock(&client_ctx->msg_queue_lock);
-	return true;
+	return 0;
 }
 
 static u32 vid_enc_close_client(struct video_client_ctx *client_ctx)
@@ -478,7 +482,6 @@ static u32 vid_enc_close_client(struct video_client_ctx *client_ctx)
 		mutex_unlock(&vid_enc_device_p->lock);
 		return false;
 	}
-
 	memset((void *)client_ctx, 0,
 		sizeof(struct video_client_ctx));
 
@@ -502,9 +505,10 @@ static int vid_enc_open(struct inode *inode, struct file *file)
 
 	stop_cmd = 0;
 	client_count = vcd_get_num_of_clients();
-	if (client_count == VIDC_MAX_NUM_CLIENTS) {
+	if (client_count == VIDC_MAX_NUM_CLIENTS ||
+		res_trk_check_for_sec_session()) {
 		ERR("ERROR : vid_enc_open() max number of clients"
-		    "limit reached\n");
+		    "limit reached or secure session is open\n");
 		mutex_unlock(&vid_enc_device_p->lock);
 		return -ENODEV;
 	}
@@ -529,8 +533,16 @@ static int vid_enc_open(struct inode *inode, struct file *file)
 
 	init_completion(&client_ctx->event);
 	mutex_init(&client_ctx->msg_queue_lock);
+	mutex_init(&client_ctx->enrty_queue_lock);
 	INIT_LIST_HEAD(&client_ctx->msg_queue);
 	init_waitqueue_head(&client_ctx->msg_wait);
+	if (vcd_get_ion_status()) {
+		client_ctx->user_ion_client = vcd_get_ion_client();
+		if (!client_ctx->user_ion_client) {
+			ERR("vcd_open ion get client failed");
+			return -EFAULT;
+		}
+	}
 	vcd_status = vcd_open(vid_enc_device_p->device_handle, false,
 		vid_enc_vcd_cb, client_ctx);
 	client_ctx->stop_msg = 0;
@@ -715,6 +727,7 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 	struct venc_ioctl_msg venc_msg;
 	void __user *arg = (void __user *)u_arg;
 	u32 result = true;
+	int result_read = -1;
 
 	DBG("%s\n", __func__);
 
@@ -731,9 +744,9 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
 			return -EFAULT;
 		DBG("VEN_IOCTL_CMD_READ_NEXT_MSG\n");
-		result = vid_enc_get_next_msg(client_ctx, &cb_msg);
-		if (!result)
-			return -EIO;
+		result_read = vid_enc_get_next_msg(client_ctx, &cb_msg);
+		if (result_read < 0)
+			return result_read;
 		if (copy_to_user(venc_msg.out, &cb_msg, sizeof(cb_msg)))
 			return -EFAULT;
 		break;
@@ -950,8 +963,15 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 	}
 	case VEN_IOCTL_FREE_RECON_BUFFER:
 	{
+		struct venc_recon_addr venc_recon;
 		DBG("VEN_IOCTL_FREE_RECON_BUFFER\n");
-		result = vid_enc_free_recon_buffers(client_ctx);
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (copy_from_user(&venc_recon, venc_msg.in,
+				sizeof(venc_recon)))
+				return -EFAULT;
+		result = vid_enc_free_recon_buffers(client_ctx,
+				&venc_recon);
 		if (!result) {
 			ERR("VEN_IOCTL_FREE_RECON_BUFFER failed\n");
 			return -EIO;
@@ -1509,6 +1529,57 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 		if (copy_to_user(venc_msg.out,
 			&vid_enc_device_p->num_clients, sizeof(u32)))
 			return -EFAULT;
+		break;
+	}
+	case VEN_IOCTL_SET_METABUFFER_MODE:
+	{
+		u32 metabuffer_mode, vcd_status;
+		struct vcd_property_hdr vcd_property_hdr;
+		struct vcd_property_live live_mode;
+
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (copy_from_user(&metabuffer_mode, venc_msg.in,
+			sizeof(metabuffer_mode)))
+			return -EFAULT;
+		vcd_property_hdr.prop_id = VCD_I_META_BUFFER_MODE;
+		vcd_property_hdr.sz =
+			sizeof(struct vcd_property_live);
+		live_mode.live = metabuffer_mode;
+		vcd_status = vcd_set_property(client_ctx->vcd_handle,
+					&vcd_property_hdr, &live_mode);
+		if (vcd_status) {
+			pr_err(" Setting metabuffer mode failed");
+			return -EIO;
+		}
+		break;
+	}
+	case VEN_IOCTL_SET_EXTRADATA:
+	case VEN_IOCTL_GET_EXTRADATA:
+	{
+		u32 extradata_flag;
+		DBG("VEN_IOCTL_(G)SET_EXTRADATA\n");
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		if (cmd == VEN_IOCTL_SET_EXTRADATA) {
+			if (copy_from_user(&extradata_flag, venc_msg.in,
+					sizeof(u32)))
+				return -EFAULT;
+			result = vid_enc_set_get_extradata(client_ctx,
+					&extradata_flag, true);
+		} else {
+			result = vid_enc_set_get_extradata(client_ctx,
+					&extradata_flag, false);
+			if (result) {
+				if (copy_to_user(venc_msg.out, &extradata_flag,
+						sizeof(u32)))
+					return -EFAULT;
+			}
+		}
+		if (!result) {
+			ERR("setting VEN_IOCTL_(G)SET_LIVE_MODE failed\n");
+			return -EIO;
+		}
 		break;
 	}
 	case VEN_IOCTL_SET_AC_PREDICTION:

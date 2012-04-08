@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,7 +29,8 @@
 #ifndef _VCD_CORE_H_
 #define _VCD_CORE_H_
 
-#include "vcd_api.h"
+#include <linux/ion.h>
+#include <media/msm/vcd_api.h>
 #include "vcd_ddl_api.h"
 
 #include "vcd_util.h"
@@ -117,6 +118,7 @@ struct vcd_transc {
 	struct vcd_buffer_entry *ip_buf_entry;
 
 	s64 time_stamp;
+	u32 flags;
 	u32 ip_frm_tag;
 	enum vcd_frame frame;
 
@@ -218,8 +220,10 @@ struct vcd_clnt_ctxt {
 	struct vcd_sequence_hdr seq_hdr;
 	u8 *seq_hdr_phy_addr;
 	struct vcd_clnt_status status;
-
+	struct ion_client *vcd_ion_client;
+	u32 vcd_enable_ion;
 	struct vcd_clnt_ctxt *next;
+	u32 meta_mode;
 };
 
 #define VCD_BUFFERPOOL_INUSE_DECREMENT(val) \

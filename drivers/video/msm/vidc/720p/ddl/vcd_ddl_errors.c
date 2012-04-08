@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,7 +16,7 @@
  *
  */
 
-#include "vidc_type.h"
+#include <media/msm/vidc_type.h>
 #include "vcd_ddl_utils.h"
 #include "vcd_ddl.h"
 
@@ -358,12 +358,25 @@ static u32 ddl_handle_core_recoverable_errors(struct ddl_context \
 	case INVALID_MMCO:
 	case INVALID_PIC_REORDERING:
 	case INVALID_POC_TYPE:
-	case ACTIVE_SPS_NOT_PRESENT:
-	case ACTIVE_PPS_NOT_PRESENT:
 		{
 			vcd_status = VCD_ERR_BITSTREAM_ERR;
 			break;
 		}
+	case ACTIVE_SPS_NOT_PRESENT:
+	case ACTIVE_PPS_NOT_PRESENT:
+		{
+			if (ddl->codec_data.decoder.idr_only_decoding) {
+				DBG("Consider warnings as errors in idr mode");
+				ddl_client_fatal_cb(ddl_context);
+				return true;
+			}
+			vcd_status = VCD_ERR_BITSTREAM_ERR;
+			break;
+		}
+	case PROFILE_UNKOWN:
+		if (ddl->decoding)
+			vcd_status = VCD_ERR_BITSTREAM_ERR;
+		break;
 	}
 
 	if (!vcd_status && vcd_event == VCD_EVT_RESP_INPUT_DONE)
@@ -551,6 +564,8 @@ u32 ddl_handle_seqhdr_fail_error(struct ddl_context *ddl_context)
 		case HEADER_NOT_FOUND:
 		case INVALID_SPS_ID:
 		case INVALID_PPS_ID:
+		case RESOLUTION_NOT_SUPPORTED:
+		case PROFILE_UNKOWN:
 			ERR("SEQ-HDR-FAILED!!!");
 			if (decoder->header_in_start) {
 				decoder->header_in_start = false;

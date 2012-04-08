@@ -34,19 +34,13 @@
 #include <linux/uaccess.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
-#include <mach/msm_reqs.h>
 
 #define TVENC_C
 #include "tvenc.h"
 #include "msm_fb.h"
-
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-/* NPA Flow ID */
-#define MSM_SYSTEM_BUS_RATE	MSM_AXI_FLOW_MDP_DTV_720P_2BPP
-#else
+#include "mdp4.h"
 /* AXI rate in KHz */
 #define MSM_SYSTEM_BUS_RATE	128000000
-#endif
 
 static int tvenc_probe(struct platform_device *pdev);
 static int tvenc_remove(struct platform_device *pdev);
@@ -233,6 +227,7 @@ static int tvenc_on(struct platform_device *pdev)
 	if (mfd->ebi1_clk)
 		clk_enable(mfd->ebi1_clk);
 #endif
+	mdp4_extn_disp = 1;
 	if (tvenc_pdata && tvenc_pdata->pm_vid_en)
 		ret = tvenc_pdata->pm_vid_en(1);
 	if (ret) {

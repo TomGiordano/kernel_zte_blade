@@ -50,12 +50,41 @@
 #define MIPI_DSI_PANEL_VGA	0
 #define MIPI_DSI_PANEL_WVGA	1
 #define MIPI_DSI_PANEL_WVGA_PT	2
-
-#define DSI_PANEL_MAX	2
+#define MIPI_DSI_PANEL_FWVGA_PT	3
+#define MIPI_DSI_PANEL_WSVGA_PT	4
+#define MIPI_DSI_PANEL_QHD_PT 5
+#define MIPI_DSI_PANEL_WXGA	6
+#define MIPI_DSI_PANEL_WUXGA	7
+#define DSI_PANEL_MAX	7
 
 enum {		/* mipi dsi panel */
 	DSI_VIDEO_MODE,
 	DSI_CMD_MODE,
+};
+
+enum {
+	ST_DSI_CLK_OFF,
+	ST_DSI_SUSPEND,
+	ST_DSI_RESUME,
+	ST_DSI_PLAYING,
+	ST_DSI_NUM
+};
+
+enum {
+	EV_DSI_UPDATE,
+	EV_DSI_DONE,
+	EV_DSI_TOUT,
+	EV_DSI_NUM
+};
+
+enum {
+	LANDSCAPE = 1,
+	PORTRAIT = 2,
+};
+
+enum dsi_trigger_type {
+	DSI_CMD_MODE_DMA,
+	DSI_CMD_MODE_MDP,
 };
 
 #define DSI_NON_BURST_SYNCH_PULSE	0
@@ -151,6 +180,17 @@ struct dsi_buf {
 #define DTYPE_PERIPHERAL_OFF	0x22
 #define DTYPE_PERIPHERAL_ON	0x32
 
+/*
+ * dcs response
+ */
+#define DTYPE_ACK_ERR_RESP      0x02
+#define DTYPE_EOT_RESP          0x08    /* end of tx */
+#define DTYPE_GEN_READ1_RESP    0x11    /* 1 parameter, short */
+#define DTYPE_GEN_READ2_RESP    0x12    /* 2 parameter, short */
+#define DTYPE_GEN_LREAD_RESP    0x1a
+#define DTYPE_DCS_LREAD_RESP    0x1c
+#define DTYPE_DCS_READ1_RESP    0x21    /* 1 parameter, short */
+#define DTYPE_DCS_READ2_RESP    0x22    /* 2 parameter, short */
 
 struct dsi_cmd_desc {
 	int dtype;
@@ -174,8 +214,40 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo);
 void mipi_dsi_op_mode_config(int mode);
 void mipi_dsi_cmd_mode_ctrl(int enable);
 void mdp4_dsi_cmd_trigger(void);
-void mipi_dsi_cmd_mdp_sw_trigger(void);
+void mipi_dsi_cmd_mdp_start(void);
+void mipi_dsi_cmd_bta_sw_trigger(void);
+void mipi_dsi_ack_err_status(void);
+void mipi_dsi_set_tear_on(struct msm_fb_data_type *mfd);
+void mipi_dsi_set_tear_off(struct msm_fb_data_type *mfd);
+void mipi_dsi_clk_enable(void);
+void mipi_dsi_clk_disable(void);
+void mipi_dsi_pre_kickoff_action(void);
+void mipi_dsi_post_kickoff_action(void);
+void mipi_dsi_pre_kickoff_add(struct dsi_kickoff_action *act);
+void mipi_dsi_post_kickoff_add(struct dsi_kickoff_action *act);
+void mipi_dsi_pre_kickoff_del(struct dsi_kickoff_action *act);
+void mipi_dsi_post_kickoff_del(struct dsi_kickoff_action *act);
+void mipi_dsi_controller_cfg(int enable);
+void mipi_dsi_sw_reset(void);
+void mipi_dsi_mdp_busy_wait(struct msm_fb_data_type *mfd);
 
 irqreturn_t mipi_dsi_isr(int irq, void *ptr);
+
+void mipi_set_tx_power_mode(int mode);
+void mipi_dsi_phy_ctrl(int on);
+void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
+	int target_type);
+int mipi_dsi_clk_div_config(uint8 bpp, uint8 lanes,
+			    uint32 *expected_dsi_pclk);
+void mipi_dsi_clk_init(struct platform_device *pdev);
+void mipi_dsi_clk_deinit(struct device *dev);
+void mipi_dsi_ahb_ctrl(u32 enable);
+void cont_splash_clk_ctrl(void);
+void mipi_dsi_turn_on_clks(void);
+void mipi_dsi_turn_off_clks(void);
+
+#ifdef CONFIG_FB_MSM_MDP303
+void update_lane_config(struct msm_panel_info *pinfo);
+#endif
 
 #endif /* MIPI_DSI_H */

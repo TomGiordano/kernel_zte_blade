@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -76,9 +76,10 @@
 #define DDL_ENC_MIN_DPB_BUFFERS           2
 #define DDL_ENC_MAX_DPB_BUFFERS           4
 
-#define DDL_FW_AUX_HOST_CMD_SPACE_SIZE         (DDL_KILO_BYTE(10))
-#define DDL_FW_INST_GLOBAL_CONTEXT_SPACE_SIZE  (DDL_KILO_BYTE(400))
-#define DDL_FW_H264DEC_CONTEXT_SPACE_SIZE      (DDL_KILO_BYTE(600))
+#define DDL_FW_AUX_HOST_CMD_SPACE_SIZE         (DDL_KILO_BYTE(8))
+#define DDL_FW_INST_GLOBAL_CONTEXT_SPACE_SIZE  (DDL_KILO_BYTE(800))
+#define DDL_FW_H264DEC_CONTEXT_SPACE_SIZE      (DDL_KILO_BYTE(800))
+#define DDL_FW_H264ENC_CONTEXT_SPACE_SIZE      (DDL_KILO_BYTE(20))
 #define DDL_FW_OTHER_CONTEXT_SPACE_SIZE        (DDL_KILO_BYTE(10))
 
 #define VCD_DEC_CPB_SIZE         (DDL_KILO_BYTE(512))
@@ -138,5 +139,9 @@
 #define DDL_PIXEL_CACHE_NOT_IDLE          0x4000
 #define DDL_PIXEL_CACHE_STATUS_READ_RETRY 10
 #define DDL_PIXEL_CACHE_STATUS_READ_SLEEP 200
+
+#define DDL_RESL_CHANGE_NO_CHANGE               0
+#define DDL_RESL_CHANGE_INCREASED               1
+#define DDL_RESL_CHANGE_DECREASED               2
 
 #endif

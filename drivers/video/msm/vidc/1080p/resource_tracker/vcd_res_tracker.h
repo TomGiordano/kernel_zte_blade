@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,6 +30,7 @@
 #define _VIDEO_720P_RESOURCE_TRACKER_H_
 
 #include <linux/regulator/consumer.h>
+#include <linux/ion.h>
 #include "vcd_res_tracker_api.h"
 #ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
@@ -53,10 +54,22 @@ struct res_trk_context {
 	unsigned int clock_enabled;
 	unsigned int perf_level;
 	struct regulator *footswitch;
+	struct msm_vidc_platform_data *vidc_platform_data;
+	int memtype;
+	int fw_mem_type;
+	int cmd_mem_type;
 #ifdef CONFIG_MSM_BUS_SCALING
 	uint32_t     pcl;
 #endif
 	u32 core_type;
+	struct ddl_buf_addr firmware_addr;
+	struct ion_client *res_ion_client;
+	u32 disable_dmx;
+	u32 disable_fullhd;
+	enum ddl_mem_area res_mem_type;
+	u32 mmu_clks_on;
+	u32 secure_session;
+	struct mutex secure_lock;
 };
 
 #ifdef CONFIG_MSM_BUS_SCALING

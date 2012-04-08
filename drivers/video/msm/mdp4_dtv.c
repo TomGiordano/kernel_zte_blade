@@ -32,7 +32,6 @@
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
-#include <mach/msm_reqs.h>
 #include <linux/pm_runtime.h>
 #include <mach/clk.h>
 
@@ -119,6 +118,7 @@ static int dtv_off(struct platform_device *pdev)
 		clk_disable(ebi1_clk);
 #endif
 	mdp4_extn_disp = 0;
+	mdp_footswitch_ctrl(FALSE);
 	return ret;
 }
 
@@ -131,16 +131,12 @@ static int dtv_on(struct platform_device *pdev)
 	mfd = platform_get_drvdata(pdev);
 	panel_pixclock_freq = mfd->fbi->var.pixclock;
 
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-	pm_qos_rate = MSM_AXI_FLOW_MDP_DTV_720P_2BPP;
-#else
 	if (panel_pixclock_freq > 58000000)
 		/* pm_qos_rate should be in Khz */
 		pm_qos_rate = panel_pixclock_freq / 1000 ;
 	else
 		pm_qos_rate = 58000;
-#endif
-	mdp_set_core_clk(1);
+	mdp_footswitch_ctrl(TRUE);
 	mdp4_extn_disp = 1;
 #ifdef CONFIG_MSM_BUS_SCALING
 	if (dtv_bus_scale_handle > 0)
@@ -241,7 +237,10 @@ static int dtv_probe(struct platform_device *pdev)
 	 * get/set panel specific fb info
 	 */
 	mfd->panel_info = pdata->panel_info;
-	mfd->fb_imgType = MDP_RGB_565;
+	if (hdmi_prim_display)
+		mfd->fb_imgType = MSMFB_DEFAULT_TYPE;
+	else
+		mfd->fb_imgType = MDP_RGB_565;
 
 	fbi = mfd->fbi;
 	fbi->var.pixclock = mfd->panel_info.clk_rate;

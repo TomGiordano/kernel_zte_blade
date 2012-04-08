@@ -16,15 +16,132 @@
  *
  */
 
+#ifdef CONFIG_SPI_QUP
+#include <linux/spi/spi.h>
+#endif
 #include "msm_fb.h"
 #include "mipi_dsi.h"
 #include "mipi_novatek.h"
 
 
-static struct msm_panel_common_pdata *mipi_novatek_pdata;
+static struct mipi_dsi_panel_platform_data *mipi_novatek_pdata;
 
 static struct dsi_buf novatek_tx_buf;
 static struct dsi_buf novatek_rx_buf;
+static int mipi_novatek_lcd_init(void);
+
+#define MIPI_DSI_NOVATEK_SPI_DEVICE_NAME	"dsi_novatek_3d_panel_spi"
+#define HPCI_FPGA_READ_CMD	0x84
+#define HPCI_FPGA_WRITE_CMD	0x04
+
+#ifdef CONFIG_SPI_QUP
+static struct spi_device *panel_3d_spi_client;
+
+static void novatek_fpga_write(uint8 addr, uint16 value)
+{
+	char tx_buf[32];
+	int  rc;
+	struct spi_message  m;
+	struct spi_transfer t;
+	u8 data[4] = {0x0, 0x0, 0x0, 0x0};
+
+	if (!panel_3d_spi_client) {
+		pr_err("%s panel_3d_spi_client is NULL\n", __func__);
+		return;
+	}
+	data[0] = HPCI_FPGA_WRITE_CMD;
+	data[1] = addr;
+	data[2] = ((value >> 8) & 0xFF);
+	data[3] = (value & 0xFF);
+
+	memset(&t, 0, sizeof t);
+	memset(tx_buf, 0, sizeof tx_buf);
+	t.tx_buf = data;
+	t.len = 4;
+	spi_setup(panel_3d_spi_client);
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+
+	rc = spi_sync(panel_3d_spi_client, &m);
+	if (rc)
+		pr_err("%s: SPI transfer failed\n", __func__);
+
+	return;
+}
+
+static void novatek_fpga_read(uint8 addr)
+{
+	char tx_buf[32];
+	int  rc;
+	struct spi_message  m;
+	struct spi_transfer t;
+	struct spi_transfer rx;
+	char rx_value[2];
+	u8 data[4] = {0x0, 0x0};
+
+	if (!panel_3d_spi_client) {
+		pr_err("%s panel_3d_spi_client is NULL\n", __func__);
+		return;
+	}
+
+	data[0] = HPCI_FPGA_READ_CMD;
+	data[1] = addr;
+
+	memset(&t, 0, sizeof t);
+	memset(tx_buf, 0, sizeof tx_buf);
+	memset(&rx, 0, sizeof rx);
+	memset(rx_value, 0, sizeof rx_value);
+	t.tx_buf = data;
+	t.len = 2;
+	rx.rx_buf = rx_value;
+	rx.len = 2;
+	spi_setup(panel_3d_spi_client);
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+	spi_message_add_tail(&rx, &m);
+
+	rc = spi_sync(panel_3d_spi_client, &m);
+	if (rc)
+		pr_err("%s: SPI transfer failed\n", __func__);
+	else
+		pr_info("%s: rx_value = 0x%x, 0x%x\n", __func__,
+						rx_value[0], rx_value[1]);
+
+	return;
+}
+
+static int __devinit panel_3d_spi_probe(struct spi_device *spi)
+{
+	panel_3d_spi_client = spi;
+	return 0;
+}
+static int __devexit panel_3d_spi_remove(struct spi_device *spi)
+{
+	panel_3d_spi_client = NULL;
+	return 0;
+}
+static struct spi_driver panel_3d_spi_driver = {
+	.probe         = panel_3d_spi_probe,
+	.remove        = __devexit_p(panel_3d_spi_remove),
+	.driver		   = {
+		.name = "dsi_novatek_3d_panel_spi",
+		.owner  = THIS_MODULE,
+	}
+};
+
+#else
+
+static void novatek_fpga_write(uint8 addr, uint16 value)
+{
+	return;
+}
+
+static void novatek_fpga_read(uint8 addr)
+{
+	return;
+}
+
+#endif
 
 
 /* novatek blue panel */
@@ -156,6 +273,91 @@ static struct dsi_cmd_desc novatek_cmd_on_cmds[] = {
 		sizeof(rgb_888), rgb_888}
 };
 
+static struct dsi_cmd_desc novatek_display_off_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
+		sizeof(display_off), display_off},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
+		sizeof(enter_sleep), enter_sleep}
+};
+
+static char manufacture_id[2] = {0x04, 0x00}; /* DTYPE_DCS_READ */
+
+static struct dsi_cmd_desc novatek_manufacture_id_cmd = {
+	DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(manufacture_id), manufacture_id};
+
+static uint32 mipi_novatek_manufacture_id(struct msm_fb_data_type *mfd)
+{
+	struct dsi_buf *rp, *tp;
+	struct dsi_cmd_desc *cmd;
+	uint32 *lp;
+
+	tp = &novatek_tx_buf;
+	rp = &novatek_rx_buf;
+	cmd = &novatek_manufacture_id_cmd;
+	mipi_dsi_cmds_rx(mfd, tp, rp, cmd, 3);
+	lp = (uint32 *)rp->data;
+	pr_info("%s: manufacture_id=%x", __func__, *lp);
+	return *lp;
+}
+
+static int fpga_addr;
+static int fpga_access_mode;
+static bool support_3d;
+
+static void mipi_novatek_3d_init(int addr, int mode)
+{
+	fpga_addr = addr;
+	fpga_access_mode = mode;
+}
+
+static void mipi_dsi_enable_3d_barrier(int mode)
+{
+	void __iomem *fpga_ptr;
+	uint32_t ptr_value = 0;
+
+	if (!fpga_addr && support_3d) {
+		pr_err("%s: fpga_addr not set. Failed to enable 3D barrier\n",
+					__func__);
+		return;
+	}
+
+	if (fpga_access_mode == FPGA_SPI_INTF) {
+		if (mode == LANDSCAPE)
+			novatek_fpga_write(fpga_addr, 1);
+		else if (mode == PORTRAIT)
+			novatek_fpga_write(fpga_addr, 3);
+		else
+			novatek_fpga_write(fpga_addr, 0);
+
+		mb();
+		novatek_fpga_read(fpga_addr);
+	} else if (fpga_access_mode == FPGA_EBI2_INTF) {
+		fpga_ptr = ioremap_nocache(fpga_addr, sizeof(uint32_t));
+		if (!fpga_ptr) {
+			pr_err("%s: FPGA ioremap failed."
+				"Failed to enable 3D barrier\n",
+						__func__);
+			return;
+		}
+
+		ptr_value = readl_relaxed(fpga_ptr);
+		if (mode == LANDSCAPE)
+			writel_relaxed(((0xFFFF0000 & ptr_value) | 1),
+								fpga_ptr);
+		else if (mode == PORTRAIT)
+			writel_relaxed(((0xFFFF0000 & ptr_value) | 3),
+								fpga_ptr);
+		else
+			writel_relaxed((0xFFFF0000 & ptr_value),
+								fpga_ptr);
+
+		mb();
+		iounmap(fpga_ptr);
+	} else
+		pr_err("%s: 3D barrier not configured correctly\n",
+					__func__);
+}
+
 static int mipi_novatek_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -185,15 +387,79 @@ static int mipi_novatek_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
-static int __init mipi_novatek_lcd_probe(struct platform_device *pdev)
+
+
+static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
+	struct mipi_panel_info *mipi;
+
+	mipi  = &mfd->panel_info.mipi;
+
+	mutex_lock(&mfd->dma->ov_mutex);
+	if (mdp4_overlay_dsi_state_get() <= ST_DSI_SUSPEND) {
+		mutex_unlock(&mfd->dma->ov_mutex);
+		return;
+	}
+	/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
+	mdp4_dsi_cmd_dma_busy_wait(mfd);
+	mdp4_dsi_blt_dmap_busy_wait(mfd);
+	mipi_dsi_mdp_busy_wait(mfd);
+
+	led_pwm1[1] = (unsigned char)(mfd->bl_level);
+	mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_cmd_backlight_cmds,
+			ARRAY_SIZE(novatek_cmd_backlight_cmds));
+	mutex_unlock(&mfd->dma->ov_mutex);
+	return;
+}
+
+static int mipi_dsi_3d_barrier_sysfs_register(struct device *dev);
+static int barrier_mode;
+
+static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
+{
+	struct msm_fb_data_type *mfd;
+	struct mipi_panel_info *mipi;
+	struct platform_device *current_pdev;
+	static struct mipi_dsi_phy_ctrl *phy_settings;
+
 	if (pdev->id == 0) {
 		mipi_novatek_pdata = pdev->dev.platform_data;
+
+		if (mipi_novatek_pdata
+			&& mipi_novatek_pdata->phy_ctrl_settings) {
+			phy_settings = (mipi_novatek_pdata->phy_ctrl_settings);
+		}
+
+		if (mipi_novatek_pdata
+			 && mipi_novatek_pdata->fpga_3d_config_addr)
+			mipi_novatek_3d_init(mipi_novatek_pdata
+	->fpga_3d_config_addr, mipi_novatek_pdata->fpga_ctrl_mode);
+
+		/* create sysfs to control 3D barrier for the Sharp panel */
+		if (mipi_dsi_3d_barrier_sysfs_register(&pdev->dev)) {
+			pr_err("%s: Failed to register 3d Barrier sysfs\n",
+						__func__);
+			return -ENODEV;
+		}
+		barrier_mode = 0;
+
 		return 0;
 	}
 
-	msm_fb_add_device(pdev);
+	current_pdev = msm_fb_add_device(pdev);
 
+	if (current_pdev) {
+		mfd = platform_get_drvdata(current_pdev);
+		if (!mfd)
+			return -ENODEV;
+		if (mfd->key != MFD_KEY)
+			return -EINVAL;
+
+		mipi  = &mfd->panel_info.mipi;
+
+		if (phy_settings != NULL)
+			mipi->dsi_phy_db = phy_settings;
+	}
 	return 0;
 }
 
@@ -207,6 +473,43 @@ static struct platform_driver this_driver = {
 static struct msm_fb_panel_data novatek_panel_data = {
 	.on		= mipi_novatek_lcd_on,
 	.off		= mipi_novatek_lcd_off,
+	.set_backlight = mipi_novatek_set_backlight,
+};
+
+static ssize_t mipi_dsi_3d_barrier_read(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	return snprintf((char *)buf, sizeof(buf), "%u\n", barrier_mode);
+}
+
+static ssize_t mipi_dsi_3d_barrier_write(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf,
+				size_t count)
+{
+	int ret = -1;
+	u32 data = 0;
+
+	if (sscanf((char *)buf, "%u", &data) != 1) {
+		dev_err(dev, "%s\n", __func__);
+		ret = -EINVAL;
+	} else {
+		barrier_mode = data;
+		if (data == 1)
+			mipi_dsi_enable_3d_barrier(LANDSCAPE);
+		else if (data == 2)
+			mipi_dsi_enable_3d_barrier(PORTRAIT);
+		else
+			mipi_dsi_enable_3d_barrier(0);
+	}
+
+	return count;
+}
+
+static struct device_attribute mipi_dsi_3d_barrier_attributes[] = {
+	__ATTR(enable_3d_barrier, 0664, mipi_dsi_3d_barrier_read,
+					 mipi_dsi_3d_barrier_write),
 };
 
 static int ch_used[3];
@@ -221,6 +524,12 @@ int mipi_novatek_device_register(struct msm_panel_info *pinfo,
 		return -ENODEV;
 
 	ch_used[channel] = TRUE;
+
+	ret = mipi_novatek_lcd_init();
+	if (ret) {
+		pr_err("mipi_novatek_lcd_init() failed with ret %u\n", ret);
+		return ret;
+	}
 
 	pdev = platform_device_alloc("mipi_novatek", (panel << 8)|channel);
 	if (!pdev)
@@ -250,12 +559,21 @@ err_device_put:
 	return ret;
 }
 
-static int __init mipi_novatek_lcd_init(void)
+static int mipi_novatek_lcd_init(void)
 {
+#ifdef CONFIG_SPI_QUP
+	int ret;
+	ret = spi_register_driver(&panel_3d_spi_driver);
+
+	if (ret) {
+		pr_err("%s: spi register failed: rc=%d\n", __func__, ret);
+		platform_driver_unregister(&this_driver);
+	} else
+		pr_info("%s: SUCCESS (SPI)\n", __func__);
+#endif
+
 	mipi_dsi_buf_alloc(&novatek_tx_buf, DSI_BUF_SIZE);
 	mipi_dsi_buf_alloc(&novatek_rx_buf, DSI_BUF_SIZE);
 
 	return platform_driver_register(&this_driver);
 }
-
-module_init(mipi_novatek_lcd_init);

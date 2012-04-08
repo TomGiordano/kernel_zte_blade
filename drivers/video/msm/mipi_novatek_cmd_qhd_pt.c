@@ -40,10 +40,8 @@ static int __init mipi_cmd_novatek_blue_qhd_pt_init(void)
 {
 	int ret;
 
-#ifdef CONFIG_FB_MSM_MIPI_PANEL_DETECT
 	if (msm_fb_detect_client("mipi_cmd_novatek_qhd"))
 		return 0;
-#endif
 
 	pinfo.xres = 540;
 	pinfo.yres = 960;
@@ -63,17 +61,23 @@ static int __init mipi_cmd_novatek_blue_qhd_pt_init(void)
 	pinfo.bl_max = 15;
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;
-	pinfo.clk_rate = 500000000;
+	pinfo.clk_rate = 454000000;
+	pinfo.is_3d_panel = FB_TYPE_3D_PANEL;
+	pinfo.lcd.vsync_enable = TRUE;
+	pinfo.lcd.hw_vsync_mode = TRUE;
+	pinfo.lcd.refx100 = 6000; /* adjust refx100 to prevent tearing */
+	pinfo.lcd.v_back_porch = 11;
+	pinfo.lcd.v_front_porch = 10;
+	pinfo.lcd.v_pulse_width = 5;
 
 	pinfo.mipi.mode = DSI_CMD_MODE;
 	pinfo.mipi.dst_format = DSI_CMD_DST_FORMAT_RGB888;
 	pinfo.mipi.vc = 0;
-	pinfo.mipi.rgb_swap = DSI_RGB_SWAP_BGR;
 	pinfo.mipi.data_lane0 = TRUE;
 	pinfo.mipi.t_clk_post = 0x0a;
 	pinfo.mipi.t_clk_pre = 0x1e;
 	pinfo.mipi.stream = 0;	/* dma_p */
-	pinfo.mipi.mdp_trigger = DSI_CMD_TRIGGER_SW;
+	pinfo.mipi.mdp_trigger = DSI_CMD_TRIGGER_NONE;
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.interleave_max = 1;
 	pinfo.mipi.insert_dcs_cmd = TRUE;
@@ -82,7 +86,7 @@ static int __init mipi_cmd_novatek_blue_qhd_pt_init(void)
 	pinfo.mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
 
 	ret = mipi_novatek_device_register(&pinfo, MIPI_DSI_PRIM,
-						MIPI_DSI_PANEL_WVGA_PT);
+						MIPI_DSI_PANEL_QHD_PT);
 	if (ret)
 		pr_err("%s: failed to register device!\n", __func__);
 

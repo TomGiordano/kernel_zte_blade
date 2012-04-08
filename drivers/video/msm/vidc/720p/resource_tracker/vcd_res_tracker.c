@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,11 +20,10 @@
 #include <linux/delay.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
-#include <mach/msm_reqs.h>
 #include <linux/interrupt.h>
-#include "vidc_type.h"
+#include <media/msm/vidc_init.h>
+#include <media/msm/vidc_type.h>
 #include "vcd_res_tracker.h"
-#include "vidc_init.h"
 
 #define MSM_AXI_QOS_NAME "msm_vidc_reg"
 #define AXI_CLK_SCALING
@@ -37,23 +36,12 @@ static unsigned int mfc_clk_freq_table[3] = {
 	61440000, 122880000, 170667000
 };
 
-#ifndef CONFIG_MSM_NPA_SYSTEM_BUS
 static unsigned int axi_clk_freq_table_enc[2] = {
 	122880, 192000
 };
 static unsigned int axi_clk_freq_table_dec[2] = {
 	122880, 192000
 };
-#else
-static unsigned int axi_clk_freq_table_enc[2] = {
-	MSM_AXI_FLOW_VIDEO_RECORDING_720P,
-	MSM_AXI_FLOW_VIDEO_RECORDING_720P
-};
-static unsigned int axi_clk_freq_table_dec[2] = {
-	MSM_AXI_FLOW_VIDEO_PLAYBACK_720P,
-	MSM_AXI_FLOW_VIDEO_PLAYBACK_720P
-};
-#endif
 
 static struct res_trk_context resource_context;
 
@@ -241,10 +229,10 @@ static u32 res_trk_enable_pwr_rail(void)
 			__func__, rc);
 
 		resource_context.pclk = clk_get(resource_context.device,
-			"mfc_pclk");
+			"iface_clk");
 
 		if (IS_ERR(resource_context.pclk)) {
-			VCDRES_MSG_ERROR("%s(): mfc_pclk get failed\n"
+			VCDRES_MSG_ERROR("%s(): iface_clk get failed\n"
 							 , __func__);
 
 			mutex_unlock(&resource_context.lock);
@@ -252,10 +240,10 @@ static u32 res_trk_enable_pwr_rail(void)
 		}
 
 		resource_context.hclk = clk_get(resource_context.device,
-			"mfc_clk");
+			"core_clk");
 
 		if (IS_ERR(resource_context.hclk)) {
-			VCDRES_MSG_ERROR("%s(): mfc_clk get failed\n"
+			VCDRES_MSG_ERROR("%s(): core_clk get failed\n"
 							 , __func__);
 
 			clk_put(resource_context.pclk);
@@ -264,10 +252,10 @@ static u32 res_trk_enable_pwr_rail(void)
 		}
 
 		resource_context.hclk_div2 =
-			clk_get(resource_context.device, "mfc_div2_clk");
+			clk_get(resource_context.device, "core_div2_clk");
 
-		if (IS_ERR(resource_context.pclk)) {
-			VCDRES_MSG_ERROR("%s(): mfc_div2_clk get failed\n"
+		if (IS_ERR(resource_context.hclk_div2)) {
+			VCDRES_MSG_ERROR("%s(): core_div2_clk get failed\n"
 							 , __func__);
 
 			clk_put(resource_context.pclk);
@@ -343,7 +331,7 @@ u32 res_trk_power_up(void)
 {
 	VCDRES_MSG_MED("\n res_trk_power_up():: "
 		"Calling AXI add requirement\n");
-	ebi1_clk = clk_get(NULL, "ebi1_vcd_clk");
+	ebi1_clk = clk_get(resource_context.device, "mem_clk");
 	if (IS_ERR(ebi1_clk)) {
 		VCDRES_MSG_ERROR("Request AXI bus QOS fails.");
 		return false;
@@ -630,4 +618,53 @@ void res_trk_init(struct device *device, u32 irq)
 
 u32 res_trk_get_core_type(void){
 	return resource_context.core_type;
+}
+
+u32 res_trk_get_mem_type(void){
+	return resource_context.memtype;
+}
+
+u32 res_trk_get_enable_ion(void)
+{
+	return 0;
+}
+
+struct ion_client *res_trk_get_ion_client(void)
+{
+	return NULL;
+}
+
+void res_trk_set_mem_type(enum ddl_mem_area mem_type)
+{
+	return;
+}
+
+u32 res_trk_get_disable_fullhd(void)
+{
+	return 0;
+}
+
+int res_trk_check_for_sec_session()
+{
+	return 0;
+}
+
+void res_trk_secure_unset(void)
+{
+	return;
+}
+
+void res_trk_secure_set(void)
+{
+	return;
+}
+
+int res_trk_open_secure_session()
+{
+	return -EINVAL;
+}
+
+int res_trk_close_secure_session()
+{
+	return 0;
 }

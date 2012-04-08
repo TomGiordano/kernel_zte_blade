@@ -28,6 +28,7 @@
  */
 #ifndef _VCD_DDL_H_
 #define _VCD_DDL_H_
+#include <mach/msm_subsystem_map.h>
 #include "vcd_ddl_api.h"
 #include "vcd_ddl_utils.h"
 #include "vcd_ddl_firmware.h"
@@ -82,12 +83,18 @@
 
 #define DDL_DEC_REQ_OUTPUT_FLUSH                0x1
 
+enum ddl_mem_area {
+	DDL_MM_MEM	= 0x0
+};
+
 struct ddl_buf_addr {
 	u32 *physical_base_addr;
 	u32 *virtual_base_addr;
 	u32 *align_physical_addr;
 	u32 *align_virtual_addr;
+	struct msm_mapped_buffer *mapped_buffer;
 	u32 buffer_size;
+	enum ddl_mem_area mem_type;
 };
 
 enum ddl_cmd_state {
@@ -209,6 +216,7 @@ struct ddl_decoder_data {
 	struct vcd_buffer_requirement actual_output_buf_req;
 	struct vcd_buffer_requirement min_output_buf_req;
 	struct vcd_buffer_requirement client_output_buf_req;
+	u32 idr_only_decoding;
 };
 
 union ddl_codec_data {
@@ -293,4 +301,6 @@ u32 ddl_handle_core_errors(struct ddl_context *ddl_context);
 void ddl_client_fatal_cb(struct ddl_context *ddl_context);
 void ddl_hw_fatal_cb(struct ddl_context *ddl_context);
 u32 ddl_hal_engine_reset(struct ddl_context *ddl_context);
+void ddl_pmem_alloc(struct ddl_buf_addr *addr, size_t sz, u32 alignment);
+void ddl_pmem_free(struct ddl_buf_addr *addr);
 #endif

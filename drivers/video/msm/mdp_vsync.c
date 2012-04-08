@@ -71,11 +71,12 @@ int vsync_start_th = 1;
 int vsync_load_cnt;
 int vsync_clk_status;
 DEFINE_MUTEX(vsync_clk_lock);
-DEFINE_MUTEX(vsync_timer_lock);
+static DEFINE_SPINLOCK(vsync_timer_lock);
 
 static struct clk *mdp_vsync_clk;
 static struct msm_fb_data_type *vsync_mfd;
 static unsigned char timer_shutdown_flag;
+static uint32 vsync_cnt_cfg;
 
 void mdp_hw_vsync_clk_enable(struct msm_fb_data_type *mfd)
 {
@@ -106,9 +107,8 @@ void mdp_vsync_clk_enable(void)
 {
 	if (vsync_mfd) {
 		mdp_hw_vsync_clk_enable(vsync_mfd);
-		if (!vsync_mfd->vsync_resync_timer.function) {
+		if (!vsync_mfd->vsync_resync_timer.function)
 			mdp_set_vsync((unsigned long) vsync_mfd);
-		}
 	}
 }
 
@@ -116,13 +116,13 @@ void mdp_vsync_clk_disable(void)
 {
 	if (vsync_mfd) {
 		if (vsync_mfd->vsync_resync_timer.function) {
-			mutex_lock(&vsync_timer_lock);
+			spin_lock(&vsync_timer_lock);
 			timer_shutdown_flag = 1;
-			mutex_unlock(&vsync_timer_lock);
+			spin_unlock(&vsync_timer_lock);
 			del_timer_sync(&vsync_mfd->vsync_resync_timer);
-			mutex_lock(&vsync_timer_lock);
+			spin_lock(&vsync_timer_lock);
 			timer_shutdown_flag = 0;
-			mutex_unlock(&vsync_timer_lock);
+			spin_unlock(&vsync_timer_lock);
 			vsync_mfd->vsync_resync_timer.function = NULL;
 		}
 
@@ -158,7 +158,7 @@ static void mdp_set_vsync(unsigned long data)
 		     mfd->vsync_handler_pending);
 	}
 
-	mutex_lock(&vsync_timer_lock);
+	spin_lock(&vsync_timer_lock);
 	if (!timer_shutdown_flag) {
 		mfd->vsync_resync_timer.function = mdp_set_vsync;
 		mfd->vsync_resync_timer.data = data;
@@ -166,7 +166,7 @@ static void mdp_set_vsync(unsigned long data)
 			jiffies + mfd->panel_info.lcd.vsync_notifier_period;
 		add_timer(&mfd->vsync_resync_timer);
 	}
-	mutex_unlock(&vsync_timer_lock);
+	spin_unlock(&vsync_timer_lock);
 }
 
 static void mdp_vsync_handler(void *data)
@@ -239,6 +239,61 @@ static void mdp_set_sync_cfg_1(struct msm_fb_data_type *mfd, int vsync_cnt)
 	MDP_OUTP(MDP_BASE + MDP_SYNC_CFG_1, cfg);
 }
 #endif
+
+void mdp_vsync_cfg_regs(struct msm_fb_data_type *mfd,
+	boolean first_time)
+{
+	/* MDP cmd block enable */
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON,
+			  FALSE);
+	if (first_time)
+		mdp_hw_vsync_clk_enable(mfd);
+
+	mdp_set_sync_cfg_0(mfd, vsync_cnt_cfg);
+
+#ifdef CONFIG_FB_MSM_MDP40
+	if (mdp_hw_revision < MDP4_REVISION_V2_1)
+		mdp_set_sync_cfg_1(mfd, vsync_cnt_cfg);
+#endif
+
+	/*
+	 * load the last line + 1 to be in the
+	 * safety zone
+	 */
+	vsync_load_cnt = mfd->panel_info.yres;
+
+	/* line counter init value at the next pulse */
+	MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_INIT_VAL,
+		vsync_load_cnt);
+#ifdef CONFIG_FB_MSM_MDP40
+	if (mdp_hw_revision < MDP4_REVISION_V2_1) {
+		MDP_OUTP(MDP_BASE +	MDP_SEC_VSYNC_INIT_VAL,
+			vsync_load_cnt);
+	}
+#endif
+
+	/*
+	 * external vsync source pulse width and
+	 * polarity flip
+	 */
+	MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_OUT_CTRL, BIT(0));
+#ifdef CONFIG_FB_MSM_MDP40
+	if (mdp_hw_revision < MDP4_REVISION_V2_1) {
+		MDP_OUTP(MDP_BASE +	MDP_SEC_VSYNC_OUT_CTRL, BIT(0));
+		MDP_OUTP(MDP_BASE +	MDP_VSYNC_SEL, 0x20);
+	}
+#endif
+
+	/* threshold */
+	MDP_OUTP(MDP_BASE + 0x200, (vsync_above_th << 16) |
+		 (vsync_start_th));
+
+	if (first_time)
+		mdp_hw_vsync_clk_disable(mfd);
+
+	/* MDP cmd block disable */
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+}
 #endif
 
 void mdp_config_vsync(struct msm_fb_data_type *mfd)
@@ -273,7 +328,7 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 			mfd->use_mdp_vsync = 1;
 
 		if (mfd->use_mdp_vsync) {
-			uint32 vsync_cnt_cfg, vsync_cnt_cfg_dem;
+			uint32 vsync_cnt_cfg_dem;
 			uint32 mdp_vsync_clk_speed_hz;
 
 			mdp_vsync_clk_speed_hz = clk_get_rate(mdp_vsync_clk);
@@ -291,60 +346,7 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 				vsync_cnt_cfg =
 				    (mdp_vsync_clk_speed_hz) /
 				    vsync_cnt_cfg_dem;
-
-				/* MDP cmd block enable */
-				mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON,
-					      FALSE);
-				mdp_hw_vsync_clk_enable(mfd);
-
-				mdp_set_sync_cfg_0(mfd, vsync_cnt_cfg);
-
-
-#ifdef CONFIG_FB_MSM_MDP40
-				if (mdp_hw_revision < MDP4_REVISION_V2_1)
-					mdp_set_sync_cfg_1(mfd, vsync_cnt_cfg);
-#endif
-
-				/*
-				 * load the last line + 1 to be in the
-				 * safety zone
-				 */
-				vsync_load_cnt = mfd->panel_info.yres;
-
-				/* line counter init value at the next pulse */
-				MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_INIT_VAL,
-							vsync_load_cnt);
-#ifdef CONFIG_FB_MSM_MDP40
-				if (mdp_hw_revision < MDP4_REVISION_V2_1) {
-					MDP_OUTP(MDP_BASE +
-					MDP_SEC_VSYNC_INIT_VAL, vsync_load_cnt);
-				}
-#endif
-
-				/*
-				 * external vsync source pulse width and
-				 * polarity flip
-				 */
-				MDP_OUTP(MDP_BASE + MDP_PRIM_VSYNC_OUT_CTRL,
-							BIT(0));
-#ifdef CONFIG_FB_MSM_MDP40
-				if (mdp_hw_revision < MDP4_REVISION_V2_1) {
-					MDP_OUTP(MDP_BASE +
-					MDP_SEC_VSYNC_OUT_CTRL, BIT(0));
-					MDP_OUTP(MDP_BASE +
-						MDP_VSYNC_SEL, 0x20);
-				}
-#endif
-
-				/* threshold */
-				MDP_OUTP(MDP_BASE + 0x200,
-					 (vsync_above_th << 16) |
-					 (vsync_start_th));
-
-				mdp_hw_vsync_clk_disable(mfd);
-				/* MDP cmd block disable */
-				mdp_pipe_ctrl(MDP_CMD_BLOCK,
-					      MDP_BLOCK_POWER_OFF, FALSE);
+				mdp_vsync_cfg_regs(mfd, TRUE);
 			}
 		}
 #else

@@ -53,6 +53,7 @@ typedef struct panel_id_s {
 #define DTV_PANEL		7	/* DTV */
 #define MIPI_VIDEO_PANEL	8	/* MIPI */
 #define MIPI_CMD_PANEL		9	/* MIPI */
+#define WRITEBACK_PANEL		10	/* Wifi display */
 
 /* panel class */
 typedef enum {
@@ -66,6 +67,7 @@ typedef enum {
 typedef enum {
 	DISPLAY_1 = 0,		/* attached as first device */
 	DISPLAY_2,		/* attached on second device */
+	DISPLAY_3,              /* attached on third writeback device */
 	MAX_PHYS_TARGET_NUM,
 } DISP_TARGET_PHYS;
 
@@ -97,15 +99,6 @@ struct mddi_panel_info {
 	__u32 vdopkt;
 };
 
-/* DSI PHY configuration */
-struct mipi_dsi_phy_ctrl {
-	uint32 regulator[4];
-	uint32 timing[12];
-	uint32 ctrl[4];
-	uint32 strength[4];
-	uint32 pll[21];
-};
-
 struct mipi_panel_info {
 	char mode;		/* video/cmd */
 	char interleave_mode;
@@ -135,6 +128,7 @@ struct mipi_panel_info {
 	char eof_bllp_power_stop;
 	char bllp_power_stop;
 	char traffic_mode;
+        char frame_rate;
 	/* command mode */
 	char interleave_max;
 	char insert_dcs_cmd;
@@ -144,6 +138,15 @@ struct mipi_panel_info {
 	char stream;	/* 0 or 1 */
 	char mdp_trigger;
 	char dma_trigger;
+	uint32 dsi_pclk_rate;
+	/* The packet-size should not bet changed */
+	char no_max_pkt_size;
+	/* Clock required during LP commands */
+	char force_clk_lane_hs;
+	/* Pad width */
+	uint32 xres_pad;
+	/* Pad height */
+	uint32 yres_pad;
 };
 
 struct msm_panel_info {

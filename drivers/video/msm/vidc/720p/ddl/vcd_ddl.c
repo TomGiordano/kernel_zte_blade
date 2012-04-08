@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,7 +16,7 @@
  *
  */
 
-#include "vidc_type.h"
+#include <media/msm/vidc_type.h>
 #include "vcd_ddl_utils.h"
 #include "vcd_ddl_metadata.h"
 
@@ -478,8 +478,7 @@ u32 ddl_encode_frame(u32 *ddl_handle,
 	}
 	if (!input_frame ||
 	    !input_frame->vcd_frm.physical ||
-	    ddl->codec_data.encoder.input_buf_req.sz !=
-	    input_frame->vcd_frm.data_len) {
+	    !input_frame->vcd_frm.data_len) {
 		VIDC_LOGERR_STRING("ddl_enc_frame:Bad_input_params");
 		return VCD_ERR_ILLEGAL_PARM;
 	}

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,7 @@
 #include "vcd_ddl.h"
 #include "vcd_ddl_shared_mem.h"
 #include "vcd_ddl_metadata.h"
+#include "vcd_res_tracker_api.h"
 #include <linux/delay.h>
 
 static void ddl_decoder_input_done_callback(
@@ -50,6 +51,7 @@ static void ddl_sys_init_done_callback(struct ddl_context *ddl_context,
 	u32 fw_size)
 {
 	u32 vcd_status = VCD_S_SUCCESS;
+	u8 *fw_ver;
 
 	DDL_MSG_MED("ddl_sys_init_done_callback");
 	if (!DDLCOMMAND_STATE_IS(ddl_context, DDL_CMD_DMA_INIT)) {
@@ -58,6 +60,9 @@ static void ddl_sys_init_done_callback(struct ddl_context *ddl_context,
 		ddl_context->cmd_state = DDL_CMD_INVALID;
 		DDL_MSG_LOW("SYS_INIT_DONE");
 		vidc_1080p_get_fw_version(&ddl_context->fw_version);
+		fw_ver = (u8 *)&ddl_context->fw_version;
+		DDL_MSG_ERROR("fw_version %x:%x:20%x",
+			fw_ver[1]&0xFF, fw_ver[0]&0xFF, fw_ver[2]&0xFF);
 		if (ddl_context->fw_memory_size >= fw_size) {
 			ddl_context->device_state = DDL_DEVICE_INITED;
 			vcd_status = VCD_S_SUCCESS;
@@ -181,21 +186,14 @@ static u32 ddl_decoder_seq_done_callback(struct ddl_context *ddl_context,
 		ddl->client_state = DDL_CLIENT_WAIT_FOR_DPB;
 		DDL_MSG_LOW("HEADER_DONE");
 		vidc_1080p_get_decode_seq_start_result(&seq_hdr_info);
-		decoder->frame_size.width = seq_hdr_info.img_size_x;
-		decoder->frame_size.height = seq_hdr_info.img_size_y;
-		decoder->min_dpb_num = seq_hdr_info.min_num_dpb;
-		vidc_sm_get_min_yc_dpb_sizes(
-			&ddl->shared_mem[ddl->command_channel],
-			&seq_hdr_info.min_luma_dpb_size,
-			&seq_hdr_info.min_chroma_dpb_size);
-		decoder->y_cb_cr_size = seq_hdr_info.min_luma_dpb_size +
-			seq_hdr_info.min_chroma_dpb_size;
-		decoder->dpb_buf_size.size_yuv = decoder->y_cb_cr_size;
-		decoder->dpb_buf_size.size_y =
-			seq_hdr_info.min_luma_dpb_size;
-		decoder->dpb_buf_size.size_c =
-			seq_hdr_info.min_chroma_dpb_size;
-		decoder->progressive_only = 1 - seq_hdr_info.progressive;
+		parse_hdr_size_data(ddl, &seq_hdr_info);
+		if (res_trk_get_disable_fullhd() &&
+			(seq_hdr_info.img_size_x * seq_hdr_info.img_size_y >
+				1280 * 720)) {
+			DDL_MSG_ERROR("FATAL:Resolution greater than 720P HD");
+			ddl_client_fatal_cb(ddl);
+			return process_further;
+		}
 		if (!seq_hdr_info.img_size_x || !seq_hdr_info.img_size_y) {
 			DDL_MSG_ERROR("FATAL:ZeroImageSize");
 			ddl_client_fatal_cb(ddl);
@@ -616,7 +614,17 @@ static u32 ddl_eos_frame_done_callback(
 		ddl_vidc_decode_dynamic_property(ddl, false);
 		if (dec_disp_info->display_status ==
 			VIDC_1080P_DISPLAY_STATUS_DPB_EMPTY) {
-			ddl_decoder_eos_done_callback(ddl);
+			if (rsl_chg) {
+				decoder->header_in_start = false;
+				decoder->decode_config.sequence_header =
+					ddl->input_frame.vcd_frm.physical;
+				decoder->decode_config.sequence_header_len =
+					ddl->input_frame.vcd_frm.data_len;
+				decoder->reconfig_detected = false;
+				ddl_vidc_decode_init_codec(ddl);
+				ret_status = false;
+			} else
+				ddl_decoder_eos_done_callback(ddl);
 		} else {
 			struct vidc_1080p_dec_frame_start_param dec_param;
 			if (dec_disp_info->display_status ==
@@ -631,26 +639,23 @@ static u32 ddl_eos_frame_done_callback(
 				DDL_MSG_ERROR("EOS-STATE-CRITICAL-"
 					"WRONG-DISP-STATUS");
 
-			ddl_decoder_dpb_transact(decoder, NULL,
-				DDL_DPB_OP_SET_MASK);
-			ddl->cmd_state = DDL_CMD_EOS;
+				dec_param.cmd_seq_num =
+					++ddl_context->cmd_seq_num;
+				dec_param.inst_id = ddl->instance_id;
+				dec_param.shared_mem_addr_offset =
+					DDL_ADDR_OFFSET(
+					ddl_context->dram_base_a,
+					ddl->shared_mem[ddl->command_channel]);
+				dec_param.release_dpb_bit_mask =
+					dpb_mask->hw_mask;
+				dec_param.decode =
+					(decoder->reconfig_detected) ?\
+					VIDC_1080P_DEC_TYPE_FRAME_DATA :\
+					VIDC_1080P_DEC_TYPE_LAST_FRAME_DATA;
 
-			memset(&dec_param, 0, sizeof(dec_param));
-
-			dec_param.cmd_seq_num =
-				++ddl_context->cmd_seq_num;
-			dec_param.inst_id = ddl->instance_id;
-			dec_param.shared_mem_addr_offset =
-				DDL_ADDR_OFFSET(ddl_context->dram_base_a,
-				ddl->shared_mem[ddl->command_channel]);
-			dec_param.release_dpb_bit_mask =
-				dpb_mask->hw_mask;
-			dec_param.decode =
-				VIDC_1080P_DEC_TYPE_LAST_FRAME_DATA;
-
-			ddl_context->vidc_decode_frame_start[ddl->\
-				command_channel](&dec_param);
-			ret_status = false;
+				ddl_context->vidc_decode_frame_start[ddl->\
+					command_channel](&dec_param);
+			}
 		}
 	}
 	return ret_status;
@@ -752,27 +757,31 @@ static void ddl_encoder_eos_done(struct ddl_context *ddl_context)
 	vidc_1080p_clear_returned_channel_inst_id();
 	ddl = ddl_get_current_ddl_client_for_channel_id(ddl_context,
 			ddl_context->response_cmd_ch_id);
-	if (ddl) {
-		if (DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_WAIT_FOR_EOS_DONE)) {
-			DDL_MSG_LOW("ENC_EOS_DONE");
+	if (ddl == NULL) {
+		DDL_MSG_ERROR("NO_DDL_CONTEXT");
+	} else {
+		if (!DDLCLIENT_STATE_IS(ddl, DDL_CLIENT_WAIT_FOR_EOS_DONE)) {
+			DDL_MSG_ERROR("STATE-CRITICAL-EOSFRMDONE");
+			ddl_client_fatal_cb(ddl);
+		} else {
+			struct ddl_encoder_data *encoder =
+				&(ddl->codec_data.encoder);
+			vidc_1080p_get_encode_frame_info(
+				&encoder->enc_frame_info);
+			ddl_handle_enc_frame_done(ddl);
+			DDL_MSG_LOW("encoder_eos_done");
 			ddl->cmd_state = DDL_CMD_INVALID;
 			DDL_MSG_LOW("ddl_state_transition: %s ~~>"
 				"DDL_CLIENT_WAIT_FOR_FRAME",
 				ddl_get_state_string(ddl->client_state));
 			ddl->client_state = DDL_CLIENT_WAIT_FOR_FRAME;
-			DDL_MSG_LOW("EOS_DONE");
-			ddl->output_frame.frm_trans_end = true;
+			DDL_MSG_LOW("eos_done");
 			ddl_context->ddl_callback(VCD_EVT_RESP_EOS_DONE,
-				VCD_S_SUCCESS, &(ddl->output_frame),
-				sizeof(struct ddl_frame_data_tag),
-				(u32 *)ddl, ddl->client_data);
-		} else {
-			DDL_MSG_LOW("STATE-CRITICAL-EOSDONE");
+					VCD_S_SUCCESS, NULL, 0,
+					(u32 *)ddl, ddl->client_data);
+			ddl_release_command_channel(ddl_context,
+				ddl->command_channel);
 		}
-		ddl_release_command_channel(ddl_context,
-			ddl->command_channel);
-	} else {
-		DDL_MSG_LOW("Invalid Client DDL context");
 	}
 }
 
@@ -932,10 +941,25 @@ static u32 ddl_decoder_output_done_callback(
 		vidc_sm_get_metadata_status(&ddl->shared_mem
 			[ddl->command_channel],
 			&decoder->meta_data_exists);
-		vidc_sm_get_frame_tags(&ddl->shared_mem
-			[ddl->command_channel],
-			&dec_disp_info->tag_top,
-			&dec_disp_info->tag_bottom);
+		if (decoder->output_order == VCD_DEC_ORDER_DISPLAY) {
+			vidc_sm_get_frame_tags(&ddl->shared_mem
+				[ddl->command_channel],
+				&dec_disp_info->tag_top,
+				&dec_disp_info->tag_bottom);
+			if (dec_disp_info->display_correct ==
+				VIDC_1080P_DECODE_NOT_CORRECT ||
+				dec_disp_info->display_correct ==
+				VIDC_1080P_DECODE_APPROX_CORRECT)
+				output_vcd_frm->flags |=
+					VCD_FRAME_FLAG_DATACORRUPT;
+		} else {
+			if (dec_disp_info->decode_correct ==
+				VIDC_1080P_DECODE_NOT_CORRECT ||
+				dec_disp_info->decode_correct ==
+				VIDC_1080P_DECODE_APPROX_CORRECT)
+				output_vcd_frm->flags |=
+					VCD_FRAME_FLAG_DATACORRUPT;
+		}
 		output_vcd_frm->ip_frm_tag = dec_disp_info->tag_top;
 
 		vidc_sm_get_picture_times(&ddl->shared_mem
