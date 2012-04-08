@@ -1523,7 +1523,7 @@ static void msmsdcc_early_suspend(struct early_suspend *h)
 	struct msmsdcc_host *host =
 		container_of(h, struct msmsdcc_host, early_suspend);
 	unsigned long flags;
-#if defined(CONFIG_MACH_BLADE) || defined(CONFIG_MACH_V9)
+#ifdef CONFIG_MACH_BLADE
 	//ruanmeisi_20100408 p729b sd suport host plug
 	//don't shutdown polling
 	if (T_CARD_DRIVER_ID == host->pdev_id) {
@@ -1540,7 +1540,7 @@ static void msmsdcc_late_resume(struct early_suspend *h)
 	struct msmsdcc_host *host =
 		container_of(h, struct msmsdcc_host, early_suspend);
 	unsigned long flags;
-#if defined(CONFIG_MACH_BLADE) || defined(CONFIG_MACH_V9)
+#ifdef CONFIG_MACH_BLADE
 	//ruanmeisi_20100408 p729b sd suport host plug
 	//don't shutdown polling
 	if (T_CARD_DRIVER_ID == host->pdev_id) {
@@ -1939,7 +1939,7 @@ static int msmsdcc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-#if defined(CONFIG_BCM_WIFI) || defined(CONFIG_ATH_WIFI)
+#if defined(CONFIG_BCM_WIFI)
 struct msmsdcc_host *wlan_host;
 void plat_disable_wlan_slot(void)
 {
@@ -1984,7 +1984,7 @@ void plat_enable_wlan_slot(void)
 
 }
 EXPORT_SYMBOL(plat_enable_wlan_slot);
-#endif /*defined(CONFIG_BCM_WIFI) || defined(CONFIG_ATH_WIFI)*/
+#endif /*defined(CONFIG_BCM_WIFI)*/
 
 #ifdef CONFIG_BCM_WIFI
 #define BRCM_CRTL_HOST_POWER 1
