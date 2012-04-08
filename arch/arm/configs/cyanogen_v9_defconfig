@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.7
-# Sun Mar 18 03:12:35 2012
+# Sun Apr  8 09:28:47 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1740,7 +1740,7 @@ CONFIG_HID=y
 #
 # Special HID drivers
 #
-# CONFIG_HID_APPLE is not set
+CONFIG_HID_APPLE=y
 # CONFIG_HID_MAGICMOUSE is not set
 # CONFIG_HID_WACOM is not set
 CONFIG_USB_SUPPORT=y
