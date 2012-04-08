@@ -359,7 +359,7 @@ int gauge_enabel_it(int flag)
                 }
             }
         }
-		#endif
+    #endif
         if(rc==-1)//电池存在才允许使能it
         {
             rc=gauge_cntlsub_read(CNTLSUB_IT_ENABLE,&value);
@@ -732,6 +732,8 @@ static ssize_t gauge_show_StateOfCharge(struct device_driver *driver, char *buf)
         return snprintf(buf, PAGE_SIZE, "read failed,rc=%d\n",rc);
     }
 }
+
+#if 0         /* chenchongbao.2011.7.8 for google CTS test */
 static DRIVER_ATTR(enable, S_IRWXUGO, gauge_show_enable, gauge_store_enable);	//can read write execute
 static DRIVER_ATTR(upmode, S_IRWXUGO, gauge_show_upmode, gauge_store_upmode);	//can read write execute
 static DRIVER_ATTR(Control, S_IRWXUGO, gauge_show_Control, gauge_store_Control);	//can read write execute
