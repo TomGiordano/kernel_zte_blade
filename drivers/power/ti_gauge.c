@@ -412,7 +412,7 @@ int gauge_enabel_it(int flag)
                 }
             }
         }
-		#endif
+    #endif
         if(rc==-1)//电池存在才允许使能it
         {
             rc=gauge_cntlsub_read(CNTLSUB_IT_ENABLE,&value);

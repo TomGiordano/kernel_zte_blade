@@ -3111,6 +3111,47 @@ static void msm7x27_wlan_init(void)
 	}
 }
 
+#ifdef CONFIG_ATH_WIFI
+static int wlan_init_power(void)
+{
+    int ret = 0;
+    struct vreg *vreg = NULL;
+
+    do {
+        vreg = vreg_get(0, "wlan");
+
+        ret = vreg_enable(vreg);
+
+        if(ret) {
+            printk(KERN_ERR"vreg_enable failed\n");
+	    break;
+        }
+
+        printk(KERN_ERR"[ar6000] 3.3v on\n");
+
+        ret = vreg_set_level(vreg, 1800);
+        if(ret) {
+            printk(KERN_ERR"vreg_set_level failed\n");
+	    break;
+        }
+
+        printk(KERN_ERR"[ar6000] 1.8v on\n");
+
+        printk(KERN_ERR"[ar6000] CHIP_PWR_L\n");
+
+        gpio_direction_output(18, 0);
+
+        mdelay(100);
+
+        return 0;
+
+    } while (0);
+
+    return -1;
+
+}
+#endif
+
 #ifdef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 struct kobject *android_touch_kobj;
 static void touch_sysfs_init(void)
@@ -3246,7 +3287,9 @@ static void __init msm7x2x_init(void)
 #endif
 	msm7x2x_init_mmc();
 	bt_power_init();
-
+#ifdef CONFIG_ATH_WIFI
+	wlan_init_power();
+#endif
 	if (cpu_is_msm7x27())
 		msm_pm_set_platform_data(msm7x27_pm_data,
 					ARRAY_SIZE(msm7x27_pm_data));

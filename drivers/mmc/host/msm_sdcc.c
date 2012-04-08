@@ -1523,7 +1523,7 @@ static void msmsdcc_early_suspend(struct early_suspend *h)
 	struct msmsdcc_host *host =
 		container_of(h, struct msmsdcc_host, early_suspend);
 	unsigned long flags;
-#ifdef CONFIG_MACH_BLADE
+#if defined(CONFIG_MACH_BLADE) || defined(CONFIG_MACH_V9)
 	//ruanmeisi_20100408 p729b sd suport host plug
 	//don't shutdown polling
 	if (T_CARD_DRIVER_ID == host->pdev_id) {
@@ -1540,7 +1540,7 @@ static void msmsdcc_late_resume(struct early_suspend *h)
 	struct msmsdcc_host *host =
 		container_of(h, struct msmsdcc_host, early_suspend);
 	unsigned long flags;
-#ifdef CONFIG_MACH_BLADE
+#if defined(CONFIG_MACH_BLADE) || defined(CONFIG_MACH_V9)
 	//ruanmeisi_20100408 p729b sd suport host plug
 	//don't shutdown polling
 	if (T_CARD_DRIVER_ID == host->pdev_id) {
