@@ -1,0 +1,59 @@
+#
+#   Makefile for eXtended Sector Remapper (FSR) driver on kernel 2.6
+#
+#   Copyright(C) 2004-2006, Samsung Electronics, Co., Ltd.
+#
+
+# FSR base module
+obj-$(CONFIG_RFS_FSR)			+= fsr.o
+
+# Should keep the build sequence. (fsr_base -> bml_block)
+fsr-objs	:= fsr_base.o bml_block.o bml_blkdev.o
+
+# This objects came from FSR, It will be never modified.
+
+fsr-objs	+= Core/BML/FSR_BML_RWInterface.o Core/BML/FSR_BML_BIFCommon.o Core/BML/FSR_BML_NonBlkMgr.o
+
+fsr-objs	+= Core/BML/FSR_BML_BBMCommon.o Core/BML/FSR_BML_BBMMount.o Core/BML/FSR_BML_BadBlkMgr.o Core/BML/FSR_BML_Dump.o
+fsr-objs	+= Core/BML/FSR_BML_ROInterface.o 
+
+fsr-objs	+= OAM/Linux/FSR_OAM_Linux.o
+fsr-objs	+= LLD/FlexOND/FSR_LLD_FlexOND.o 
+fsr-objs       += LLD/OND/FSR_LLD_SWEcc.o LLD/OND/FSR_LLD_OneNAND.o
+fsr-objs       += LLD/OND/FSR_LLD_4K_OneNAND.o
+
+# Please add your platform here
+ifeq ($(CONFIG_MACH_OMAP_APOLLON),y)
+fsr-objs   += PAM/ApollonPLUS/FSR_PAM_ApollonPLUS.o
+else
+fsr-objs   += PAM/Poseidon/FSR_PAM_Poseidon.o
+endif #CONFIG_MACH_OMAP_APOLLON
+
+ifeq ($(CONFIG_ARM),y)
+fsr-objs   += PAM/Poseidon/FSR_PAM_asm.o
+else
+fsr-objs   += PAM/Poseidon/FSR_PAM_Memcpy.o
+endif #CONFIG_ARM
+
+fsr-objs	+= Misc/FSR_Version.o Misc/FSR_DBG_Zone.o 
+
+# FSR STL module
+obj-$(CONFIG_RFS_FSR_STL)               += fsr_stl.o
+
+fsr_stl-objs    := stl_block.o stl_blkdev.o \
+                Core/STL/FSR_STL_WriteBufferMgr.o \
+                Core/STL/FSR_STL_Common.o Core/STL/FSR_STL_Delete.o \
+                Core/STL/FSR_STL_FlashIO.o Core/STL/FSR_STL_Format.o \
+                Core/STL/FSR_STL_FreeBlkMgr.o Core/STL/FSR_STL_GCMgr.o \
+                Core/STL/FSR_STL_Defragment.o Core/STL/FSR_STL_Init.o \
+                Core/STL/FSR_STL_Interface.o Core/STL/FSR_STL_MappingMgr.o \
+                Core/STL/FSR_STL_MergeMgr.o Core/STL/FSR_STL_MetaMgr.o \
+                Core/STL/FSR_STL_Open.o Core/STL/FSR_STL_Write.o        \
+                Core/STL/FSR_STL_Read.o Core/STL/FSR_STL_WearLevelMgr.o \
+		Core/STL/FSR_STL_Close.o Core/STL/FSR_STL_ZoneMgr.o \
+		Core/STL/FSR_STL_TblCRC.o
+
+obj-$(CONFIG_RFS_FSR_STL_BENCHMARK) += fsr_bench.o
+
+obj-$(CONFIG_LINUSTOREIII_DEBUG)		+= debug.o
+

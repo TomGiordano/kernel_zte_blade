@@ -7,7 +7,7 @@
 #include <linux/init.h>
 #include <linux/irq.h>
 
-#include <linux/perf_event.h>
+#include <linux/irq_work.h>
 #include <linux/ftrace.h>
 
 #include <asm/pil.h>
@@ -43,14 +43,14 @@ void __irq_entry deferred_pcr_work_irq(int irq, struct pt_regs *regs)
 
 	old_regs = set_irq_regs(regs);
 	irq_enter();
-#ifdef CONFIG_PERF_EVENTS
-	perf_event_do_pending();
+#ifdef CONFIG_IRQ_WORK
+	irq_work_run();
 #endif
 	irq_exit();
 	set_irq_regs(old_regs);
 }
 
-void set_perf_event_pending(void)
+void arch_irq_work_raise(void)
 {
 	set_softint(1 << PIL_DEFERRED_PCR_WORK);
 }
@@ -80,8 +80,11 @@ static void n2_pcr_write(u64 val)
 {
 	unsigned long ret;
 
-	ret = sun4v_niagara2_setperf(HV_N2_PERF_SPARC_CTL, val);
-	if (val != HV_EOK)
+	if (val & PCR_N2_HTRACE) {
+		ret = sun4v_niagara2_setperf(HV_N2_PERF_SPARC_CTL, val);
+		if (ret != HV_EOK)
+			write_pcr(val);
+	} else
 		write_pcr(val);
 }
 
@@ -104,6 +107,10 @@ static int __init register_perf_hsvc(void)
 
 		case SUN4V_CHIP_NIAGARA2:
 			perf_hsvc_group = HV_GRP_N2_CPU;
+			break;
+
+		case SUN4V_CHIP_NIAGARA3:
+			perf_hsvc_group = HV_GRP_KT_CPU;
 			break;
 
 		default:
@@ -167,5 +174,3 @@ out_unregister:
 	unregister_perf_hsvc();
 	return err;
 }
-
-arch_initcall(pcr_arch_init);
