@@ -10,4 +10,4 @@ make[1]: `include/generated/mach-types.h' is up to date.
   OBJCOPY arch/arm/boot/zImage
   Kernel: arch/arm/boot/zImage is ready
   Building modules, stage 2.
-  MODPOST 16 modules
+  MODPOST 17 modules

@@ -320,6 +320,13 @@ static struct sock *__udp6_lib_lookup_skb(struct sk_buff *skb,
 				 udptable);
 }
 
+struct sock *udp6_lib_lookup(struct net *net, const struct in6_addr *saddr, __be16 sport,
+			     const struct in6_addr *daddr, __be16 dport, int dif)
+{
+    return __udp6_lib_lookup(net, (struct in6_addr *)saddr, sport, (struct in6_addr *)daddr, dport, dif, &udp_table);
+}
+EXPORT_SYMBOL_GPL(udp6_lib_lookup);
+
 /*
  * 	This should be easy, if there is something there we
  * 	return it, otherwise we block.

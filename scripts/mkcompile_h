@@ -43,7 +43,7 @@ else
 	TIMESTAMP=$KBUILD_BUILD_TIMESTAMP
 fi
 
-UTS_VERSION="#1"
+UTS_VERSION="#Blade"
 CONFIG_FLAGS=""
 if [ -n "$SMP" ] ; then CONFIG_FLAGS="SMP"; fi
 if [ -n "$PREEMPT" ] ; then CONFIG_FLAGS="$CONFIG_FLAGS PREEMPT"; fi
@@ -65,7 +65,7 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
 
   echo \#define LINUX_COMPILE_TIME \"`date +%T`\"
   echo \#define LINUX_COMPILE_BY \"`whoami`\"
-  echo \#define LINUX_COMPILE_HOST \"cm_blade\"
+  echo \#define LINUX_COMPILE_HOST \"CMobile\"
 
   domain=`dnsdomainname 2> /dev/null`
   if [ -z "$domain" ]; then

@@ -1,10 +1,9 @@
 config MSM_KGSL
 	tristate "MSM 3D Graphics driver"
 	default n
-	depends on FB && ARM && ARCH_MSM && !MSM_HW3D && ANDROID_PMEM
+	depends on ARCH_MSM && !ARCH_MSM7X00A && !ARCH_MSM7X25
 	select GENERIC_ALLOCATOR
 	select FW_LOADER
-	select RELAY
 	---help---
 	  3D graphics driver. Required to use hardware accelerated
 	  OpenGL ES 2.0 and 1.1.
@@ -56,39 +55,57 @@ config MSM_KGSL_PSTMRTMDMP_RB_HEX
 	  Use hex version for the ring-buffer in the post-mortem dump, instead
 	  of the human readable version.
 
-config MSM_KGSL_PSTMRTMDMP_NO_REG_DUMP
-	bool "Disable dumping of most registers in post-mortem dump"
-	default n
-	depends on MSM_KGSL
-	---help---
-	  For a more compact kernel log the extensive register hex dump
-	  can be turned off with this option.  The register dump takes up
-	  so much space that vital other information gets cut from the
-	  post-mortem dump.
-
 config MSM_KGSL_2D
-	bool "Enable the 2D core. Required for OpenVG"
-	default n
-	depends on MSM_KGSL && !ARCH_MSM7X27
+	tristate "MSM 2D graphics driver. Required for OpenVG"
+	default y
+	depends on MSM_KGSL && !ARCH_MSM7X27 && !ARCH_MSM7X27A && !(ARCH_QSD8X50 && !MSM_SOC_REV_A)
 
 config MSM_KGSL_DRM
 	bool "Build a DRM interface for the MSM_KGSL driver"
 	depends on MSM_KGSL && DRM
 
-config MSM_KGSL_MMU
+config MSM_KGSL_GPUMMU
 	bool "Enable the GPU MMU in the MSM_KGSL driver"
-	depends on MSM_KGSL && MMU
+	depends on MSM_KGSL && !MSM_KGSL_CFF_DUMP
+	default y
+
+config MSM_KGSL_IOMMU
+	bool "Enable the use of IOMMU in the MSM_KGSL driver"
+	depends on MSM_KGSL && MSM_IOMMU && !MSM_KGSL_GPUMMU && !MSM_KGSL_CFF_DUMP
+
+config MSM_KGSL_MMU
+	bool
+	depends on MSM_KGSL_GPUMMU || MSM_KGSL_IOMMU
 	default y
 
 config KGSL_PER_PROCESS_PAGE_TABLE
 	bool "Enable Per Process page tables for the KGSL driver"
 	default n
-	depends on MSM_KGSL_MMU && !MSM_KGSL_DRM
+	depends on MSM_KGSL_GPUMMU && !MSM_KGSL_DRM
+	---help---
+	  The MMU will use per process pagetables when enabled.
+
+config MSM_KGSL_PAGE_TABLE_SIZE
+	hex "Size of pagetables"
+	default 0xFFF0000
+	---help---
+	  Sets the pagetable size used by the MMU.  The max value
+	  is 0xFFF0000 or (256M - 64K).
+
+config MSM_KGSL_PAGE_TABLE_COUNT
+	int "Minimum of concurrent pagetables to support"
+	default 8
+	depends on KGSL_PER_PROCESS_PAGE_TABLE
+	---help---
+	  Specify the number of pagetables to allocate at init time
+	  This is the number of concurrent processes that are guaranteed to
+	  to run at any time.  Additional processes can be created dynamically
+	  assuming there is enough contiguous memory to allocate the pagetable.
 
 config MSM_KGSL_MMU_PAGE_FAULT
 	bool "Force the GPU MMU to page fault for unmapped regions"
-	default n
-	depends on MSM_KGSL_MMU
+	default y
+	depends on MSM_KGSL_GPUMMU
 
 config MSM_KGSL_DISABLE_SHADOW_WRITES
 	bool "Disable register shadow writes for context switches"

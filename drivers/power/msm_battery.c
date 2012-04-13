@@ -501,7 +501,7 @@ else
         break;
         /* ZTE_BATTERY_SLF_001 start,  2010-03-08,   */
     case POWER_SUPPLY_PROP_TEMP:
-        val->intval = msm_batt_info.battery_temp*10;
+        val->intval = msm_batt_info.battery_temp*8;
         break;
         /* ZTE_BATTERY_SLF_001   end, 2010-03-08, */
     default:
