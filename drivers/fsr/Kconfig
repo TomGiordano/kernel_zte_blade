@@ -1,0 +1,70 @@
+#
+# Unified Flash Device configuration
+#
+
+menu "LinuStoreIII Flash Devices (FSR)"
+
+config RFS_FSR
+	tristate "BML block device support"
+	default m
+	help
+		eXtended Sector Remapper device
+
+config RFS_FSR_STL
+	tristate "STL block device support"
+	depends on RFS_FSR
+	select RFS_MAPDESTROY
+	default m
+	help
+		STL block device support
+
+config RFS_STL_DELETE
+	bool "STL delete support"
+	depends on RFS_FSR_STL
+	default y
+	help
+		STL delete support
+
+config RFS_FSR_STL_BENCHMARK
+	tristate "FSR benchmark tool support"
+	depends on RFS_FSR
+	help
+		FSR benchmark tool.
+
+config FSR_DUAL_VOLUME
+	bool "Multi Volume Flex-OneNAND support (Experimental)"
+	depends on RFS_FSR
+	default n
+	help
+		Support dual Flex-OneNAND flash memory.
+
+config FSR_FLASH_PHYS_ADDR
+	hex "1st Volume Flex-OneNAND flash Physical Location"
+	depends on RFS_FSR
+	default "0x00100000"
+	help
+		This is the physical address in your flash memory the fsr will
+		be linked for and stored to.  This address is dependent on your
+		own flash usage.
+
+config FSR_FLASH_PHYS_ADDR2
+	hex "2nd Volume Flex-OneNAND flash Physical Location"
+	depends on FSR_DUAL_VOLUME
+	default "0x0A000000"
+	help
+		This is the physical address in your second flash memory to support
+		dual-chips. The fsr will be linked for and stored to. This address
+		is dependent on your own flash usage.
+
+config LINUSTOREIII_DEBUG_VERBOSE
+	int "LinuStoreIII Debugging verbosity (0 = quiet, 3 = noisy)"
+	depends on RFS_FSR
+	default 0
+
+config LINUSTOREIII_DEBUG
+	bool
+	depends on RFS_FSR
+	default y
+
+endmenu
+
