@@ -1,3 +1,4 @@
+# make compatible with ics and gb
 VERSION = 2
 PATCHLEVEL = 6
 SUBLEVEL = 35
