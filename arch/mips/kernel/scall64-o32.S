@@ -93,9 +93,8 @@ NESTED(handle_sys, PT_SIZE, sp)
 	sd	t0, PT_R7(sp)		# set error flag
 	beqz	t0, 1f
 
-	ld	t1, PT_R2(sp)		# syscall number
 	dnegu	v0			# error
-	sd	t1, PT_R0(sp)		# save it for syscall restarting
+	sd	v0, PT_R0(sp)		# flag for syscall restarting
 1:	sd	v0, PT_R2(sp)		# result
 
 o32_syscall_exit:
@@ -123,7 +122,8 @@ trace_a_syscall:
 
 	move	s0, t2			# Save syscall pointer
 	move	a0, sp
-	jal	syscall_trace_enter
+	li	a1, 0
+	jal	do_syscall_trace
 
 	move	t0, s0
 	RESTORE_STATIC
@@ -142,9 +142,8 @@ trace_a_syscall:
 	sd	t0, PT_R7(sp)		# set error flag
 	beqz	t0, 1f
 
-	ld	t1, PT_R2(sp)		# syscall number
 	dnegu	v0			# error
-	sd	t1, PT_R0(sp)		# save it for syscall restarting
+	sd	v0, PT_R0(sp)		# set flag for syscall restarting
 1:	sd	v0, PT_R2(sp)		# result
 
 	j	syscall_exit
@@ -155,7 +154,8 @@ trace_a_syscall:
 	 * The stackpointer for a call with more than 4 arguments is bad.
 	 */
 bad_stack:
-	li	v0, EFAULT
+	dnegu	v0			# error
+	sd	v0, PT_R0(sp)
 	sd	v0, PT_R2(sp)
 	li	t0, 1			# set error flag
 	sd	t0, PT_R7(sp)
@@ -444,10 +444,10 @@ sys_call_table:
 	PTR	compat_sys_futex
 	PTR	compat_sys_sched_setaffinity
 	PTR	compat_sys_sched_getaffinity	/* 4240 */
-	PTR	compat_sys_io_setup
+	PTR	sys_io_setup
 	PTR	sys_io_destroy
-	PTR	compat_sys_io_getevents
-	PTR	compat_sys_io_submit
+	PTR	sys_io_getevents
+	PTR	sys_io_submit
 	PTR	sys_io_cancel			/* 4245 */
 	PTR	sys_exit_group
 	PTR	sys32_lookup_dcookie
@@ -521,7 +521,7 @@ sys_call_table:
 	PTR	sys_ioprio_get			/* 4315 */
 	PTR	compat_sys_utimensat
 	PTR	compat_sys_signalfd
-	PTR	sys_ni_syscall			/* was timerfd */
+	PTR	sys_ni_syscall
 	PTR	sys_eventfd
 	PTR	sys32_fallocate			/* 4320 */
 	PTR	sys_timerfd_create
@@ -538,13 +538,5 @@ sys_call_table:
 	PTR	compat_sys_rt_tgsigqueueinfo
 	PTR	sys_perf_event_open
 	PTR	sys_accept4
-	PTR	compat_sys_recvmmsg		/* 4335 */
-	PTR	sys_fanotify_init
-	PTR	sys_32_fanotify_mark
-	PTR	sys_prlimit64
-	PTR	sys_name_to_handle_at
-	PTR	compat_sys_open_by_handle_at	/* 4340 */
-	PTR	compat_sys_clock_adjtime
-	PTR	sys_syncfs
-	PTR	sys_setns
+	PTR     compat_sys_recvmmsg
 	.size	sys_call_table,.-sys_call_table

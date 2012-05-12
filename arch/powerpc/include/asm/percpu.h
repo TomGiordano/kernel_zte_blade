@@ -1,6 +1,7 @@
 #ifndef _ASM_POWERPC_PERCPU_H_
 #define _ASM_POWERPC_PERCPU_H_
 #ifdef __powerpc64__
+#include <linux/compiler.h>
 
 /*
  * Same as asm-generic/percpu.h, except that we store the per cpu offset
@@ -11,7 +12,9 @@
 
 #include <asm/paca.h>
 
+#define __per_cpu_offset(cpu) (paca[cpu].data_offset)
 #define __my_cpu_offset local_paca->data_offset
+#define per_cpu_offset(x) (__per_cpu_offset(x))
 
 #endif /* CONFIG_SMP */
 #endif /* __powerpc64__ */

@@ -170,7 +170,6 @@ const struct file_operations scanlog_fops = {
 	.write		= scanlog_write,
 	.open		= scanlog_open,
 	.release	= scanlog_release,
-	.llseek		= noop_llseek,
 };
 
 static int __init scanlog_init(void)

@@ -4,6 +4,7 @@
 /*
  * MIPS floating point support
  * Copyright (C) 1994-2000 Algorithmics Ltd.
+ * http://www.algor.co.uk
  *
  * ########################################################################
  *
@@ -71,7 +72,8 @@ int ieee754sp_tint(ieee754sp x)
 			round = 0;
 			sticky = residue != 0;
 			xm = 0;
-		} else {
+		}
+		else {
 			/* Shifting a u32 32 times does not work,
 			* so we do it in two steps. Be aware that xe
 			* may be -1 */

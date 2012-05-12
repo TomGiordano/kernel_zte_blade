@@ -39,16 +39,13 @@ int have_rtc;  /* used to remember if we have an RTC or not */;
 extern unsigned long loops_per_jiffy; /* init/main.c */
 unsigned long loops_per_usec;
 
-
-#ifdef CONFIG_ARCH_USES_GETTIMEOFFSET
 extern unsigned long do_slow_gettimeoffset(void);
 static unsigned long (*do_gettimeoffset)(void) = do_slow_gettimeoffset;
 
 u32 arch_gettimeoffset(void)
 {
-       return do_gettimeoffset() * 1000;
+	return do_gettimeoffset() * 1000;
 }
-#endif
 
 /*
  * BUG: This routine does not handle hour overflow properly; it just
@@ -86,7 +83,7 @@ int set_rtc_mmss(unsigned long nowtime)
 		CMOS_WRITE(real_seconds,RTC_SECONDS);
 		CMOS_WRITE(real_minutes,RTC_MINUTES);
 	} else {
-		printk_once(KERN_NOTICE
+		printk(KERN_WARNING
 		       "set_rtc_mmss: can't update from %d to %d\n",
 		       cmos_minutes, real_minutes);
 		retval = -1;
@@ -154,7 +151,7 @@ cris_do_profile(struct pt_regs* regs)
 
 unsigned long long sched_clock(void)
 {
-	return (unsigned long long)jiffies * (NSEC_PER_SEC / HZ) +
+	return (unsigned long long)jiffies * (1000000000 / HZ) +
 		get_ns_in_jiffie();
 }
 

@@ -467,7 +467,11 @@ timer1_handler(int irq, void *dev_id)
 
 static void wake_up_func(unsigned long data)
 {
-  wait_queue_head_t *sleep_wait_p = (wait_queue_head_t *)data;
+#ifdef DECLARE_WAITQUEUE
+  wait_queue_head_t  *sleep_wait_p = (wait_queue_head_t*)data;
+#else
+  struct wait_queue **sleep_wait_p = (struct wait_queue **)data;
+#endif
   wake_up(sleep_wait_p);
 }
 

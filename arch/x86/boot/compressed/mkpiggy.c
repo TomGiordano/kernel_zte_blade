@@ -62,12 +62,7 @@ int main(int argc, char *argv[])
 	if (fseek(f, -4L, SEEK_END)) {
 		perror(argv[1]);
 	}
-
-	if (fread(&olen, sizeof(olen), 1, f) != 1) {
-		perror(argv[1]);
-		return 1;
-	}
-
+	fread(&olen, sizeof olen, 1, f);
 	ilen = ftell(f);
 	olen = getle32(&olen);
 	fclose(f);
@@ -79,7 +74,7 @@ int main(int argc, char *argv[])
 
 	offs = (olen > ilen) ? olen - ilen : 0;
 	offs += olen >> 12;	/* Add 8 bytes for each 32K block */
-	offs += 64*1024 + 128;	/* Add 64K + 128 bytes slack */
+	offs += 32*1024 + 18;	/* Add 32K + 18 bytes slack */
 	offs = (offs+4095) & ~4095; /* Round to a 4K boundary */
 
 	printf(".section \".rodata..compressed\",\"a\",@progbits\n");

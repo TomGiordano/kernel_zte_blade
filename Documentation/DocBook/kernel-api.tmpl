@@ -57,6 +57,7 @@
      </para>
 
      <sect1><title>String Conversions</title>
+!Ilib/vsprintf.c
 !Elib/vsprintf.c
      </sect1>
      <sect1><title>String Manipulation</title>
@@ -92,12 +93,6 @@ X!Ilib/string.c
 !Elib/crc-itu-t.c
 !Elib/crc32.c
 !Elib/crc-ccitt.c
-     </sect1>
-
-     <sect1 id="idr"><title>idr/ida Functions</title>
-!Pinclude/linux/idr.h idr sync
-!Plib/idr.c IDA description
-!Elib/idr.c
      </sect1>
   </chapter>
 
@@ -137,6 +132,7 @@ X!Ilib/string.c
      <title>FIFO Buffer</title>
      <sect1><title>kfifo interface</title>
 !Iinclude/linux/kfifo.h
+!Ekernel/kfifo.c
      </sect1>
   </chapter>
 
@@ -263,8 +259,7 @@ X!Earch/x86/kernel/mca_32.c
 !Iblock/blk-sysfs.c
 !Eblock/blk-settings.c
 !Eblock/blk-exec.c
-!Eblock/blk-flush.c
-!Eblock/blk-lib.c
+!Eblock/blk-barrier.c
 !Eblock/blk-tag.c
 !Iblock/blk-tag.c
 !Eblock/blk-integrity.c

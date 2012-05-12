@@ -16,6 +16,7 @@
 #include <asm/system.h>
 #include <asm/uaccess.h>
 #include <linux/smp.h>
+#include <linux/smp_lock.h>
 #include <linux/perf_event.h>
 
 enum direction {
@@ -322,6 +323,7 @@ asmlinkage void user_unaligned_trap(struct pt_regs *regs, unsigned int insn)
 {
 	enum direction dir;
 
+	lock_kernel();
 	if(!(current->thread.flags & SPARC_FLAG_UNALIGNED) ||
 	   (((insn >> 30) & 3) != 3))
 		goto kill_user;
@@ -375,5 +377,5 @@ asmlinkage void user_unaligned_trap(struct pt_regs *regs, unsigned int insn)
 kill_user:
 	user_mna_trap_fault(regs, insn);
 out:
-	;
+	unlock_kernel();
 }

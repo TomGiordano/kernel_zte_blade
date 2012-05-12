@@ -40,46 +40,59 @@ unsigned int nr_irq;
 #define MER_ME (1<<0)
 #define MER_HIE (1<<1)
 
-static void intc_enable_or_unmask(struct irq_data *d)
+static void intc_enable_or_unmask(unsigned int irq)
 {
-	unsigned long mask = 1 << d->irq;
-	pr_debug("enable_or_unmask: %d\n", d->irq);
+	unsigned long mask = 1 << irq;
+	pr_debug("enable_or_unmask: %d\n", irq);
 	out_be32(INTC_BASE + SIE, mask);
 
 	/* ack level irqs because they can't be acked during
 	 * ack function since the handle_level_irq function
 	 * acks the irq before calling the interrupt handler
 	 */
-	if (irqd_is_level_type(d))
+	if (irq_desc[irq].status & IRQ_LEVEL)
 		out_be32(INTC_BASE + IAR, mask);
 }
 
-static void intc_disable_or_mask(struct irq_data *d)
+static void intc_disable_or_mask(unsigned int irq)
 {
-	pr_debug("disable: %d\n", d->irq);
-	out_be32(INTC_BASE + CIE, 1 << d->irq);
+	pr_debug("disable: %d\n", irq);
+	out_be32(INTC_BASE + CIE, 1 << irq);
 }
 
-static void intc_ack(struct irq_data *d)
+static void intc_ack(unsigned int irq)
 {
-	pr_debug("ack: %d\n", d->irq);
-	out_be32(INTC_BASE + IAR, 1 << d->irq);
+	pr_debug("ack: %d\n", irq);
+	out_be32(INTC_BASE + IAR, 1 << irq);
 }
 
-static void intc_mask_ack(struct irq_data *d)
+static void intc_mask_ack(unsigned int irq)
 {
-	unsigned long mask = 1 << d->irq;
-	pr_debug("disable_and_ack: %d\n", d->irq);
+	unsigned long mask = 1 << irq;
+	pr_debug("disable_and_ack: %d\n", irq);
 	out_be32(INTC_BASE + CIE, mask);
 	out_be32(INTC_BASE + IAR, mask);
 }
 
+static void intc_end(unsigned int irq)
+{
+	unsigned long mask = 1 << irq;
+	pr_debug("end: %d\n", irq);
+	if (!(irq_desc[irq].status & (IRQ_DISABLED | IRQ_INPROGRESS))) {
+		out_be32(INTC_BASE + SIE, mask);
+		/* ack level sensitive intr */
+		if (irq_desc[irq].status & IRQ_LEVEL)
+			out_be32(INTC_BASE + IAR, mask);
+	}
+}
+
 static struct irq_chip intc_dev = {
 	.name = "Xilinx INTC",
-	.irq_unmask = intc_enable_or_unmask,
-	.irq_mask = intc_disable_or_mask,
-	.irq_ack = intc_ack,
-	.irq_mask_ack = intc_mask_ack,
+	.unmask = intc_enable_or_unmask,
+	.mask = intc_disable_or_mask,
+	.ack = intc_ack,
+	.mask_ack = intc_mask_ack,
+	.end = intc_end,
 };
 
 unsigned int get_irq(struct pt_regs *regs)
@@ -113,8 +126,11 @@ void __init init_IRQ(void)
 				0
 			};
 #endif
-	const char * const intc_list[] = {
+	static char *intc_list[] = {
 				"xlnx,xps-intc-1.00.a",
+				"xlnx,opb-intc-1.00.c",
+				"xlnx,opb-intc-1.00.b",
+				"xlnx,opb-intc-1.00.a",
 				NULL
 			};
 
@@ -125,15 +141,12 @@ void __init init_IRQ(void)
 	}
 	BUG_ON(!intc);
 
-	intc_baseaddr = be32_to_cpup(of_get_property(intc,
-								"reg", NULL));
+	intc_baseaddr = *(int *) of_get_property(intc, "reg", NULL);
 	intc_baseaddr = (unsigned long) ioremap(intc_baseaddr, PAGE_SIZE);
-	nr_irq = be32_to_cpup(of_get_property(intc,
-						"xlnx,num-intr-inputs", NULL));
+	nr_irq = *(int *) of_get_property(intc, "xlnx,num-intr-inputs", NULL);
 
 	intr_type =
-		be32_to_cpup(of_get_property(intc,
-						"xlnx,kind-of-intr", NULL));
+		*(int *) of_get_property(intc, "xlnx,kind-of-intr", NULL);
 	if (intr_type >= (1 << (nr_irq + 1)))
 		printk(KERN_INFO " ERROR: Mismatch in kind-of-intr param\n");
 
@@ -157,13 +170,13 @@ void __init init_IRQ(void)
 
 	for (i = 0; i < nr_irq; ++i) {
 		if (intr_type & (0x00000001 << i)) {
-			irq_set_chip_and_handler_name(i, &intc_dev,
-				handle_edge_irq, "edge");
-			irq_clear_status_flags(i, IRQ_LEVEL);
+			set_irq_chip_and_handler_name(i, &intc_dev,
+				handle_edge_irq, intc_dev.name);
+			irq_desc[i].status &= ~IRQ_LEVEL;
 		} else {
-			irq_set_chip_and_handler_name(i, &intc_dev,
-				handle_level_irq, "level");
-			irq_set_status_flags(i, IRQ_LEVEL);
+			set_irq_chip_and_handler_name(i, &intc_dev,
+				handle_level_irq, intc_dev.name);
+			irq_desc[i].status |= IRQ_LEVEL;
 		}
 	}
 }

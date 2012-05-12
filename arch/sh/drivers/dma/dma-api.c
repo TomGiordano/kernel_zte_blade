@@ -412,8 +412,8 @@ EXPORT_SYMBOL(unregister_dmac);
 static int __init dma_api_init(void)
 {
 	printk(KERN_NOTICE "DMA: Registering DMA API.\n");
-	return create_proc_read_entry("dma", 0, 0, dma_read_proc, 0)
-		    ? 0 : -ENOMEM;
+	create_proc_read_entry("dma", 0, 0, dma_read_proc, 0);
+	return 0;
 }
 subsys_initcall(dma_api_init);
 

@@ -29,10 +29,9 @@ unsigned long memsize, highmemsize;
 
 #define parse_even_earlier(res, option, p)				\
 do {									\
-	unsigned int tmp __maybe_unused;				\
-									\
 	if (strncmp(option, (char *)p, strlen(option)) == 0)		\
-		tmp = strict_strtol((char *)p + strlen(option"="), 10, &res); \
+			strict_strtol((char *)p + strlen(option"="),	\
+					10, &res);			\
 } while (0)
 
 void __init prom_init_env(void)

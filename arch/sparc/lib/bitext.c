@@ -10,7 +10,7 @@
  */
 
 #include <linux/string.h>
-#include <linux/bitmap.h>
+#include <linux/bitops.h>
 
 #include <asm/bitext.h>
 
@@ -80,7 +80,8 @@ int bit_map_string_get(struct bit_map *t, int len, int align)
 		while (test_bit(offset + i, t->map) == 0) {
 			i++;
 			if (i == len) {
-				bitmap_set(t->map, offset, len);
+				for (i = 0; i < len; i++)
+					__set_bit(offset + i, t->map);
 				if (offset == t->first_free)
 					t->first_free = find_next_zero_bit
 							(t->map, t->size,

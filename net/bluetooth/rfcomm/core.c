@@ -51,6 +51,10 @@
 
 #define VERSION "1.11"
 
+/* 1 Byte DLCI, 1 Byte Control filed, 2 Bytes Length, 1 Byte for Credits,
+ * 1 Byte FCS */
+#define RFCOMM_HDR_SIZE 6
+
 static int disable_cfc = 0;
 static int channel_mtu = -1;
 static unsigned int l2cap_mtu = RFCOMM_MAX_L2CAP_MTU;
@@ -1833,8 +1837,10 @@ static inline void rfcomm_accept_connection(struct rfcomm_session *s)
 		rfcomm_session_hold(s);
 
 		/* We should adjust MTU on incoming sessions.
-		 * L2CAP MTU minus UIH header and FCS. */
-		s->mtu = min(l2cap_pi(nsock->sk)->omtu, l2cap_pi(nsock->sk)->imtu) - 5;
+		 * L2CAP MTU minus UIH header and FCS.
+                 * Need to accomodate 1 Byte credits information */
+                s->mtu = min(l2cap_pi(nsock->sk)->omtu,
+                   l2cap_pi(nsock->sk)->imtu) - RFCOMM_HDR_SIZE;
 
 		rfcomm_schedule(RFCOMM_SCHED_RX);
 	} else
@@ -1852,8 +1858,9 @@ static inline void rfcomm_check_connection(struct rfcomm_session *s)
 		s->state = BT_CONNECT;
 
 		/* We can adjust MTU on outgoing sessions.
-		 * L2CAP MTU minus UIH header and FCS. */
-		s->mtu = min(l2cap_pi(sk)->omtu, l2cap_pi(sk)->imtu) - 5;
+		 * L2CAP MTU minus UIH header, Credits and FCS. */
+                s->mtu = min(l2cap_pi(sk)->omtu, l2cap_pi(sk)->imtu) -
+                        RFCOMM_HDR_SIZE;
 
 		rfcomm_send_sabm(s, 0);
 		break;

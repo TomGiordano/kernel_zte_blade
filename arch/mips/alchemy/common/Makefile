@@ -18,3 +18,5 @@ ifeq ($(CONFIG_ALCHEMY_GPIO_INDIRECT),)
 endif
 
 obj-$(CONFIG_PCI)		+= pci.o
+
+EXTRA_CFLAGS += -Werror

@@ -61,59 +61,59 @@ static inline void beatic_update_irq_mask(unsigned int irq_plug)
 		panic("Failed to set mask IRQ!");
 }
 
-static void beatic_mask_irq(struct irq_data *d)
+static void beatic_mask_irq(unsigned int irq_plug)
 {
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&beatic_irq_mask_lock, flags);
-	beatic_irq_mask_enable[d->irq/64] &= ~(1UL << (63 - (d->irq%64)));
-	beatic_update_irq_mask(d->irq);
+	beatic_irq_mask_enable[irq_plug/64] &= ~(1UL << (63 - (irq_plug%64)));
+	beatic_update_irq_mask(irq_plug);
 	raw_spin_unlock_irqrestore(&beatic_irq_mask_lock, flags);
 }
 
-static void beatic_unmask_irq(struct irq_data *d)
+static void beatic_unmask_irq(unsigned int irq_plug)
 {
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&beatic_irq_mask_lock, flags);
-	beatic_irq_mask_enable[d->irq/64] |= 1UL << (63 - (d->irq%64));
-	beatic_update_irq_mask(d->irq);
+	beatic_irq_mask_enable[irq_plug/64] |= 1UL << (63 - (irq_plug%64));
+	beatic_update_irq_mask(irq_plug);
 	raw_spin_unlock_irqrestore(&beatic_irq_mask_lock, flags);
 }
 
-static void beatic_ack_irq(struct irq_data *d)
+static void beatic_ack_irq(unsigned int irq_plug)
 {
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&beatic_irq_mask_lock, flags);
-	beatic_irq_mask_ack[d->irq/64] &= ~(1UL << (63 - (d->irq%64)));
-	beatic_update_irq_mask(d->irq);
+	beatic_irq_mask_ack[irq_plug/64] &= ~(1UL << (63 - (irq_plug%64)));
+	beatic_update_irq_mask(irq_plug);
 	raw_spin_unlock_irqrestore(&beatic_irq_mask_lock, flags);
 }
 
-static void beatic_end_irq(struct irq_data *d)
+static void beatic_end_irq(unsigned int irq_plug)
 {
 	s64 err;
 	unsigned long flags;
 
-	err = beat_downcount_of_interrupt(d->irq);
+	err = beat_downcount_of_interrupt(irq_plug);
 	if (err != 0) {
 		if ((err & 0xFFFFFFFF) != 0xFFFFFFF5) /* -11: wrong state */
 			panic("Failed to downcount IRQ! Error = %16llx", err);
 
-		printk(KERN_ERR "IRQ over-downcounted, plug %d\n", d->irq);
+		printk(KERN_ERR "IRQ over-downcounted, plug %d\n", irq_plug);
 	}
 	raw_spin_lock_irqsave(&beatic_irq_mask_lock, flags);
-	beatic_irq_mask_ack[d->irq/64] |= 1UL << (63 - (d->irq%64));
-	beatic_update_irq_mask(d->irq);
+	beatic_irq_mask_ack[irq_plug/64] |= 1UL << (63 - (irq_plug%64));
+	beatic_update_irq_mask(irq_plug);
 	raw_spin_unlock_irqrestore(&beatic_irq_mask_lock, flags);
 }
 
 static struct irq_chip beatic_pic = {
 	.name = "CELL-BEAT",
-	.irq_unmask = beatic_unmask_irq,
-	.irq_mask = beatic_mask_irq,
-	.irq_eoi = beatic_end_irq,
+	.unmask = beatic_unmask_irq,
+	.mask = beatic_mask_irq,
+	.eoi = beatic_end_irq,
 };
 
 /*
@@ -136,15 +136,26 @@ static void beatic_pic_host_unmap(struct irq_host *h, unsigned int virq)
 static int beatic_pic_host_map(struct irq_host *h, unsigned int virq,
 			       irq_hw_number_t hw)
 {
+	struct irq_desc *desc = irq_to_desc(virq);
 	int64_t	err;
 
 	err = beat_construct_and_connect_irq_plug(virq, hw);
 	if (err < 0)
 		return -EIO;
 
-	irq_set_status_flags(virq, IRQ_LEVEL);
-	irq_set_chip_and_handler(virq, &beatic_pic, handle_fasteoi_irq);
+	desc->status |= IRQ_LEVEL;
+	set_irq_chip_and_handler(virq, &beatic_pic, handle_fasteoi_irq);
 	return 0;
+}
+
+/*
+ * Update binding hardware IRQ number (hw) and Virtuql
+ * IRQ number (virq). This is called only once for a given mapping.
+ */
+static void beatic_pic_host_remap(struct irq_host *h, unsigned int virq,
+			       irq_hw_number_t hw)
+{
+	beat_construct_and_connect_irq_plug(virq, hw);
 }
 
 /*
@@ -174,6 +185,7 @@ static int beatic_pic_host_match(struct irq_host *h, struct device_node *np)
 
 static struct irq_host_ops beatic_pic_host_ops = {
 	.map = beatic_pic_host_map,
+	.remap = beatic_pic_host_remap,
 	.unmap = beatic_pic_host_unmap,
 	.xlate = beatic_pic_host_xlate,
 	.match = beatic_pic_host_match,
@@ -220,7 +232,7 @@ unsigned int beatic_get_irq(void)
 
 	ret = beatic_get_irq_plug();
 	if (ret != NO_IRQ)
-		beatic_ack_irq(irq_get_irq_data(ret));
+		beatic_ack_irq(ret);
 	return ret;
 }
 
@@ -245,6 +257,22 @@ void __init beatic_init_IRQ(void)
 	BUG_ON(beatic_host == NULL);
 	irq_set_default_host(beatic_host);
 }
+
+#ifdef CONFIG_SMP
+
+/* Nullified to compile with SMP mode */
+void beatic_setup_cpu(int cpu)
+{
+}
+
+void beatic_cause_IPI(int cpu, int mesg)
+{
+}
+
+void beatic_request_IPIs(void)
+{
+}
+#endif /* CONFIG_SMP */
 
 void beatic_deinit_IRQ(void)
 {

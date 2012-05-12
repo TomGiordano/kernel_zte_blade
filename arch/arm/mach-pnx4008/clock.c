@@ -21,7 +21,8 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/clkdev.h>
+
+#include <asm/clkdev.h>
 
 #include <mach/hardware.h>
 #include <mach/clock.h>

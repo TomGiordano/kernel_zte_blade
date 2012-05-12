@@ -169,7 +169,7 @@ static inline compat_uptr_t ptr_to_compat(void __user *uptr)
 
 static inline int is_compat_task(void)
 {
-	return is_32bit_task();
+	return test_thread_flag(TIF_31BIT);
 }
 
 #else

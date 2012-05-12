@@ -14,7 +14,6 @@
 #ifdef __KERNEL__
 
 #include <linux/highmem.h>
-#include <linux/slab.h>
 
 /*
  * Allocating and freeing a pmd is trivial: the 1-entry pmd is

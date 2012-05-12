@@ -1,4 +1,4 @@
-ccflags-y	:= -mno-minimal-toc
+EXTRA_CFLAGS	+= -mno-minimal-toc
 
 obj-y += exception.o
 obj-y += hvlog.o hvlpconfig.o lpardata.o setup.o dt.o mf.o lpevents.o \

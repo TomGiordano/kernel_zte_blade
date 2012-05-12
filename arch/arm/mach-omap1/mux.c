@@ -70,10 +70,6 @@ MUX_CFG_7XX("SPI_7XX_3",           6,   13,    4,   12,   1, 0)
 MUX_CFG_7XX("SPI_7XX_4",           6,   17,    4,   16,   1, 0)
 MUX_CFG_7XX("SPI_7XX_5",           8,   25,    0,   24,   0, 0)
 MUX_CFG_7XX("SPI_7XX_6",           9,    5,    0,    4,   0, 0)
-
-/* UART pins */
-MUX_CFG_7XX("UART_7XX_1",          3,   21,    0,   20,   0, 0)
-MUX_CFG_7XX("UART_7XX_2",          8,    1,    6,    0,   0, 0)
 };
 #define OMAP7XX_PINS_SZ		ARRAY_SIZE(omap7xx_pins)
 #else
@@ -343,7 +339,7 @@ MUX_CFG("Y14_1610_CCP_DATAM",	 9,   21,    6,   2,   3,   1,    2,     0,  0)
 #define OMAP1XXX_PINS_SZ	0
 #endif	/* CONFIG_ARCH_OMAP15XX || CONFIG_ARCH_OMAP16XX */
 
-static int __init_or_module omap1_cfg_reg(const struct pin_config *cfg)
+int __init_or_module omap1_cfg_reg(const struct pin_config *cfg)
 {
 	static DEFINE_SPINLOCK(mux_spin_lock);
 	unsigned long flags;
@@ -444,7 +440,7 @@ static int __init_or_module omap1_cfg_reg(const struct pin_config *cfg)
 	}
 #endif
 
-#ifdef CONFIG_OMAP_MUX_WARNINGS
+#ifdef CONFIG_OMAP_MUX_ERRORS
 	return warn ? -ETXTBSY : 0;
 #else
 	return 0;

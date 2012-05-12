@@ -35,44 +35,45 @@
 /*
  * off-CPU FPGA PIC operations
  */
-static void frv_fpga_mask(struct irq_data *d)
+static void frv_fpga_mask(unsigned int irq)
 {
 	uint16_t imr = __get_IMR();
 
-	imr |= 1 << (d->irq - IRQ_BASE_FPGA);
+	imr |= 1 << (irq - IRQ_BASE_FPGA);
 	__set_IMR(imr);
 }
 
-static void frv_fpga_ack(struct irq_data *d)
+static void frv_fpga_ack(unsigned int irq)
 {
-	__clr_IFR(1 << (d->irq - IRQ_BASE_FPGA));
+	__clr_IFR(1 << (irq - IRQ_BASE_FPGA));
 }
 
-static void frv_fpga_mask_ack(struct irq_data *d)
+static void frv_fpga_mask_ack(unsigned int irq)
 {
 	uint16_t imr = __get_IMR();
 
-	imr |= 1 << (d->irq - IRQ_BASE_FPGA);
+	imr |= 1 << (irq - IRQ_BASE_FPGA);
 	__set_IMR(imr);
 
-	__clr_IFR(1 << (d->irq - IRQ_BASE_FPGA));
+	__clr_IFR(1 << (irq - IRQ_BASE_FPGA));
 }
 
-static void frv_fpga_unmask(struct irq_data *d)
+static void frv_fpga_unmask(unsigned int irq)
 {
 	uint16_t imr = __get_IMR();
 
-	imr &= ~(1 << (d->irq - IRQ_BASE_FPGA));
+	imr &= ~(1 << (irq - IRQ_BASE_FPGA));
 
 	__set_IMR(imr);
 }
 
 static struct irq_chip frv_fpga_pic = {
 	.name		= "mb93093",
-	.irq_ack	= frv_fpga_ack,
-	.irq_mask	= frv_fpga_mask,
-	.irq_mask_ack	= frv_fpga_mask_ack,
-	.irq_unmask	= frv_fpga_unmask,
+	.ack		= frv_fpga_ack,
+	.mask		= frv_fpga_mask,
+	.mask_ack	= frv_fpga_mask_ack,
+	.unmask		= frv_fpga_unmask,
+	.end		= frv_fpga_end,
 };
 
 /*
@@ -93,7 +94,7 @@ static irqreturn_t fpga_interrupt(int irq, void *_mask)
 		irq = 31 - irq;
 		mask &= ~(1 << irq);
 
-		generic_handle_irq(IRQ_BASE_FPGA + irq);
+		generic_irq_handle(IRQ_BASE_FPGA + irq);
 	}
 
 	return IRQ_HANDLED;
@@ -124,7 +125,7 @@ void __init fpga_init(void)
 	__clr_IFR(0x0000);
 
 	for (irq = IRQ_BASE_FPGA + 8; irq <= IRQ_BASE_FPGA + 10; irq++)
-		irq_set_chip_and_handler(irq, &frv_fpga_pic, handle_edge_irq);
+		set_irq_chip_and_handler(irq, &frv_fpga_pic, handle_edge_irq);
 
 	/* the FPGA drives external IRQ input #2 on the CPU PIC */
 	setup_irq(IRQ_CPU_EXTERNAL2, &fpga_irq[0]);

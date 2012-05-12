@@ -14,12 +14,14 @@
 #include <asm/dwarf2.h>
 
 .macro SAVE reg
-	pushl_cfi %\reg
+	pushl %\reg
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET \reg, 0
 .endm
 
 .macro RESTORE reg
-	popl_cfi %\reg
+	popl %\reg
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE \reg
 .endm
 

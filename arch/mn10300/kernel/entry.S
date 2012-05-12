@@ -16,7 +16,6 @@
 #include <linux/linkage.h>
 #include <asm/smp.h>
 #include <asm/system.h>
-#include <asm/irqflags.h>
 #include <asm/thread_info.h>
 #include <asm/intctl-regs.h>
 #include <asm/busctl-regs.h>
@@ -28,16 +27,24 @@
 #include <asm/asm-offsets.h>
 #include <asm/frame.inc>
 
-#if defined(CONFIG_SMP) && defined(CONFIG_GDBSTUB)
-#include <asm/gdb-stub.h>
-#endif /* CONFIG_SMP && CONFIG_GDBSTUB */
-
 #ifdef CONFIG_PREEMPT
-#define preempt_stop		LOCAL_IRQ_DISABLE
+#define preempt_stop		__cli
 #else
 #define preempt_stop
 #define resume_kernel		restore_all
 #endif
+
+	.macro __cli
+	and	~EPSW_IM,epsw
+	or	EPSW_IE|MN10300_CLI_LEVEL,epsw
+	nop
+	nop
+	nop
+	.endm
+	.macro __sti
+	or	EPSW_IE|EPSW_IM_7,epsw
+	.endm
+
 
 	.am33_2
 
@@ -80,7 +87,7 @@ syscall_call:
 syscall_exit:
 	# make sure we don't miss an interrupt setting need_resched or
 	# sigpending between sampling and the rti
-	LOCAL_IRQ_DISABLE
+	__cli
 	mov	(TI_flags,a2),d2
 	btst	_TIF_ALLWORK_MASK,d2
 	bne	syscall_exit_work
@@ -97,7 +104,7 @@ restore_all:
 syscall_exit_work:
 	btst	_TIF_SYSCALL_TRACE,d2
 	beq	work_pending
-	LOCAL_IRQ_ENABLE		# could let syscall_trace_exit() call
+	__sti				# could let syscall_trace_exit() call
 					# schedule() instead
 	mov	fp,d0
 	call	syscall_trace_exit[],0	# do_syscall_trace(regs)
@@ -113,7 +120,7 @@ work_resched:
 
 	# make sure we don't miss an interrupt setting need_resched or
 	# sigpending between sampling and the rti
-	LOCAL_IRQ_DISABLE
+	__cli
 
 	# is there any work to be done other than syscall tracing?
 	mov	(TI_flags,a2),d2
@@ -160,7 +167,7 @@ ret_from_intr:
 ENTRY(resume_userspace)
 	# make sure we don't miss an interrupt setting need_resched or
 	# sigpending between sampling and the rti
-	LOCAL_IRQ_DISABLE
+	__cli
 
 	# is there any work to be done on int/exception return?
 	mov	(TI_flags,a2),d2
@@ -170,7 +177,7 @@ ENTRY(resume_userspace)
 
 #ifdef CONFIG_PREEMPT
 ENTRY(resume_kernel)
-	LOCAL_IRQ_DISABLE
+	__cli
 	mov	(TI_preempt_count,a2),d0	# non-zero preempt_count ?
 	cmp	0,d0
 	bne	restore_all
@@ -205,6 +212,31 @@ ENTRY(irq_handler)
 	call	do_IRQ[],0			# do_IRQ(regs)
 
 	jmp	ret_from_intr
+
+###############################################################################
+#
+# Monitor Signal handler entry point
+#
+###############################################################################
+ENTRY(monitor_signal)
+	movbu	(0xae000001),d1
+	cmp	1,d1
+	beq	monsignal
+	ret	[],0
+
+monsignal:
+	or	EPSW_NMID,epsw
+	mov	d0,a0
+	mov	a0,sp
+	mov	(REG_EPSW,fp),d1
+	and	~EPSW_nSL,d1
+	mov	d1,(REG_EPSW,fp)
+	movm	(sp),[d2,d3,a2,a3,exreg0,exreg1,exother]
+	mov	(sp),a1
+	mov	a1,usp
+	movm	(sp),[other]
+	add	4,sp
+here:	jmp	0x8e000008-here+0x8e000008
 
 ###############################################################################
 #
@@ -243,10 +275,6 @@ double_fault_loop:
 ENTRY(raw_bus_error)
 	add	-4,sp
 	mov	d0,(sp)
-#if defined(CONFIG_ERRATUM_NEED_TO_RELOAD_MMUCTR)
-	mov	(MMUCTR),d0
-	mov	d0,(MMUCTR)
-#endif
 	mov	(BCBERR),d0		# what
 	btst	BCBERR_BEMR_DMA,d0	# see if it was an external bus error
 	beq	__common_exception_aux	# it wasn't
@@ -266,78 +294,18 @@ ENTRY(raw_bus_error)
 
 ###############################################################################
 #
-# NMI exception entry points
-#
-# This is used by ordinary interrupt channels that have the GxICR_NMI bit set
-# in addition to the main NMI and Watchdog channels.  SMP NMI IPIs use this
-# facility.
+# Miscellaneous exception entry points
 #
 ###############################################################################
 ENTRY(nmi_handler)
 	add	-4,sp
 	mov	d0,(sp)
 	mov	(TBR),d0
-
-#ifdef CONFIG_SMP
-	add	-4,sp
-	mov	d0,(sp)			# save d0(TBR)
-	movhu	(NMIAGR),d0
-	and	NMIAGR_GN,d0
-	lsr	0x2,d0
-	cmp	CALL_FUNCTION_NMI_IPI,d0
-	bne	nmi_not_smp_callfunc	# if not call function, jump
-
-	# function call nmi ipi
-	add	4,sp			# no need to store TBR
-	mov	GxICR_DETECT,d0		# clear NMI request
-	movbu	d0,(GxICR(CALL_FUNCTION_NMI_IPI))
-	movhu	(GxICR(CALL_FUNCTION_NMI_IPI)),d0
-	and	~EPSW_NMID,epsw		# enable NMI
-
-	mov	(sp),d0			# restore d0
-	SAVE_ALL
-	call	smp_nmi_call_function_interrupt[],0
-	RESTORE_ALL
-
-nmi_not_smp_callfunc:
-#ifdef CONFIG_KERNEL_DEBUGGER
-	cmp	DEBUGGER_NMI_IPI,d0
-	bne	nmi_not_debugger	# if not kernel debugger NMI IPI, jump
-
-	# kernel debugger NMI IPI
-	add	4,sp			# no need to store TBR
-	mov	GxICR_DETECT,d0		# clear NMI
-	movbu	d0,(GxICR(DEBUGGER_NMI_IPI))
-	movhu	(GxICR(DEBUGGER_NMI_IPI)),d0
-	and	~EPSW_NMID,epsw		# enable NMI
-
-	mov     (sp),d0
-	SAVE_ALL
-	mov	fp,d0			# arg 0: stacked register file
-	mov	a2,d1			# arg 1: exception number
-	call    debugger_nmi_interrupt[],0
-	RESTORE_ALL
-
-nmi_not_debugger:
-#endif /* CONFIG_KERNEL_DEBUGGER */
-	mov     (sp),d0                 # restore TBR to d0
-	add     4,sp
-#endif /* CONFIG_SMP */
-
 	bra	__common_exception_nonmi
 
-###############################################################################
-#
-# General exception entry point
-#
-###############################################################################
 ENTRY(__common_exception)
 	add	-4,sp
 	mov	d0,(sp)
-#if defined(CONFIG_ERRATUM_NEED_TO_RELOAD_MMUCTR)
-	mov	(MMUCTR),d0
-	mov	d0,(MMUCTR)
-#endif
 
 __common_exception_aux:
 	mov	(TBR),d0
@@ -362,21 +330,15 @@ __common_exception_nonmi:
 	mov	d0,(REG_ORIG_D0,fp)
 
 #ifdef CONFIG_GDBSTUB
-#ifdef CONFIG_SMP
-	call	gdbstub_busy_check[],0
-	and	d0,d0			# check return value
-	beq	2f
-#else  /* CONFIG_SMP */
 	btst	0x01,(gdbstub_busy)
 	beq	2f
-#endif /* CONFIG_SMP */
 	and	~EPSW_IE,epsw
 	mov	fp,d0
 	mov	a2,d1
 	call	gdbstub_exception[],0	# gdbstub itself caused an exception
 	bra	restore_all
 2:
-#endif /* CONFIG_GDBSTUB */
+#endif
 
 	mov	fp,d0			# arg 0: stacked register file
 	mov	a2,d1			# arg 1: exception number
@@ -411,7 +373,11 @@ ENTRY(set_excp_vector)
 	add	exception_table,d0
 	mov	d1,(d0)
 	mov	4,d1
+#if defined(CONFIG_MN10300_CACHE_WBACK)
+	jmp	mn10300_dcache_flush_inv_range2
+#else
 	ret	[],0
+#endif
 
 ###############################################################################
 #
@@ -759,7 +725,6 @@ ENTRY(sys_call_table)
 	.long sys_rt_tgsigqueueinfo
 	.long sys_perf_event_open
 	.long sys_recvmmsg
-	.long sys_setns
 
 
 nr_syscalls=(.-sys_call_table)/4

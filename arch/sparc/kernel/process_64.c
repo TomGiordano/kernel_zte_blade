@@ -303,7 +303,7 @@ void arch_trigger_all_cpu_backtrace(void)
 
 #ifdef CONFIG_MAGIC_SYSRQ
 
-static void sysrq_handle_globreg(int key)
+static void sysrq_handle_globreg(int key, struct tty_struct *tty)
 {
 	arch_trigger_all_cpu_backtrace();
 }
@@ -739,9 +739,9 @@ asmlinkage int sparc_execve(struct pt_regs *regs)
 	if (IS_ERR(filename))
 		goto out;
 	error = do_execve(filename,
-			  (const char __user *const __user *)
+			  (char __user * __user *)
 			  regs->u_regs[base + UREG_I1],
-			  (const char __user *const __user *)
+			  (char __user * __user *)
 			  regs->u_regs[base + UREG_I2], regs);
 	putname(filename);
 	if (!error) {

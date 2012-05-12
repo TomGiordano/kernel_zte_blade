@@ -4,7 +4,7 @@ sysfs - _The_ filesystem for exporting kernel objects.
 Patrick Mochel	<mochel@osdl.org>
 Mike Murphy <mamurph@cs.clemson.edu>
 
-Revised:    15 July 2010
+Revised:    22 February 2009
 Original:   10 January 2003
 
 
@@ -39,12 +39,10 @@ userspace. Top-level directories in sysfs represent the common
 ancestors of object hierarchies; i.e. the subsystems the objects
 belong to. 
 
-Sysfs internally stores a pointer to the kobject that implements a
-directory in the sysfs_dirent object associated with the directory. In
-the past this kobject pointer has been used by sysfs to do reference
-counting directly on the kobject whenever the file is opened or closed.
-With the current sysfs implementation the kobject reference count is
-only modified directly by the function sysfs_schedule_callback().
+Sysfs internally stores the kobject that owns the directory in the
+->d_fsdata pointer of the directory's dentry. This allows sysfs to do
+reference counting directly on the kobject when the file is opened and
+closed. 
 
 
 Attributes
@@ -62,7 +60,7 @@ values of the same type.
 
 Mixing types, expressing multiple lines of data, and doing fancy
 formatting of data is heavily frowned upon. Doing these things may get
-you publicly humiliated and your code rewritten without notice. 
+you publically humiliated and your code rewritten without notice. 
 
 
 An attribute definition is simply:
@@ -126,7 +124,7 @@ show and store methods of the attribute owners.
 
 struct sysfs_ops {
         ssize_t (*show)(struct kobject *, struct attribute *, char *);
-        ssize_t (*store)(struct kobject *, struct attribute *, const char *, size_t);
+        ssize_t (*store)(struct kobject *, struct attribute *, const char *);
 };
 
 [ Subsystems should have already defined a struct kobj_type as a
@@ -141,22 +139,18 @@ calls the associated methods.
 
 To illustrate:
 
-#define to_dev(obj) container_of(obj, struct device, kobj)
 #define to_dev_attr(_attr) container_of(_attr, struct device_attribute, attr)
+#define to_dev(d) container_of(d, struct device, kobj)
 
-static ssize_t dev_attr_show(struct kobject *kobj, struct attribute *attr,
-                             char *buf)
+static ssize_t
+dev_attr_show(struct kobject * kobj, struct attribute * attr, char * buf)
 {
-        struct device_attribute *dev_attr = to_dev_attr(attr);
-        struct device *dev = to_dev(kobj);
-        ssize_t ret = -EIO;
+        struct device_attribute * dev_attr = to_dev_attr(attr);
+        struct device * dev = to_dev(kobj);
+        ssize_t ret = 0;
 
         if (dev_attr->show)
-                ret = dev_attr->show(dev, dev_attr, buf);
-        if (ret >= (ssize_t)PAGE_SIZE) {
-                print_symbol("dev_attr_show: %s returned bad count\n",
-                                (unsigned long)dev_attr->show);
-        }
+                ret = dev_attr->show(dev, buf);
         return ret;
 }
 
@@ -169,9 +163,10 @@ To read or write attributes, show() or store() methods must be
 specified when declaring the attribute. The method types should be as
 simple as those defined for device attributes:
 
-ssize_t (*show)(struct device *dev, struct device_attribute *attr, char *buf);
-ssize_t (*store)(struct device *dev, struct device_attribute *attr,
-                 const char *buf, size_t count);
+ssize_t (*show)(struct device * dev, struct device_attribute * attr,
+                char * buf);
+ssize_t (*store)(struct device * dev, struct device_attribute * attr,
+                 const char * buf);
 
 IOW, they should take only an object, an attribute, and a buffer as parameters.
 
@@ -210,12 +205,12 @@ Other notes:
   is 4096. 
 
 - show() methods should return the number of bytes printed into the
-  buffer. This is the return value of scnprintf().
+  buffer. This is the return value of snprintf().
 
-- show() should always use scnprintf().
+- show() should always use snprintf(). 
 
-- store() should return the number of bytes used from the buffer. If the
-  entire buffer has been used, just return the count argument.
+- store() should return the number of bytes used from the buffer. This
+  can be done using strlen().
 
 - show() or store() can always return errors. If a bad value comes
   through, be sure to return an error.
@@ -228,18 +223,15 @@ Other notes:
 
 A very simple (and naive) implementation of a device attribute is:
 
-static ssize_t show_name(struct device *dev, struct device_attribute *attr,
-                         char *buf)
+static ssize_t show_name(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%s\n", dev->name);
+	return snprintf(buf, PAGE_SIZE, "%s\n", dev->name);
 }
 
-static ssize_t store_name(struct device *dev, struct device_attribute *attr,
-                          const char *buf, size_t count)
+static ssize_t store_name(struct device * dev, const char * buf)
 {
-        snprintf(dev->name, sizeof(dev->name), "%.*s",
-                 (int)min(count, sizeof(dev->name) - 1), buf);
-	return count;
+	sscanf(buf, "%20s", dev->name);
+	return strnlen(buf, PAGE_SIZE);
 }
 
 static DEVICE_ATTR(name, S_IRUGO, show_name, store_name);
@@ -335,7 +327,7 @@ Structure:
 struct bus_attribute {
         struct attribute        attr;
         ssize_t (*show)(struct bus_type *, char * buf);
-        ssize_t (*store)(struct bus_type *, const char * buf, size_t count);
+        ssize_t (*store)(struct bus_type *, const char * buf);
 };
 
 Declaring:

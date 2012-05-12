@@ -53,9 +53,9 @@ static inline void ata_scc_out(char c)
 {
 	do {
 		MFPDELAY();
-	} while (!(atari_scc.cha_b_ctrl & 0x04)); /* wait for tx buf empty */
+	} while (!(scc.cha_b_ctrl & 0x04)); /* wait for tx buf empty */
 	MFPDELAY();
-	atari_scc.cha_b_data = c;
+	scc.cha_b_data = c;
 }
 
 static void atari_scc_console_write(struct console *co, const char *str,
@@ -140,9 +140,9 @@ int atari_scc_console_wait_key(struct console *co)
 {
 	do {
 		MFPDELAY();
-	} while (!(atari_scc.cha_b_ctrl & 0x01)); /* wait for rx buf filled */
+	} while (!(scc.cha_b_ctrl & 0x01)); /* wait for rx buf filled */
 	MFPDELAY();
-	return atari_scc.cha_b_data;
+	return scc.cha_b_data;
 }
 
 int atari_midi_console_wait_key(struct console *co)
@@ -185,9 +185,9 @@ static void __init atari_init_mfp_port(int cflag)
 
 #define SCC_WRITE(reg, val)				\
 	do {						\
-		atari_scc.cha_b_ctrl = (reg);		\
+		scc.cha_b_ctrl = (reg);			\
 		MFPDELAY();				\
-		atari_scc.cha_b_ctrl = (val);		\
+		scc.cha_b_ctrl = (val);			\
 		MFPDELAY();				\
 	} while (0)
 
@@ -240,7 +240,7 @@ static void __init atari_init_scc_port(int cflag)
 	reg3 = (cflag & CSIZE) == CS8 ? 0xc0 : 0x40;
 	reg5 = (cflag & CSIZE) == CS8 ? 0x60 : 0x20 | 0x82 /* assert DTR/RTS */;
 
-	(void)atari_scc.cha_b_ctrl;	/* reset reg pointer */
+	(void)scc.cha_b_ctrl;		/* reset reg pointer */
 	SCC_WRITE(9, 0xc0);		/* reset */
 	LONG_DELAY();			/* extra delay after WR9 access */
 	SCC_WRITE(4, (cflag & PARENB) ? ((cflag & PARODD) ? 0x01 : 0x03)

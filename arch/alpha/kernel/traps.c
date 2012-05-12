@@ -13,6 +13,7 @@
 #include <linux/sched.h>
 #include <linux/tty.h>
 #include <linux/delay.h>
+#include <linux/smp_lock.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kallsyms.h>
@@ -622,6 +623,7 @@ do_entUna(void * va, unsigned long opcode, unsigned long reg,
 		return;
 	}
 
+	lock_kernel();
 	printk("Bad unaligned kernel access at %016lx: %p %lx %lu\n",
 		pc, va, opcode, reg);
 	do_exit(SIGSEGV);
@@ -644,6 +646,7 @@ got_exception:
 	 * Yikes!  No one to forward the exception to.
 	 * Since the registers are in a weird format, dump them ourselves.
  	 */
+	lock_kernel();
 
 	printk("%s(%d): unhandled unaligned exception\n",
 	       current->comm, task_pid_nr(current));

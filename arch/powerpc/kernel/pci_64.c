@@ -64,7 +64,7 @@ static int __init pcibios_init(void)
 
 	/* Scan all of the recorded PCI controllers.  */
 	list_for_each_entry_safe(hose, tmp, &hose_list, list_node) {
-		pcibios_scan_phb(hose);
+		pcibios_scan_phb(hose, hose->dn);
 		pci_bus_add_devices(hose->bus);
 	}
 
@@ -193,7 +193,8 @@ int __devinit pcibios_map_io_space(struct pci_bus *bus)
 	hose->io_resource.start += io_virt_offset;
 	hose->io_resource.end += io_virt_offset;
 
-	pr_debug("  hose->io_resource=%pR\n", &hose->io_resource);
+	pr_debug("  hose->io_resource=0x%016llx...0x%016llx\n",
+		 hose->io_resource.start, hose->io_resource.end);
 
 	return 0;
 }
@@ -242,10 +243,10 @@ long sys_pciconfig_iobase(long which, unsigned long in_bus,
 			break;
 		bus = NULL;
 	}
-	if (bus == NULL || bus->dev.of_node == NULL)
+	if (bus == NULL || bus->sysdata == NULL)
 		return -ENODEV;
 
-	hose_node = bus->dev.of_node;
+	hose_node = (struct device_node *)bus->sysdata;
 	hose = PCI_DN(hose_node)->phb;
 
 	switch (which) {

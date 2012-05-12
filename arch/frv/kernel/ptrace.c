@@ -254,26 +254,23 @@ void ptrace_disable(struct task_struct *child)
 	user_disable_single_step(child);
 }
 
-long arch_ptrace(struct task_struct *child, long request,
-		 unsigned long addr, unsigned long data)
+long arch_ptrace(struct task_struct *child, long request, long addr, long data)
 {
 	unsigned long tmp;
 	int ret;
-	int regno = addr >> 2;
-	unsigned long __user *datap = (unsigned long __user *) data;
 
 	switch (request) {
 		/* read the word at location addr in the USER area. */
 	case PTRACE_PEEKUSR: {
 		tmp = 0;
 		ret = -EIO;
-		if (addr & 3)
+		if ((addr & 3) || addr < 0)
 			break;
 
 		ret = 0;
-		switch (regno) {
+		switch (addr >> 2) {
 		case 0 ... PT__END - 1:
-			tmp = get_reg(child, regno);
+			tmp = get_reg(child, addr >> 2);
 			break;
 
 		case PT__END + 0:
@@ -302,18 +299,23 @@ long arch_ptrace(struct task_struct *child, long request,
 		}
 
 		if (ret == 0)
-			ret = put_user(tmp, datap);
+			ret = put_user(tmp, (unsigned long *) data);
 		break;
 	}
 
 	case PTRACE_POKEUSR: /* write the word at location addr in the USER area */
 		ret = -EIO;
-		if (addr & 3)
+		if ((addr & 3) || addr < 0)
 			break;
 
-		switch (regno) {
+		ret = 0;
+		switch (addr >> 2) {
 		case 0 ... PT__END - 1:
-			ret = put_reg(child, regno, data);
+			ret = put_reg(child, addr >> 2, data);
+			break;
+
+		default:
+			ret = -EIO;
 			break;
 		}
 		break;
@@ -322,25 +324,25 @@ long arch_ptrace(struct task_struct *child, long request,
 		return copy_regset_to_user(child, &user_frv_native_view,
 					   REGSET_GENERAL,
 					   0, sizeof(child->thread.user->i),
-					   datap);
+					   (void __user *)data);
 
 	case PTRACE_SETREGS:	/* Set all integer regs in the child. */
 		return copy_regset_from_user(child, &user_frv_native_view,
 					     REGSET_GENERAL,
 					     0, sizeof(child->thread.user->i),
-					     datap);
+					     (const void __user *)data);
 
 	case PTRACE_GETFPREGS:	/* Get the child FP/Media state. */
 		return copy_regset_to_user(child, &user_frv_native_view,
 					   REGSET_FPMEDIA,
 					   0, sizeof(child->thread.user->f),
-					   datap);
+					   (void __user *)data);
 
 	case PTRACE_SETFPREGS:	/* Set the child FP/Media state. */
 		return copy_regset_from_user(child, &user_frv_native_view,
 					     REGSET_FPMEDIA,
 					     0, sizeof(child->thread.user->f),
-					     datap);
+					     (const void __user *)data);
 
 	default:
 		ret = ptrace_request(child, request, addr, data);

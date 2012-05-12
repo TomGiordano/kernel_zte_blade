@@ -58,9 +58,6 @@
 #include <linux/mfd/pcf50633/pmic.h>
 #include <linux/mfd/pcf50633/backlight.h>
 
-#include <linux/input.h>
-#include <linux/gpio_keys.h>
-
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/mach/irq.h>
@@ -89,22 +86,27 @@
 #include <plat/udc.h>
 #include <plat/gpio-cfg.h>
 #include <plat/iic.h>
-#include <plat/ts.h>
-
 
 static struct pcf50633 *gta02_pcf;
 
 /*
- * This gets called frequently when we paniced.
+ * This gets called every 1ms when we paniced.
  */
 
-static long gta02_panic_blink(int state)
+static long gta02_panic_blink(long count)
 {
 	long delay = 0;
-	char led;
+	static long last_blink;
+	static char led;
 
-	led = (state) ? 1 : 0;
+	/* Fast blink: 200ms period. */
+	if (count - last_blink < 100)
+		return 0;
+
+	led ^= 1;
 	gpio_direction_output(GTA02_GPIO_AUX_LED, led);
+
+	last_blink = count;
 
 	return delay;
 }
@@ -285,6 +287,9 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
 				.always_on = 1,
 				.apply_uV = 1,
+				.state_mem = {
+					.enabled = 1,
+				},
 			},
 		},
 		[PCF50633_REGULATOR_DOWN1] = {
@@ -303,6 +308,9 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
 				.apply_uV = 1,
 				.always_on = 1,
+				.state_mem = {
+					.enabled = 1,
+				},
 			},
 		},
 		[PCF50633_REGULATOR_HCLDO] = {
@@ -310,8 +318,8 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.min_uV = 2000000,
 				.max_uV = 3300000,
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
-				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
-						REGULATOR_CHANGE_STATUS,
+				.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+				.always_on = 1,
 			},
 		},
 		[PCF50633_REGULATOR_LDO1] = {
@@ -319,8 +327,10 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.min_uV = 3300000,
 				.max_uV = 3300000,
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
-				.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 				.apply_uV = 1,
+				.state_mem = {
+					.enabled = 0,
+				},
 			},
 		},
 		[PCF50633_REGULATOR_LDO2] = {
@@ -344,7 +354,6 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.min_uV = 3200000,
 				.max_uV = 3200000,
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
-				.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 				.apply_uV = 1,
 			},
 		},
@@ -353,8 +362,10 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.min_uV = 3000000,
 				.max_uV = 3000000,
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
-				.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 				.apply_uV = 1,
+				.state_mem = {
+					.enabled = 1,
+				},
 			},
 		},
 		[PCF50633_REGULATOR_LDO6] = {
@@ -369,6 +380,9 @@ struct pcf50633_platform_data gta02_pcf_pdata = {
 				.min_uV = 1800000,
 				.max_uV = 1800000,
 				.valid_modes_mask = REGULATOR_MODE_NORMAL,
+				.state_mem = {
+					.enabled = 1,
+				},
 			},
 		},
 
@@ -407,10 +421,6 @@ static struct platform_device gta02_nor_flash = {
 struct platform_device s3c24xx_pwm_device = {
 	.name		= "s3c24xx_pwm",
 	.num_resources	= 0,
-};
-
-static struct platform_device gta02_dfbmcs320_device = {
-	.name = "dfbmcs320",
 };
 
 static struct i2c_board_info gta02_i2c_devs[] __initdata = {
@@ -452,10 +462,28 @@ static struct s3c2410_platform_nand __initdata gta02_nand_info = {
 };
 
 
+static void gta02_udc_command(enum s3c2410_udc_cmd_e cmd)
+{
+	switch (cmd) {
+	case S3C2410_UDC_P_ENABLE:
+		pr_debug("%s S3C2410_UDC_P_ENABLE\n", __func__);
+		gpio_direction_output(GTA02_GPIO_USB_PULLUP, 1);
+		break;
+	case S3C2410_UDC_P_DISABLE:
+		pr_debug("%s S3C2410_UDC_P_DISABLE\n", __func__);
+		gpio_direction_output(GTA02_GPIO_USB_PULLUP, 0);
+		break;
+	case S3C2410_UDC_P_RESET:
+		pr_debug("%s S3C2410_UDC_P_RESET\n", __func__);
+		/* FIXME: Do something here. */
+	}
+}
+
 /* Get PMU to set USB current limit accordingly. */
-static struct s3c2410_udc_mach_info gta02_udc_cfg __initdata = {
+static struct s3c2410_udc_mach_info gta02_udc_cfg = {
 	.vbus_draw	= gta02_udc_vbus_draw,
-	.pullup_pin = GTA02_GPIO_USB_PULLUP,
+	.udc_command	= gta02_udc_command,
+
 };
 
 /* USB */
@@ -468,43 +496,6 @@ static struct s3c2410_hcd_info gta02_usb_info __initdata = {
 	},
 };
 
-/* Touchscreen */
-static struct s3c2410_ts_mach_info gta02_ts_info = {
-	.delay			= 10000,
-	.presc			= 0xff, /* slow as we can go */
-	.oversampling_shift	= 2,
-};
-
-/* Buttons */
-static struct gpio_keys_button gta02_buttons[] = {
-	{
-		.gpio = GTA02_GPIO_AUX_KEY,
-		.code = KEY_PHONE,
-		.desc = "Aux",
-		.type = EV_KEY,
-		.debounce_interval = 100,
-	},
-	{
-		.gpio = GTA02_GPIO_HOLD_KEY,
-		.code = KEY_PAUSE,
-		.desc = "Hold",
-		.type = EV_KEY,
-		.debounce_interval = 100,
-	},
-};
-
-static struct gpio_keys_platform_data gta02_buttons_pdata = {
-	.buttons = gta02_buttons,
-	.nbuttons = ARRAY_SIZE(gta02_buttons),
-};
-
-static struct platform_device gta02_buttons_device = {
-	.name = "gpio-keys",
-	.id = -1,
-	.dev = {
-		.platform_data = &gta02_buttons_pdata,
-	},
-};
 
 static void __init gta02_map_io(void)
 {
@@ -525,12 +516,7 @@ static struct platform_device *gta02_devices[] __initdata = {
 	&gta02_nor_flash,
 	&s3c24xx_pwm_device,
 	&s3c_device_iis,
-	&samsung_asoc_dma,
 	&s3c_device_i2c0,
-	&gta02_dfbmcs320_device,
-	&gta02_buttons_device,
-	&s3c_device_adc,
-	&s3c_device_ts,
 };
 
 /* These guys DO need to be children of PMU. */
@@ -570,7 +556,7 @@ static void gta02_poweroff(void)
 
 static void __init gta02_machine_init(void)
 {
-	/* Set the panic callback to turn AUX LED on or off. */
+	/* Set the panic callback to make AUX LED blink at ~5Hz. */
 	panic_blink = gta02_panic_blink;
 
 	s3c_pm_init();
@@ -580,7 +566,6 @@ static void __init gta02_machine_init(void)
 #endif
 
 	s3c24xx_udc_set_platdata(&gta02_udc_cfg);
-	s3c24xx_ts_set_platdata(&gta02_ts_info);
 	s3c_ohci_set_platdata(&gta02_usb_info);
 	s3c_nand_set_platdata(&gta02_nand_info);
 	s3c_i2c0_set_platdata(NULL);
@@ -589,13 +574,13 @@ static void __init gta02_machine_init(void)
 
 	platform_add_devices(gta02_devices, ARRAY_SIZE(gta02_devices));
 	pm_power_off = gta02_poweroff;
-
-	regulator_has_full_constraints();
 }
 
 
 MACHINE_START(NEO1973_GTA02, "GTA02")
 	/* Maintainer: Nelson Castillo <arhuaco@freaks-unidos.net> */
+	.phys_io	= S3C2410_PA_UART,
+	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
 	.map_io		= gta02_map_io,
 	.init_irq	= s3c24xx_init_irq,

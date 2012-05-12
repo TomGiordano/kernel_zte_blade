@@ -838,7 +838,7 @@ static int __init diagchar_init(void)
 	dev_t dev;
 	int error;
 
-	printk(KERN_INFO "diagfwd initializing ..\n");
+	pr_debug("diagfwd initializing ..\n");
 	driver = kzalloc(sizeof(struct diagchar_dev) + 5, GFP_KERNEL);
 
 	if (driver) {
@@ -862,7 +862,7 @@ static int __init diagchar_init(void)
 		INIT_WORK(&(driver->diag_read_smd_qdsp_work),
 			   diag_read_smd_qdsp_work_fn);
 		diagfwd_init();
-		printk(KERN_INFO "diagchar initializing ..\n");
+		pr_debug("diagchar initializing ..\n");
 		driver->num = 1;
 		driver->name = ((void *)driver) + sizeof(struct diagchar_dev);
 		strlcpy(driver->name, "diag", 4);

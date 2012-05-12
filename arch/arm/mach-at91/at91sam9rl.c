@@ -190,24 +190,6 @@ static struct clk *periph_clocks[] __initdata = {
 	// irq0
 };
 
-static struct clk_lookup periph_clocks_lookups[] = {
-	CLKDEV_CON_DEV_ID("hclk", "atmel_usba_udc", &utmi_clk),
-	CLKDEV_CON_DEV_ID("pclk", "atmel_usba_udc", &udphs_clk),
-	CLKDEV_CON_DEV_ID("t0_clk", "atmel_tcb.0", &tc0_clk),
-	CLKDEV_CON_DEV_ID("t1_clk", "atmel_tcb.0", &tc1_clk),
-	CLKDEV_CON_DEV_ID("t2_clk", "atmel_tcb.0", &tc2_clk),
-	CLKDEV_CON_DEV_ID("pclk", "ssc.0", &ssc0_clk),
-	CLKDEV_CON_DEV_ID("pclk", "ssc.1", &ssc1_clk),
-};
-
-static struct clk_lookup usart_clocks_lookups[] = {
-	CLKDEV_CON_DEV_ID("usart", "atmel_usart.0", &mck),
-	CLKDEV_CON_DEV_ID("usart", "atmel_usart.1", &usart0_clk),
-	CLKDEV_CON_DEV_ID("usart", "atmel_usart.2", &usart1_clk),
-	CLKDEV_CON_DEV_ID("usart", "atmel_usart.3", &usart2_clk),
-	CLKDEV_CON_DEV_ID("usart", "atmel_usart.4", &usart3_clk),
-};
-
 /*
  * The two programmable clocks.
  * You must configure pin multiplexing to bring these signals out.
@@ -232,25 +214,8 @@ static void __init at91sam9rl_register_clocks(void)
 	for (i = 0; i < ARRAY_SIZE(periph_clocks); i++)
 		clk_register(periph_clocks[i]);
 
-	clkdev_add_table(periph_clocks_lookups,
-			 ARRAY_SIZE(periph_clocks_lookups));
-	clkdev_add_table(usart_clocks_lookups,
-			 ARRAY_SIZE(usart_clocks_lookups));
-
 	clk_register(&pck0);
 	clk_register(&pck1);
-}
-
-static struct clk_lookup console_clock_lookup;
-
-void __init at91sam9rl_set_console_clock(int id)
-{
-	if (id >= ARRAY_SIZE(usart_clocks_lookups))
-		return;
-
-	console_clock_lookup.con_id = "usart";
-	console_clock_lookup.clk = usart_clocks_lookups[id].clk;
-	clkdev_add(&console_clock_lookup);
 }
 
 /* --------------------------------------------------------------------
@@ -277,6 +242,11 @@ static struct at91_gpio_bank at91sam9rl_gpio[] = {
 	}
 };
 
+static void at91sam9rl_reset(void)
+{
+	at91_sys_write(AT91_RSTC_CR, AT91_RSTC_KEY | AT91_RSTC_PROCRST | AT91_RSTC_PERRST);
+}
+
 static void at91sam9rl_poweroff(void)
 {
 	at91_sys_write(AT91_SHDW_CR, AT91_SHDW_KEY | AT91_SHDW_SHDW);
@@ -287,7 +257,7 @@ static void at91sam9rl_poweroff(void)
  *  AT91SAM9RL processor initialization
  * -------------------------------------------------------------------- */
 
-void __init at91sam9rl_map_io(void)
+void __init at91sam9rl_initialize(unsigned long main_clock)
 {
 	unsigned long cidr, sram_size;
 
@@ -310,11 +280,8 @@ void __init at91sam9rl_map_io(void)
 
 	/* Map SRAM */
 	iotable_init(at91sam9rl_sram_desc, ARRAY_SIZE(at91sam9rl_sram_desc));
-}
 
-void __init at91sam9rl_initialize(unsigned long main_clock)
-{
-	at91_arch_reset = at91sam9_alt_reset;
+	at91_arch_reset = at91sam9rl_reset;
 	pm_power_off = at91sam9rl_poweroff;
 	at91_extern_irq = (1 << AT91SAM9RL_ID_IRQ0);
 

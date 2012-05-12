@@ -57,7 +57,7 @@
 #define HWC_x3(level) \
 	"External Memory Addressing Error\n"
 #define EXC_0x04(level) \
-	"Unimplmented exception occurred\n" \
+	"Unimplmented exception occured\n" \
 	level " - Maybe you forgot to install a custom exception handler?\n"
 #define HWC_x12(level) \
 	"Performance Monitor Overflow\n"

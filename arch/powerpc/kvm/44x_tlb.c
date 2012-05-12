@@ -47,7 +47,6 @@
 #ifdef DEBUG
 void kvmppc_dump_tlbs(struct kvm_vcpu *vcpu)
 {
-	struct kvmppc_vcpu_44x *vcpu_44x = to_44x(vcpu);
 	struct kvmppc_44x_tlbe *tlbe;
 	int i;
 
@@ -222,14 +221,14 @@ gpa_t kvmppc_mmu_xlate(struct kvm_vcpu *vcpu, unsigned int gtlb_index,
 
 int kvmppc_mmu_itlb_index(struct kvm_vcpu *vcpu, gva_t eaddr)
 {
-	unsigned int as = !!(vcpu->arch.shared->msr & MSR_IS);
+	unsigned int as = !!(vcpu->arch.msr & MSR_IS);
 
 	return kvmppc_44x_tlb_index(vcpu, eaddr, vcpu->arch.pid, as);
 }
 
 int kvmppc_mmu_dtlb_index(struct kvm_vcpu *vcpu, gva_t eaddr)
 {
-	unsigned int as = !!(vcpu->arch.shared->msr & MSR_DS);
+	unsigned int as = !!(vcpu->arch.msr & MSR_DS);
 
 	return kvmppc_44x_tlb_index(vcpu, eaddr, vcpu->arch.pid, as);
 }
@@ -317,8 +316,7 @@ void kvmppc_mmu_map(struct kvm_vcpu *vcpu, u64 gvaddr, gpa_t gpaddr,
 	gfn = gpaddr >> PAGE_SHIFT;
 	new_page = gfn_to_page(vcpu->kvm, gfn);
 	if (is_error_page(new_page)) {
-		printk(KERN_ERR "Couldn't get guest page for gfn %llx!\n",
-			(unsigned long long)gfn);
+		printk(KERN_ERR "Couldn't get guest page for gfn %lx!\n", gfn);
 		kvm_release_page_clean(new_page);
 		return;
 	}
@@ -355,7 +353,7 @@ void kvmppc_mmu_map(struct kvm_vcpu *vcpu, u64 gvaddr, gpa_t gpaddr,
 
 	stlbe.word1 = (hpaddr & 0xfffffc00) | ((hpaddr >> 32) & 0xf);
 	stlbe.word2 = kvmppc_44x_tlb_shadow_attrib(flags,
-	                                            vcpu->arch.shared->msr & MSR_PR);
+	                                            vcpu->arch.msr & MSR_PR);
 	stlbe.tid = !(asid & 0xff);
 
 	/* Keep track of the reference so we can properly release it later. */
@@ -424,7 +422,7 @@ static int tlbe_is_host_safe(const struct kvm_vcpu *vcpu,
 
 	/* Does it match current guest AS? */
 	/* XXX what about IS != DS? */
-	if (get_tlb_ts(tlbe) != !!(vcpu->arch.shared->msr & MSR_IS))
+	if (get_tlb_ts(tlbe) != !!(vcpu->arch.msr & MSR_IS))
 		return 0;
 
 	gpa = get_tlb_raddr(tlbe);

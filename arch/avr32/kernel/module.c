@@ -314,9 +314,10 @@ int module_finalize(const Elf_Ehdr *hdr, const Elf_Shdr *sechdrs,
 	vfree(module->arch.syminfo);
 	module->arch.syminfo = NULL;
 
-	return 0;
+	return module_bug_finalize(hdr, sechdrs, module);
 }
 
 void module_arch_cleanup(struct module *module)
 {
+	module_bug_cleanup(module);
 }

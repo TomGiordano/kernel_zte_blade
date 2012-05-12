@@ -82,7 +82,7 @@ unsigned long ftrace_return_to_handler(unsigned long retval0,
 	unsigned long ret;
 
 	pop_return_trace(&trace, &ret);
-	trace.rettime = local_clock();
+	trace.rettime = cpu_clock(raw_smp_processor_id());
 	ftrace_graph_return(&trace);
 
 	if (unlikely(!ret)) {
@@ -126,7 +126,7 @@ void prepare_ftrace_return(unsigned long *parent, unsigned long self_addr)
 		return;
 	}
 
-	calltime = local_clock();
+	calltime = cpu_clock(raw_smp_processor_id());
 
 	if (push_return_trace(old, calltime,
 				self_addr, &trace.depth) == -EBUSY) {

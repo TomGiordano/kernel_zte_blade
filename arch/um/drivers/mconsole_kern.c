@@ -124,18 +124,35 @@ void mconsole_log(struct mc_request *req)
 #if 0
 void mconsole_proc(struct mc_request *req)
 {
+	struct nameidata nd;
 	struct vfsmount *mnt = current->nsproxy->pid_ns->proc_mnt;
 	struct file *file;
-	int n;
+	int n, err;
 	char *ptr = req->request.data, *buf;
 	mm_segment_t old_fs = get_fs();
 
 	ptr += strlen("proc");
 	ptr = skip_spaces(ptr);
 
-	file = file_open_root(mnt->mnt_root, mnt, ptr, O_RDONLY);
+	err = vfs_path_lookup(mnt->mnt_root, mnt, ptr, LOOKUP_FOLLOW, &nd);
+	if (err) {
+		mconsole_reply(req, "Failed to look up file", 1, 0);
+		goto out;
+	}
+
+	err = may_open(&nd.path, MAY_READ, O_RDONLY);
+	if (result) {
+		mconsole_reply(req, "Failed to open file", 1, 0);
+		path_put(&nd.path);
+		goto out;
+	}
+
+	file = dentry_open(nd.path.dentry, nd.path.mnt, O_RDONLY,
+			   current_cred());
+	err = PTR_ERR(file);
 	if (IS_ERR(file)) {
 		mconsole_reply(req, "Failed to open file", 1, 0);
+		path_put(&nd.path);
 		goto out;
 	}
 
@@ -673,7 +690,7 @@ static void with_console(struct mc_request *req, void (*proc)(void *),
 static void sysrq_proc(void *arg)
 {
 	char *op = arg;
-	handle_sysrq(*op);
+	handle_sysrq(*op, NULL);
 }
 
 void mconsole_sysrq(struct mc_request *req)
@@ -826,7 +843,6 @@ static ssize_t mconsole_proc_write(struct file *file,
 static const struct file_operations mconsole_proc_fops = {
 	.owner		= THIS_MODULE,
 	.write		= mconsole_proc_write,
-	.llseek		= noop_llseek,
 };
 
 static int create_proc_mconsole(void)

@@ -33,11 +33,9 @@ static struct iommu_device omap3_devices[] = {
 			.name = "isp",
 			.nr_tlb_entries = 8,
 			.clk_name = "cam_ick",
-			.da_start = 0x0,
-			.da_end = 0xFFFFF000,
 		},
 	},
-#if defined(CONFIG_OMAP_IOMMU_IVA2)
+#if defined(CONFIG_MPU_BRIDGE_IOMMU)
 	{
 		.base = 0x5d000000,
 		.irq = 28,
@@ -45,8 +43,6 @@ static struct iommu_device omap3_devices[] = {
 			.name = "iva2",
 			.nr_tlb_entries = 32,
 			.clk_name = "iva2_ck",
-			.da_start = 0x11000000,
-			.da_end = 0xFFFFF000,
 		},
 	},
 #endif
@@ -63,13 +59,11 @@ static struct platform_device *omap3_iommu_pdev[NR_OMAP3_IOMMU_DEVICES];
 static struct iommu_device omap4_devices[] = {
 	{
 		.base = OMAP4_MMU1_BASE,
-		.irq = OMAP44XX_IRQ_DUCATI_MMU,
+		.irq = INT_44XX_DUCATI_MMU_IRQ,
 		.pdata = {
 			.name = "ducati",
 			.nr_tlb_entries = 32,
 			.clk_name = "ducati_ick",
-			.da_start = 0x0,
-			.da_end = 0xFFFFF000,
 		},
 	},
 #if defined(CONFIG_MPU_TESLA_IOMMU)
@@ -80,8 +74,6 @@ static struct iommu_device omap4_devices[] = {
 			.name = "tesla",
 			.nr_tlb_entries = 32,
 			.clk_name = "tesla_ick",
-			.da_start = 0x0,
-			.da_end = 0xFFFFF000,
 		},
 	},
 #endif

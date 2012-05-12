@@ -36,7 +36,7 @@
  */
 #ifdef CONFIG_SMP
 ENTRY(__write_lock_failed)
-	CFI_STARTPROC
+	CFI_STARTPROC simple
 	FRAME
 2: 	LOCK_PREFIX
 	addl	$ RW_LOCK_BIAS,(%eax)
@@ -74,23 +74,29 @@ ENTRY(__read_lock_failed)
 /* Fix up special calling conventions */
 ENTRY(call_rwsem_down_read_failed)
 	CFI_STARTPROC
-	pushl_cfi %ecx
+	push %ecx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ecx,0
-	pushl_cfi %edx
+	push %edx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET edx,0
 	call rwsem_down_read_failed
-	popl_cfi %edx
-	popl_cfi %ecx
+	pop %edx
+	CFI_ADJUST_CFA_OFFSET -4
+	pop %ecx
+	CFI_ADJUST_CFA_OFFSET -4
 	ret
 	CFI_ENDPROC
 	ENDPROC(call_rwsem_down_read_failed)
 
 ENTRY(call_rwsem_down_write_failed)
 	CFI_STARTPROC
-	pushl_cfi %ecx
+	push %ecx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ecx,0
 	calll rwsem_down_write_failed
-	popl_cfi %ecx
+	pop %ecx
+	CFI_ADJUST_CFA_OFFSET -4
 	ret
 	CFI_ENDPROC
 	ENDPROC(call_rwsem_down_write_failed)
@@ -99,10 +105,12 @@ ENTRY(call_rwsem_wake)
 	CFI_STARTPROC
 	decw %dx    /* do nothing if still outstanding active readers */
 	jnz 1f
-	pushl_cfi %ecx
+	push %ecx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ecx,0
 	call rwsem_wake
-	popl_cfi %ecx
+	pop %ecx
+	CFI_ADJUST_CFA_OFFSET -4
 1:	ret
 	CFI_ENDPROC
 	ENDPROC(call_rwsem_wake)
@@ -110,13 +118,17 @@ ENTRY(call_rwsem_wake)
 /* Fix up special calling conventions */
 ENTRY(call_rwsem_downgrade_wake)
 	CFI_STARTPROC
-	pushl_cfi %ecx
+	push %ecx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ecx,0
-	pushl_cfi %edx
+	push %edx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET edx,0
 	call rwsem_downgrade_wake
-	popl_cfi %edx
-	popl_cfi %ecx
+	pop %edx
+	CFI_ADJUST_CFA_OFFSET -4
+	pop %ecx
+	CFI_ADJUST_CFA_OFFSET -4
 	ret
 	CFI_ENDPROC
 	ENDPROC(call_rwsem_downgrade_wake)

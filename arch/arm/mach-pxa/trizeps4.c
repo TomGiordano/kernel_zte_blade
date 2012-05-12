@@ -15,6 +15,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/sysdev.h>
 #include <linux/interrupt.h>
 #include <linux/sched.h>
 #include <linux/bitops.h>
@@ -25,7 +26,6 @@
 #include <linux/dm9000.h>
 #include <linux/mtd/physmap.h>
 #include <linux/mtd/partitions.h>
-#include <linux/i2c/pxa-i2c.h>
 
 #include <asm/types.h>
 #include <asm/setup.h>
@@ -40,13 +40,14 @@
 #include <asm/mach/flash.h>
 
 #include <mach/pxa27x.h>
+#include <mach/pxa2xx_spi.h>
 #include <mach/trizeps4.h>
 #include <mach/audio.h>
 #include <mach/pxafb.h>
 #include <mach/mmc.h>
 #include <mach/irda.h>
 #include <mach/ohci.h>
-#include <mach/smemc.h>
+#include <plat/i2c.h>
 
 #include "generic.h"
 #include "devices.h"
@@ -515,9 +516,9 @@ static void __init trizeps4_init(void)
 	pxa_set_stuart_info(NULL);
 
 	if (0)	/* dont know how to determine LCD */
-		pxa_set_fb_info(NULL, &sharp_lcd);
+		set_pxa_fb_info(&sharp_lcd);
 	else
-		pxa_set_fb_info(NULL, &toshiba_lcd);
+		set_pxa_fb_info(&toshiba_lcd);
 
 	pxa_set_mci_info(&trizeps4_mci_platform_data);
 #ifndef STATUS_LEDS_ON_STUART_PINS
@@ -529,19 +530,23 @@ static void __init trizeps4_init(void)
 	i2c_register_board_info(0, trizeps4_i2c_devices,
 					ARRAY_SIZE(trizeps4_i2c_devices));
 
+#ifdef CONFIG_IDE_PXA_CF
+	/* if boot direct from compact flash dont disable power */
+	trizeps_conxs_bcr = 0x0009;
+#else
 	/* this is the reset value */
 	trizeps_conxs_bcr = 0x00A0;
-
+#endif
 	BCR_writew(trizeps_conxs_bcr);
 	board_backlight_power(1);
 }
 
 static void __init trizeps4_map_io(void)
 {
-	pxa27x_map_io();
+	pxa_map_io();
 	iotable_init(trizeps4_io_desc, ARRAY_SIZE(trizeps4_io_desc));
 
-	if ((__raw_readl(MSC0) & 0x8) && (__raw_readl(BOOT_DEF) & 0x1)) {
+	if ((MSC0 & 0x8) && (BOOT_DEF & 0x1)) {
 		/* if flash is 16 bit wide its a Trizeps4 WL */
 		__machine_arch_type = MACH_TYPE_TRIZEPS4WL;
 		trizeps4_flash_data[0].width = 2;
@@ -554,6 +559,8 @@ static void __init trizeps4_map_io(void)
 
 MACHINE_START(TRIZEPS4, "Keith und Koep Trizeps IV module")
 	/* MAINTAINER("Jürgen Schindele") */
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.boot_params	= TRIZEPS4_SDRAM_BASE + 0x100,
 	.init_machine	= trizeps4_init,
 	.map_io		= trizeps4_map_io,
@@ -563,6 +570,8 @@ MACHINE_END
 
 MACHINE_START(TRIZEPS4WL, "Keith und Koep Trizeps IV-WL module")
 	/* MAINTAINER("Jürgen Schindele") */
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.boot_params	= TRIZEPS4_SDRAM_BASE + 0x100,
 	.init_machine	= trizeps4_init,
 	.map_io		= trizeps4_map_io,

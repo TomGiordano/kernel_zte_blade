@@ -397,19 +397,15 @@ static int usb_phy_stuck_check(struct usb_info *ui)
 	 * otherwise, PHY seems to have stuck.
 	 */
 
-	if (ui->xceiv->io_ops->write) {
-		if (ui->xceiv->io_ops->write(ui->xceiv, 0xAA, 0x16) == -1) {
-			dev_dbg(&ui->pdev->dev,
+	if (otg_io_write(ui->xceiv, 0xAA, 0x16) == -1) {
+                        dev_dbg(&ui->pdev->dev,
 				"%s(): ulpi write timeout\n", __func__);
 			return -EIO;
-		}
 	}
-	if (ui->xceiv->io_ops->read) {
-		if (ui->xceiv->io_ops->read(ui->xceiv, 0x16) != 0xAA) {
-			dev_dbg(&ui->pdev->dev,
+        if (otg_io_read(ui->xceiv, 0x16) != 0xAA) {
+                        dev_dbg(&ui->pdev->dev,
 				"%s(): read value is incorrect\n", __func__);
 			return -EIO;
-		}
 	}
 	return 0;
 }
@@ -515,23 +511,6 @@ static int usb_ep_get_stall(struct msm_endpoint *ept)
 		return (CTRL_TXS & n) ? 1 : 0;
 	else
 		return (CTRL_RXS & n) ? 1 : 0;
-}
-
-static void ulpi_write(struct usb_info *ui, unsigned val, unsigned reg)
-{
-	unsigned timeout = 10000;
-
-	/* initiate write operation */
-	writel(ULPI_RUN | ULPI_WRITE |
-	       ULPI_ADDR(reg) | ULPI_DATA(val),
-	       USB_ULPI_VIEWPORT);
-
-	/* wait for completion */
-	while ((readl(USB_ULPI_VIEWPORT) & ULPI_RUN) && (--timeout))
-		;
-
-	if (timeout == 0)
-		dev_err(&ui->pdev->dev, "ulpi_write: timeout\n");
 }
 
 static void init_endpoints(struct usb_info *ui)
@@ -2300,7 +2279,7 @@ static int msm72k_pullup_internal(struct usb_gadget *_gadget, int is_active)
 	} else {
 		writel(readl(USB_USBCMD) & ~USBCMD_RS, USB_USBCMD);
 		/* S/W workaround, Issue#1 */
-		ulpi_write(ui, 0x48, 0x04);
+		otg_io_write(ui->xceiv, 0x48, 0x04);
 	}
 
 	return 0;

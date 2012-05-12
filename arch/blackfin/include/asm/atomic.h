@@ -121,6 +121,4 @@ static inline int atomic_test_mask(int mask, atomic_t *v)
 
 #endif
 
-#include <asm-generic/atomic64.h>
-
 #endif

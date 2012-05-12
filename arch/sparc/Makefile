@@ -88,7 +88,7 @@ boot := arch/sparc/boot
 # Default target
 all: zImage
 
-image zImage uImage tftpboot.img vmlinux.aout: vmlinux
+image zImage tftpboot.img vmlinux.aout: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 archclean:
@@ -102,7 +102,6 @@ ifeq ($(ARCH),sparc)
 define archhelp
   echo  '* image        - kernel image ($(boot)/image)'
   echo  '* zImage       - stripped kernel image ($(boot)/zImage)'
-  echo  '  uImage       - U-Boot SPARC32 Image (only for LEON)'
   echo  '  tftpboot.img - image prepared for tftp'
 endef
 else

@@ -91,10 +91,12 @@
 					/* MAC C device registers       */
 #define MSP_ADSL2_BASE		(MSP_MSB_BASE + 0xA80000)
 					/* ADSL2 device registers       */
-#define MSP_USB0_BASE		(MSP_MSB_BASE + 0xB00000)
-					/* USB0 device registers        */
-#define MSP_USB1_BASE		(MSP_MSB_BASE + 0x300000)
-					/* USB1 device registers	*/
+#define MSP_USB_BASE		(MSP_MSB_BASE + 0xB40000)
+					/* USB device registers         */
+#define MSP_USB_BASE_START	(MSP_MSB_BASE + 0xB40100)
+					/* USB device registers         */
+#define MSP_USB_BASE_END	(MSP_MSB_BASE + 0xB401FF)
+					/* USB device registers         */
 #define MSP_CPUIF_BASE		(MSP_MSB_BASE + 0xC00000)
 					/* CPU interface registers      */
 
@@ -317,11 +319,8 @@
 #define CPU_ERR2_REG		regptr(MSP_SLP_BASE + 0x184)
 					/* CPU/SLP Error status 1       */
 
-/* Extended GPIO registers       */
-#define EXTENDED_GPIO1_REG	regptr(MSP_SLP_BASE + 0x188)
-#define EXTENDED_GPIO2_REG	regptr(MSP_SLP_BASE + 0x18c)
-#define EXTENDED_GPIO_REG	EXTENDED_GPIO1_REG
-					/* Backward-compatibility	*/
+#define EXTENDED_GPIO_REG	regptr(MSP_SLP_BASE + 0x188)
+					/* Extended GPIO register       */
 
 /* System Error registers */
 #define SLP_ERR_STS_REG		regptr(MSP_SLP_BASE + 0x190)

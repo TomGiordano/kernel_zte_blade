@@ -26,7 +26,9 @@
 static struct platform_device *nuc950_dev[] __initdata = {
 	&nuc900_device_kpi,
 	&nuc900_device_fmi,
+#ifdef CONFIG_FB_NUC900
 	&nuc900_device_lcd,
+#endif
 };
 
 /* define specific CPU platform io map */

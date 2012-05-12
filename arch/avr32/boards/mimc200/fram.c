@@ -41,7 +41,6 @@ static int fram_mmap(struct file *filp, struct vm_area_struct *vma)
 static const struct file_operations fram_fops = {
 	.owner			= THIS_MODULE,
 	.mmap			= fram_mmap,
-	.llseek			= noop_llseek,
 };
 
 #define FRAM_MINOR	0

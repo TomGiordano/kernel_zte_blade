@@ -558,11 +558,7 @@ static int mmc_suspend(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
-	mmc_claim_host(host);
-	if (!mmc_host_is_spi(host))
-		mmc_deselect_cards(host);
 	host->card->state &= ~MMC_STATE_HIGHSPEED;
-	mmc_release_host(host);
 
 	return 0;
 }

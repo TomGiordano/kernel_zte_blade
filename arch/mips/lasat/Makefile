@@ -12,3 +12,5 @@ obj-$(CONFIG_PICVUE_PROC)	+= picvue_proc.o
 
 clean:
 	make -C image clean
+
+EXTRA_CFLAGS += -Werror

@@ -25,14 +25,13 @@
 #include <linux/gfp.h>
 #include <asm/mce.h>
 #include <asm/apic.h>
-#include <asm/nmi.h>
 
 /* Update fake mce registers on current CPU. */
 static void inject_mce(struct mce *m)
 {
 	struct mce *i = &per_cpu(injectm, m->extcpu);
 
-	/* Make sure no one reads partially written injectm */
+	/* Make sure noone reads partially written injectm */
 	i->finished = 0;
 	mb();
 	m->finished = 0;
@@ -84,7 +83,7 @@ static int mce_raise_notify(struct notifier_block *self,
 	struct die_args *args = (struct die_args *)data;
 	int cpu = smp_processor_id();
 	struct mce *m = &__get_cpu_var(injectm);
-	if (val != DIE_NMI || !cpumask_test_cpu(cpu, mce_inject_cpumask))
+	if (val != DIE_NMI_IPI || !cpumask_test_cpu(cpu, mce_inject_cpumask))
 		return NOTIFY_DONE;
 	cpumask_clear_cpu(cpu, mce_inject_cpumask);
 	if (m->inject_flags & MCJ_EXCEPTION)
@@ -96,7 +95,7 @@ static int mce_raise_notify(struct notifier_block *self,
 
 static struct notifier_block mce_raise_nb = {
 	.notifier_call = mce_raise_notify,
-	.priority = NMI_LOCAL_NORMAL_PRIOR,
+	.priority = 1000,
 };
 
 /* Inject mce on current CPU */

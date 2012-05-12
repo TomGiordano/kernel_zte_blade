@@ -13,9 +13,12 @@
 #ifndef __ASM_ARCH_SYSTEM_H
 #define __ASM_ARCH_SYSTEM_H __FILE__
 
-#include <plat/system-reset.h>
-
 static void arch_idle(void)
+{
+	/* nothing here yet */
+}
+
+static void arch_reset(char mode, const char *cmd)
 {
 	/* nothing here yet */
 }

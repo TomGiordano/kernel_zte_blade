@@ -9,7 +9,7 @@ static pte_t *kmap_pte;
 
 unsigned long highstart_pfn, highend_pfn;
 
-void *kmap(struct page *page)
+void *__kmap(struct page *page)
 {
 	void *addr;
 
@@ -21,16 +21,16 @@ void *kmap(struct page *page)
 
 	return addr;
 }
-EXPORT_SYMBOL(kmap);
+EXPORT_SYMBOL(__kmap);
 
-void kunmap(struct page *page)
+void __kunmap(struct page *page)
 {
 	BUG_ON(in_interrupt());
 	if (!PageHighMem(page))
 		return;
 	kunmap_high(page);
 }
-EXPORT_SYMBOL(kunmap);
+EXPORT_SYMBOL(__kunmap);
 
 /*
  * kmap_atomic/kunmap_atomic is significantly faster than kmap/kunmap because
@@ -41,17 +41,17 @@ EXPORT_SYMBOL(kunmap);
  * kmaps are appropriate for short, tight code paths only.
  */
 
-void *__kmap_atomic(struct page *page)
+void *__kmap_atomic(struct page *page, enum km_type type)
 {
+	enum fixed_addresses idx;
 	unsigned long vaddr;
-	int idx, type;
 
 	/* even !CONFIG_PREEMPT needs this, for in_atomic in do_page_fault */
 	pagefault_disable();
 	if (!PageHighMem(page))
 		return page_address(page);
 
-	type = kmap_atomic_idx_push();
+	debug_kmap_atomic(type);
 	idx = type + KM_TYPE_NR*smp_processor_id();
 	vaddr = __fix_to_virt(FIX_KMAP_BEGIN + idx);
 #ifdef CONFIG_DEBUG_HIGHMEM
@@ -64,32 +64,27 @@ void *__kmap_atomic(struct page *page)
 }
 EXPORT_SYMBOL(__kmap_atomic);
 
-void __kunmap_atomic(void *kvaddr)
+void __kunmap_atomic(void *kvaddr, enum km_type type)
 {
+#ifdef CONFIG_DEBUG_HIGHMEM
 	unsigned long vaddr = (unsigned long) kvaddr & PAGE_MASK;
-	int type;
+	enum fixed_addresses idx = type + KM_TYPE_NR*smp_processor_id();
 
 	if (vaddr < FIXADDR_START) { // FIXME
 		pagefault_enable();
 		return;
 	}
 
-	type = kmap_atomic_idx();
-#ifdef CONFIG_DEBUG_HIGHMEM
-	{
-		int idx = type + KM_TYPE_NR * smp_processor_id();
+	BUG_ON(vaddr != __fix_to_virt(FIX_KMAP_BEGIN + idx));
 
-		BUG_ON(vaddr != __fix_to_virt(FIX_KMAP_BEGIN + idx));
-
-		/*
-		 * force other mappings to Oops if they'll try to access
-		 * this pte without first remap it
-		 */
-		pte_clear(&init_mm, vaddr, kmap_pte-idx);
-		local_flush_tlb_one(vaddr);
-	}
+	/*
+	 * force other mappings to Oops if they'll try to access
+	 * this pte without first remap it
+	 */
+	pte_clear(&init_mm, vaddr, kmap_pte-idx);
+	local_flush_tlb_one(vaddr);
 #endif
-	kmap_atomic_idx_pop();
+
 	pagefault_enable();
 }
 EXPORT_SYMBOL(__kunmap_atomic);
@@ -98,14 +93,14 @@ EXPORT_SYMBOL(__kunmap_atomic);
  * This is the same as kmap_atomic() but can map memory that doesn't
  * have a struct page associated with it.
  */
-void *kmap_atomic_pfn(unsigned long pfn)
+void *kmap_atomic_pfn(unsigned long pfn, enum km_type type)
 {
+	enum fixed_addresses idx;
 	unsigned long vaddr;
-	int idx, type;
 
 	pagefault_disable();
 
-	type = kmap_atomic_idx_push();
+	debug_kmap_atomic(type);
 	idx = type + KM_TYPE_NR*smp_processor_id();
 	vaddr = __fix_to_virt(FIX_KMAP_BEGIN + idx);
 	set_pte(kmap_pte-idx, pfn_pte(pfn, PAGE_KERNEL));
@@ -114,7 +109,7 @@ void *kmap_atomic_pfn(unsigned long pfn)
 	return (void*) vaddr;
 }
 
-struct page *kmap_atomic_to_page(void *ptr)
+struct page *__kmap_atomic_to_page(void *ptr)
 {
 	unsigned long idx, vaddr = (unsigned long)ptr;
 	pte_t *pte;

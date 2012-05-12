@@ -100,7 +100,7 @@ static void swift_clockstop(void)
 
 void __init clock_stop_probe(void)
 {
-	phandle node, clk_nd;
+	unsigned int node, clk_nd;
 	char name[20];
     
 	prom_getstring(prom_root_node, "name", name, sizeof(name));

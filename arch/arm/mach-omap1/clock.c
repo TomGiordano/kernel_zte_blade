@@ -11,15 +11,16 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/clkdev.h>
 
 #include <asm/mach-types.h>
+#include <asm/clkdev.h>
 
 #include <plat/cpu.h>
 #include <plat/usb.h>
@@ -33,9 +34,9 @@
 __u32 arm_idlect1_mask;
 struct clk *api_ck_p, *ck_dpll1_p, *ck_ref_p;
 
-/*
+/*-------------------------------------------------------------------------
  * Omap1 specific clock functions
- */
+ *-------------------------------------------------------------------------*/
 
 unsigned long omap1_uart_recalc(struct clk *clk)
 {
@@ -522,8 +523,7 @@ const struct clkops clkops_dspck = {
 	.disable	= omap1_clk_disable_dsp_domain,
 };
 
-/* XXX SYSC register handling does not belong in the clock framework */
-static int omap1_clk_enable_uart_functional_16xx(struct clk *clk)
+static int omap1_clk_enable_uart_functional(struct clk *clk)
 {
 	int ret;
 	struct uart_clk *uclk;
@@ -539,8 +539,7 @@ static int omap1_clk_enable_uart_functional_16xx(struct clk *clk)
 	return ret;
 }
 
-/* XXX SYSC register handling does not belong in the clock framework */
-static void omap1_clk_disable_uart_functional_16xx(struct clk *clk)
+static void omap1_clk_disable_uart_functional(struct clk *clk)
 {
 	struct uart_clk *uclk;
 
@@ -551,10 +550,9 @@ static void omap1_clk_disable_uart_functional_16xx(struct clk *clk)
 	omap1_clk_disable_generic(clk);
 }
 
-/* XXX SYSC register handling does not belong in the clock framework */
-const struct clkops clkops_uart_16xx = {
-	.enable		= omap1_clk_enable_uart_functional_16xx,
-	.disable	= omap1_clk_disable_uart_functional_16xx,
+const struct clkops clkops_uart = {
+	.enable		= omap1_clk_enable_uart_functional,
+	.disable	= omap1_clk_disable_uart_functional,
 };
 
 long omap1_clk_round_rate(struct clk *clk, unsigned long rate)
@@ -574,9 +572,9 @@ int omap1_clk_set_rate(struct clk *clk, unsigned long rate)
 	return ret;
 }
 
-/*
+/*-------------------------------------------------------------------------
  * Omap1 clock reset and init functions
- */
+ *-------------------------------------------------------------------------*/
 
 #ifdef CONFIG_OMAP_RESET_CLOCKS
 

@@ -717,9 +717,8 @@ prefetchw (const void *x)
 #define spin_lock_prefetch(x)	prefetchw(x)
 
 extern unsigned long boot_option_idle_override;
-
-enum idle_boot_override {IDLE_NO_OVERRIDE=0, IDLE_HALT, IDLE_FORCE_MWAIT,
-			 IDLE_NOMWAIT, IDLE_POLL};
+extern unsigned long idle_halt;
+extern unsigned long idle_nomwait;
 
 #endif /* !__ASSEMBLY__ */
 

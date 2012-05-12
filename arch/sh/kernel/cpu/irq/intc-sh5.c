@@ -76,11 +76,39 @@ int intc_evt_to_irq[(0xE20/0x20)+1] = {
 };
 
 static unsigned long intc_virt;
+
+static unsigned int startup_intc_irq(unsigned int irq);
+static void shutdown_intc_irq(unsigned int irq);
+static void enable_intc_irq(unsigned int irq);
+static void disable_intc_irq(unsigned int irq);
+static void mask_and_ack_intc(unsigned int);
+static void end_intc_irq(unsigned int irq);
+
+static struct irq_chip intc_irq_type = {
+	.name = "INTC",
+	.startup = startup_intc_irq,
+	.shutdown = shutdown_intc_irq,
+	.enable = enable_intc_irq,
+	.disable = disable_intc_irq,
+	.ack = mask_and_ack_intc,
+	.end = end_intc_irq
+};
+
 static int irlm;		/* IRL mode */
 
-static void enable_intc_irq(struct irq_data *data)
+static unsigned int startup_intc_irq(unsigned int irq)
 {
-	unsigned int irq = data->irq;
+	enable_intc_irq(irq);
+	return 0; /* never anything pending */
+}
+
+static void shutdown_intc_irq(unsigned int irq)
+{
+	disable_intc_irq(irq);
+}
+
+static void enable_intc_irq(unsigned int irq)
+{
 	unsigned long reg;
 	unsigned long bitmask;
 
@@ -98,9 +126,8 @@ static void enable_intc_irq(struct irq_data *data)
 	__raw_writel(bitmask, reg);
 }
 
-static void disable_intc_irq(struct irq_data *data)
+static void disable_intc_irq(unsigned int irq)
 {
-	unsigned int irq = data->irq;
 	unsigned long reg;
 	unsigned long bitmask;
 
@@ -115,11 +142,15 @@ static void disable_intc_irq(struct irq_data *data)
 	__raw_writel(bitmask, reg);
 }
 
-static struct irq_chip intc_irq_type = {
-	.name = "INTC",
-	.irq_enable = enable_intc_irq,
-	.irq_disable = disable_intc_irq,
-};
+static void mask_and_ack_intc(unsigned int irq)
+{
+	disable_intc_irq(irq);
+}
+
+static void end_intc_irq(unsigned int irq)
+{
+	enable_intc_irq(irq);
+}
 
 void __init plat_irq_setup(void)
 {
@@ -135,7 +166,7 @@ void __init plat_irq_setup(void)
 
 	/* Set default: per-line enable/disable, priority driven ack/eoi */
 	for (i = 0; i < NR_INTC_IRQS; i++)
-		irq_set_chip_and_handler(i, &intc_irq_type, handle_level_irq);
+		set_irq_chip_and_handler(i, &intc_irq_type, handle_level_irq);
 
 
 	/* Disable all interrupts and set all priorities to 0 to avoid trouble */

@@ -42,9 +42,7 @@ smp_restart_cpu:
 	ltgr	%r4,%r4			/* New stack ? */
 	jz	1f
 	lgr	%r15,%r4
-1:	lgr	%r14,%r2		/* r14: Function to call */
-	lgr	%r2,%r3			/* r2 : Parameter for function*/
-	basr	%r14,%r14		/* Call function */
+1:	basr	%r14,%r2
 
 	.section .data,"aw",@progbits
 .gprregs:

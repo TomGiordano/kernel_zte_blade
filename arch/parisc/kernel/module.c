@@ -61,10 +61,8 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/bug.h>
-#include <linux/mm.h>
 #include <linux/slab.h>
 
-#include <asm/pgtable.h>
 #include <asm/unwind.h>
 
 #if 0
@@ -216,13 +214,7 @@ void *module_alloc(unsigned long size)
 {
 	if (size == 0)
 		return NULL;
-	/* using RWX means less protection for modules, but it's
-	 * easier than trying to map the text, data, init_text and
-	 * init_data correctly */
-	return __vmalloc_node_range(size, 1, VMALLOC_START, VMALLOC_END,
-				    GFP_KERNEL | __GFP_HIGHMEM,
-				    PAGE_KERNEL_RWX, -1,
-				    __builtin_return_address(0));
+	return vmalloc(size);
 }
 
 #ifndef CONFIG_64BIT
@@ -949,10 +941,11 @@ int module_finalize(const Elf_Ehdr *hdr,
 	nsyms = newptr - (Elf_Sym *)symhdr->sh_addr;
 	DEBUGP("NEW num_symtab %lu\n", nsyms);
 	symhdr->sh_size = nsyms * sizeof(Elf_Sym);
-	return 0;
+	return module_bug_finalize(hdr, sechdrs, me);
 }
 
 void module_arch_cleanup(struct module *mod)
 {
 	deregister_unwind_table(mod);
+	module_bug_cleanup(mod);
 }

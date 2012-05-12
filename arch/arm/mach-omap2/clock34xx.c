@@ -2,7 +2,7 @@
  * OMAP3-specific clock framework functions
  *
  * Copyright (C) 2007-2008 Texas Instruments, Inc.
- * Copyright (C) 2007-2011 Nokia Corporation
+ * Copyright (C) 2007-2010 Nokia Corporation
  *
  * Paul Walmsley
  * Jouni Högander
@@ -25,7 +25,7 @@
 
 #include "clock.h"
 #include "clock34xx.h"
-#include "cm2xxx_3xxx.h"
+#include "cm.h"
 #include "cm-regbits-34xx.h"
 
 /**
@@ -57,15 +57,6 @@ const struct clkops clkops_omap3430es2_ssi_wait = {
 	.disable	= omap2_dflt_clk_disable,
 	.find_idlest	= omap3430es2_clk_ssi_find_idlest,
 	.find_companion = omap2_clk_dflt_find_companion,
-};
-
-const struct clkops clkops_omap3430es2_iclk_ssi_wait = {
-	.enable		= omap2_dflt_clk_enable,
-	.disable	= omap2_dflt_clk_disable,
-	.find_idlest	= omap3430es2_clk_ssi_find_idlest,
-	.find_companion = omap2_clk_dflt_find_companion,
-	.allow_idle	= omap2_clkt_iclk_allow_idle,
-	.deny_idle	= omap2_clkt_iclk_deny_idle,
 };
 
 /**
@@ -103,15 +94,6 @@ const struct clkops clkops_omap3430es2_dss_usbhost_wait = {
 	.find_companion = omap2_clk_dflt_find_companion,
 };
 
-const struct clkops clkops_omap3430es2_iclk_dss_usbhost_wait = {
-	.enable		= omap2_dflt_clk_enable,
-	.disable	= omap2_dflt_clk_disable,
-	.find_idlest	= omap3430es2_clk_dss_usbhost_find_idlest,
-	.find_companion = omap2_clk_dflt_find_companion,
-	.allow_idle	= omap2_clkt_iclk_allow_idle,
-	.deny_idle	= omap2_clkt_iclk_deny_idle,
-};
-
 /**
  * omap3430es2_clk_hsotgusb_find_idlest - return CM_IDLEST info for HSOTGUSB
  * @clk: struct clk * being enabled
@@ -141,13 +123,4 @@ const struct clkops clkops_omap3430es2_hsotgusb_wait = {
 	.disable	= omap2_dflt_clk_disable,
 	.find_idlest	= omap3430es2_clk_hsotgusb_find_idlest,
 	.find_companion = omap2_clk_dflt_find_companion,
-};
-
-const struct clkops clkops_omap3430es2_iclk_hsotgusb_wait = {
-	.enable		= omap2_dflt_clk_enable,
-	.disable	= omap2_dflt_clk_disable,
-	.find_idlest	= omap3430es2_clk_hsotgusb_find_idlest,
-	.find_companion = omap2_clk_dflt_find_companion,
-	.allow_idle	= omap2_clkt_iclk_allow_idle,
-	.deny_idle	= omap2_clkt_iclk_deny_idle,
 };

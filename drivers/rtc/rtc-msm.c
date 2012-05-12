@@ -396,17 +396,6 @@ static struct rtc_class_ops msm_rtc_ops_secure = {
 };
 #endif
 
-static void
-msmrtc_alarmtimer_expired(unsigned long _data,
-				struct msm_rtc *rtc_pdata)
-{
-	pr_debug("%s: Generating alarm event (src %lu)\n",
-	       rtc_pdata->rtc->name, _data);
-
-	rtc_update_irq(rtc_pdata->rtc, 1, RTC_IRQF | RTC_AF);
-	rtc_pdata->rtcalarm_time = 0;
-}
-
 static void process_cb_request(void *buffer)
 {
 	struct rtc_cb_recv *rtc_cb = buffer;
@@ -659,6 +648,17 @@ fail_cb_setup:
 
 
 #ifdef CONFIG_PM
+static void
+msmrtc_alarmtimer_expired(unsigned long _data,
+        struct msm_rtc *rtc_pdata)
+{
+  pr_debug("%s: Generating alarm event (src %lu)\n",
+         rtc_pdata->rtc->name, _data);
+
+  rtc_update_irq(rtc_pdata->rtc, 1, RTC_IRQF | RTC_AF);
+  rtc_pdata->rtcalarm_time = 0;
+}
+
 static int
 msmrtc_suspend(struct platform_device *dev, pm_message_t state)
 {

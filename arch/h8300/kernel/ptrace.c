@@ -50,29 +50,27 @@ void ptrace_disable(struct task_struct *child)
 	user_disable_single_step(child);
 }
 
-long arch_ptrace(struct task_struct *child, long request,
-		 unsigned long addr, unsigned long data)
+long arch_ptrace(struct task_struct *child, long request, long addr, long data)
 {
 	int ret;
-	int regno = addr >> 2;
-	unsigned long __user *datap = (unsigned long __user *) data;
 
 	switch (request) {
 	/* read the word at location addr in the USER area. */
 		case PTRACE_PEEKUSR: {
 			unsigned long tmp = 0;
 			
-			if ((addr & 3) || addr >= sizeof(struct user)) {
+			if ((addr & 3) || addr < 0 || addr >= sizeof(struct user)) {
 				ret = -EIO;
 				break ;
 			}
 			
 		        ret = 0;  /* Default return condition */
+			addr = addr >> 2; /* temporary hack. */
 
-			if (regno < H8300_REGS_NO)
-				tmp = h8300_get_reg(child, regno);
+			if (addr < H8300_REGS_NO)
+				tmp = h8300_get_reg(child, addr);
 			else {
-				switch (regno) {
+				switch(addr) {
 				case 49:
 					tmp = child->mm->start_code;
 					break ;
@@ -90,23 +88,24 @@ long arch_ptrace(struct task_struct *child, long request,
 				}
 			}
 			if (!ret)
-				ret = put_user(tmp, datap);
+				ret = put_user(tmp,(unsigned long *) data);
 			break ;
 		}
 
       /* when I and D space are separate, this will have to be fixed. */
 		case PTRACE_POKEUSR: /* write the word at location addr in the USER area */
-			if ((addr & 3) || addr >= sizeof(struct user)) {
+			if ((addr & 3) || addr < 0 || addr >= sizeof(struct user)) {
 				ret = -EIO;
 				break ;
 			}
+			addr = addr >> 2; /* temporary hack. */
 			    
-			if (regno == PT_ORIG_ER0) {
+			if (addr == PT_ORIG_ER0) {
 				ret = -EIO;
 				break ;
 			}
-			if (regno < H8300_REGS_NO) {
-				ret = h8300_put_reg(child, regno, data);
+			if (addr < H8300_REGS_NO) {
+				ret = h8300_put_reg(child, addr, data);
 				break ;
 			}
 			ret = -EIO;
@@ -117,11 +116,11 @@ long arch_ptrace(struct task_struct *child, long request,
 			unsigned long tmp;
 			for (i = 0; i < H8300_REGS_NO; i++) {
 			    tmp = h8300_get_reg(child, i);
-			    if (put_user(tmp, datap)) {
+			    if (put_user(tmp, (unsigned long *) data)) {
 				ret = -EFAULT;
 				break;
 			    }
-			    datap++;
+			    data += sizeof(long);
 			}
 			ret = 0;
 			break;
@@ -131,12 +130,12 @@ long arch_ptrace(struct task_struct *child, long request,
 			int i;
 			unsigned long tmp;
 			for (i = 0; i < H8300_REGS_NO; i++) {
-			    if (get_user(tmp, datap)) {
+			    if (get_user(tmp, (unsigned long *) data)) {
 				ret = -EFAULT;
 				break;
 			    }
 			    h8300_put_reg(child, i, tmp);
-			    datap++;
+			    data += sizeof(long);
 			}
 			ret = 0;
 			break;

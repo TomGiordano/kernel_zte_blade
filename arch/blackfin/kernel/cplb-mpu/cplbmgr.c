@@ -318,7 +318,7 @@ void flush_switched_cplbs(unsigned int cpu)
 
 	nr_cplb_flush[cpu]++;
 
-	flags = hard_local_irq_save();
+	local_irq_save_hw(flags);
 	_disable_icplb();
 	for (i = first_switched_icplb; i < MAX_CPLBS; i++) {
 		icplb_tbl[cpu][i].data = 0;
@@ -332,7 +332,7 @@ void flush_switched_cplbs(unsigned int cpu)
 		bfin_write32(DCPLB_DATA0 + i * 4, 0);
 	}
 	_enable_dcplb();
-	hard_local_irq_restore(flags);
+	local_irq_restore_hw(flags);
 
 }
 
@@ -348,7 +348,7 @@ void set_mask_dcplbs(unsigned long *masks, unsigned int cpu)
 		return;
 	}
 
-	flags = hard_local_irq_save();
+	local_irq_save_hw(flags);
 	current_rwx_mask[cpu] = masks;
 
 	if (L2_LENGTH && addr >= L2_START && addr < L2_START + L2_LENGTH) {
@@ -373,5 +373,5 @@ void set_mask_dcplbs(unsigned long *masks, unsigned int cpu)
 		addr += PAGE_SIZE;
 	}
 	_enable_dcplb();
-	hard_local_irq_restore(flags);
+	local_irq_restore_hw(flags);
 }

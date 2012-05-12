@@ -1,6 +1,6 @@
 /*
  * This only handles 32bit MTRR on 32bit hosts. This is strictly wrong
- * because MTRRs can span up to 40 bits (36bits on most modern x86)
+ * because MTRRs can span upto 40 bits (36bits on most modern x86)
  */
 #define DEBUG
 
@@ -64,59 +64,18 @@ static inline void k8_check_syscfg_dram_mod_en(void)
 	}
 }
 
-/* Get the size of contiguous MTRR range */
-static u64 get_mtrr_size(u64 mask)
-{
-	u64 size;
-
-	mask >>= PAGE_SHIFT;
-	mask |= size_or_mask;
-	size = -mask;
-	size <<= PAGE_SHIFT;
-	return size;
-}
-
 /*
- * Check and return the effective type for MTRR-MTRR type overlap.
- * Returns 1 if the effective type is UNCACHEABLE, else returns 0
+ * Returns the effective MTRR type for the region
+ * Error returns:
+ * - 0xFE - when the range is "not entirely covered" by _any_ var range MTRR
+ * - 0xFF - when MTRR is not enabled
  */
-static int check_type_overlap(u8 *prev, u8 *curr)
-{
-	if (*prev == MTRR_TYPE_UNCACHABLE || *curr == MTRR_TYPE_UNCACHABLE) {
-		*prev = MTRR_TYPE_UNCACHABLE;
-		*curr = MTRR_TYPE_UNCACHABLE;
-		return 1;
-	}
-
-	if ((*prev == MTRR_TYPE_WRBACK && *curr == MTRR_TYPE_WRTHROUGH) ||
-	    (*prev == MTRR_TYPE_WRTHROUGH && *curr == MTRR_TYPE_WRBACK)) {
-		*prev = MTRR_TYPE_WRTHROUGH;
-		*curr = MTRR_TYPE_WRTHROUGH;
-	}
-
-	if (*prev != *curr) {
-		*prev = MTRR_TYPE_UNCACHABLE;
-		*curr = MTRR_TYPE_UNCACHABLE;
-		return 1;
-	}
-
-	return 0;
-}
-
-/*
- * Error/Semi-error returns:
- * 0xFF - when MTRR is not enabled
- * *repeat == 1 implies [start:end] spanned across MTRR range and type returned
- *		corresponds only to [start:*partial_end].
- *		Caller has to lookup again for [*partial_end:end].
- */
-static u8 __mtrr_type_lookup(u64 start, u64 end, u64 *partial_end, int *repeat)
+u8 mtrr_type_lookup(u64 start, u64 end)
 {
 	int i;
 	u64 base, mask;
 	u8 prev_match, curr_match;
 
-	*repeat = 0;
 	if (!mtrr_state_set)
 		return 0xFF;
 
@@ -167,34 +126,8 @@ static u8 __mtrr_type_lookup(u64 start, u64 end, u64 *partial_end, int *repeat)
 
 		start_state = ((start & mask) == (base & mask));
 		end_state = ((end & mask) == (base & mask));
-
-		if (start_state != end_state) {
-			/*
-			 * We have start:end spanning across an MTRR.
-			 * We split the region into
-			 * either
-			 * (start:mtrr_end) (mtrr_end:end)
-			 * or
-			 * (start:mtrr_start) (mtrr_start:end)
-			 * depending on kind of overlap.
-			 * Return the type for first region and a pointer to
-			 * the start of second region so that caller will
-			 * lookup again on the second region.
-			 * Note: This way we handle multiple overlaps as well.
-			 */
-			if (start_state)
-				*partial_end = base + get_mtrr_size(mask);
-			else
-				*partial_end = base;
-
-			if (unlikely(*partial_end <= start)) {
-				WARN_ON(1);
-				*partial_end = start + PAGE_SIZE;
-			}
-
-			end = *partial_end - 1; /* end is inclusive */
-			*repeat = 1;
-		}
+		if (start_state != end_state)
+			return 0xFE;
 
 		if ((start & mask) != (base & mask))
 			continue;
@@ -205,8 +138,21 @@ static u8 __mtrr_type_lookup(u64 start, u64 end, u64 *partial_end, int *repeat)
 			continue;
 		}
 
-		if (check_type_overlap(&prev_match, &curr_match))
-			return curr_match;
+		if (prev_match == MTRR_TYPE_UNCACHABLE ||
+		    curr_match == MTRR_TYPE_UNCACHABLE) {
+			return MTRR_TYPE_UNCACHABLE;
+		}
+
+		if ((prev_match == MTRR_TYPE_WRBACK &&
+		     curr_match == MTRR_TYPE_WRTHROUGH) ||
+		    (prev_match == MTRR_TYPE_WRTHROUGH &&
+		     curr_match == MTRR_TYPE_WRBACK)) {
+			prev_match = MTRR_TYPE_WRTHROUGH;
+			curr_match = MTRR_TYPE_WRTHROUGH;
+		}
+
+		if (prev_match != curr_match)
+			return MTRR_TYPE_UNCACHABLE;
 	}
 
 	if (mtrr_tom2) {
@@ -218,36 +164,6 @@ static u8 __mtrr_type_lookup(u64 start, u64 end, u64 *partial_end, int *repeat)
 		return prev_match;
 
 	return mtrr_state.def_type;
-}
-
-/*
- * Returns the effective MTRR type for the region
- * Error return:
- * 0xFF - when MTRR is not enabled
- */
-u8 mtrr_type_lookup(u64 start, u64 end)
-{
-	u8 type, prev_type;
-	int repeat;
-	u64 partial_end;
-
-	type = __mtrr_type_lookup(start, end, &partial_end, &repeat);
-
-	/*
-	 * Common path is with repeat = 0.
-	 * However, we can have cases where [start:end] spans across some
-	 * MTRR range. Do repeated lookups for that case here.
-	 */
-	while (repeat) {
-		prev_type = type;
-		start = partial_end;
-		type = __mtrr_type_lookup(start, end, &partial_end, &repeat);
-
-		if (check_type_overlap(&prev_type, &type))
-			return type;
-	}
-
-	return type;
 }
 
 /* Get the MSR pair relating to a var range */
@@ -517,12 +433,13 @@ static void generic_get_mtrr(unsigned int reg, unsigned long *base,
 {
 	unsigned int mask_lo, mask_hi, base_lo, base_hi;
 	unsigned int tmp, hi;
+	int cpu;
 
 	/*
 	 * get_mtrr doesn't need to update mtrr_state, also it could be called
 	 * from any cpu, so try to print it out directly.
 	 */
-	get_cpu();
+	cpu = get_cpu();
 
 	rdmsr(MTRRphysMask_MSR(reg), mask_lo, mask_hi);
 

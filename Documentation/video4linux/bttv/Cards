@@ -464,6 +464,10 @@ Siemens
 -------
    Multimedia eXtension Board (MXB) (SAA7146, SAA7111)
 
+Stradis
+-------
+   SDM275,SDM250,SDM026,SDM025 (SAA7146, IBMMPEG2): MPEG2 decoder only
+
 Powercolor
 ----------
    MTV878
@@ -798,7 +802,7 @@ Kworld (www.kworld.com.tw)
 
 
 
-JTT/ Justy Corp.(http://www.jtt.ne.jp/)
+JTT/ Justy Corp.http://www.justy.co.jp/ (www.jtt.com.jp website down)
 ---------------------------------------------------------------------
    JTT-02 (JTT TV) "TV watchmate pro" (bt848)
 
@@ -824,7 +828,7 @@ Eline www.eline-net.com/
    Eline Vision TVMaster / TVMaster FM (ELV-TVM/ ELV-TVM-FM) = LR26  (bt878)
    Eline Vision TVMaster-2000 (ELV-TVM-2000, ELV-TVM-2000-FM)= LR138 (saa713x)
 
-Spirit 
+Spirit http://www.spiritmodems.com.au/
 ------
    Spirit TV Tuner/Video Capture Card (bt848)
 
@@ -955,6 +959,6 @@ Asus www.asuscom.com
 
 Hoontech
 --------
-http://www.hoontech.de/
+http://www.hoontech.com/korean/download/down_driver_list03.html
    HART Vision 848 (H-ART Vision 848)
    HART Vision 878 (H-Art Vision 878)

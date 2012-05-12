@@ -1,6 +1,9 @@
 /*
+ * Misc. bootloader code for many machines.
+ *
  * Copyright 2001 MontaVista Software Inc.
- * Author: Matt Porter <mporter@mvista.com>
+ * Author: Matt Porter <mporter@mvista.com> Derived from
+ * arch/ppc/boot/prep/misc.c
  *
  * Copyright (C) 2009 Lemote, Inc.
  * Author: Wu Zhangjin <wuzhangjin@gmail.com>
@@ -16,12 +19,12 @@
 
 #include <asm/addrspace.h>
 
-/*
- * These two variables specify the free mem region
+/* These two variables specify the free mem region
  * that can be used for temporary malloc area
  */
 unsigned long free_mem_ptr;
 unsigned long free_mem_end_ptr;
+char *zimage_start;
 
 /* The linker tells us where the image is. */
 extern unsigned char __image_begin, __image_end;
@@ -80,31 +83,38 @@ void *memset(void *s, int c, size_t n)
 
 void decompress_kernel(unsigned long boot_heap_start)
 {
-	unsigned long zimage_start, zimage_size;
+	int zimage_size;
 
-	zimage_start = (unsigned long)(&__image_begin);
+	/*
+	 * We link ourself to an arbitrary low address.  When we run, we
+	 * relocate outself to that address.  __image_beign points to
+	 * the part of the image where the zImage is. -- Tom
+	 */
+	zimage_start = (char *)(unsigned long)(&__image_begin);
 	zimage_size = (unsigned long)(&__image_end) -
 	    (unsigned long)(&__image_begin);
 
+	/*
+	 * The zImage and initrd will be between start and _end, so they've
+	 * already been moved once.  We're good to go now. -- Tom
+	 */
 	puts("zimage at:     ");
-	puthex(zimage_start);
+	puthex((unsigned long)zimage_start);
 	puts(" ");
-	puthex(zimage_size + zimage_start);
+	puthex((unsigned long)(zimage_size + zimage_start));
 	puts("\n");
 
-	/* This area are prepared for mallocing when decompressing */
+	/* this area are prepared for mallocing when decompressing */
 	free_mem_ptr = boot_heap_start;
 	free_mem_end_ptr = boot_heap_start + BOOT_HEAP_SIZE;
 
-	/* Display standard Linux/MIPS boot prompt */
+	/* Display standard Linux/MIPS boot prompt for kernel args */
 	puts("Uncompressing Linux at load address ");
 	puthex(VMLINUX_LOAD_ADDRESS_ULL);
 	puts("\n");
-
 	/* Decompress the kernel with according algorithm */
-	decompress((char *)zimage_start, zimage_size, 0, 0,
+	decompress(zimage_start, zimage_size, 0, 0,
 		   (void *)VMLINUX_LOAD_ADDRESS_ULL, 0, error);
-
-	/* FIXME: should we flush cache here? */
+	/* FIXME: is there a need to flush cache here? */
 	puts("Now, booting the kernel...\n");
 }

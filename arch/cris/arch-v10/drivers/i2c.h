@@ -1,4 +1,5 @@
-/* i2c.h */
+/* $Id: i2c.h,v 1.3 2004/05/28 09:26:59 starvik Exp $ */
+
 int i2c_init(void);
 
 /* High level I2C actions */

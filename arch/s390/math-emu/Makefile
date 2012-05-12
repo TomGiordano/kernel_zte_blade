@@ -4,4 +4,4 @@
 
 obj-$(CONFIG_MATHEMU) := math.o
 
-ccflags-y := -I$(src) -Iinclude/math-emu -w
+EXTRA_CFLAGS := -I$(src) -Iinclude/math-emu -w

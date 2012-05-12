@@ -608,9 +608,6 @@ static int ptrace_write_dr7(struct task_struct *tsk, unsigned long data)
 	unsigned len, type;
 	struct perf_event *bp;
 
-	if (ptrace_get_breakpoints(tsk) < 0)
-		return -ESRCH;
-
 	data &= ~DR_CONTROL_RESERVED;
 	old_dr7 = ptrace_get_dr7(thread->ptrace_bps);
 restore:
@@ -658,9 +655,6 @@ restore:
 		}
 		goto restore;
 	}
-
-	ptrace_put_breakpoints(tsk);
-
 	return ((orig_ret < 0) ? orig_ret : rc);
 }
 
@@ -674,17 +668,10 @@ static unsigned long ptrace_get_debugreg(struct task_struct *tsk, int n)
 
 	if (n < HBP_NUM) {
 		struct perf_event *bp;
-
-		if (ptrace_get_breakpoints(tsk) < 0)
-			return -ESRCH;
-
 		bp = thread->ptrace_bps[n];
 		if (!bp)
-			val = 0;
-		else
-			val = bp->hw.info.address;
-
-		ptrace_put_breakpoints(tsk);
+			return 0;
+		val = bp->hw.info.address;
 	} else if (n == 6) {
 		val = thread->debugreg6;
 	 } else if (n == 7) {
@@ -699,10 +686,6 @@ static int ptrace_set_breakpoint_addr(struct task_struct *tsk, int nr,
 	struct perf_event *bp;
 	struct thread_struct *t = &tsk->thread;
 	struct perf_event_attr attr;
-	int err = 0;
-
-	if (ptrace_get_breakpoints(tsk) < 0)
-		return -ESRCH;
 
 	if (!t->ptrace_bps[nr]) {
 		ptrace_breakpoint_init(&attr);
@@ -726,23 +709,24 @@ static int ptrace_set_breakpoint_addr(struct task_struct *tsk, int nr,
 		 * writing for the user. And anyway this is the previous
 		 * behaviour.
 		 */
-		if (IS_ERR(bp)) {
-			err = PTR_ERR(bp);
-			goto put;
-		}
+		if (IS_ERR(bp))
+			return PTR_ERR(bp);
 
 		t->ptrace_bps[nr] = bp;
 	} else {
+		int err;
+
 		bp = t->ptrace_bps[nr];
 
 		attr = bp->attr;
 		attr.bp_addr = addr;
 		err = modify_user_hw_breakpoint(bp, &attr);
+		if (err)
+			return err;
 	}
 
-put:
-	ptrace_put_breakpoints(tsk);
-	return err;
+
+	return 0;
 }
 
 /*
@@ -817,8 +801,7 @@ void ptrace_disable(struct task_struct *child)
 static const struct user_regset_view user_x86_32_view; /* Initialized below. */
 #endif
 
-long arch_ptrace(struct task_struct *child, long request,
-		 unsigned long addr, unsigned long data)
+long arch_ptrace(struct task_struct *child, long request, long addr, long data)
 {
 	int ret;
 	unsigned long __user *datap = (unsigned long __user *)data;
@@ -829,7 +812,8 @@ long arch_ptrace(struct task_struct *child, long request,
 		unsigned long tmp;
 
 		ret = -EIO;
-		if ((addr & (sizeof(data) - 1)) || addr >= sizeof(struct user))
+		if ((addr & (sizeof(data) - 1)) || addr < 0 ||
+		    addr >= sizeof(struct user))
 			break;
 
 		tmp = 0;  /* Default return condition */
@@ -846,7 +830,8 @@ long arch_ptrace(struct task_struct *child, long request,
 
 	case PTRACE_POKEUSR: /* write the word at location addr in the USER area */
 		ret = -EIO;
-		if ((addr & (sizeof(data) - 1)) || addr >= sizeof(struct user))
+		if ((addr & (sizeof(data) - 1)) || addr < 0 ||
+		    addr >= sizeof(struct user))
 			break;
 
 		if (addr < sizeof(struct user_regs_struct))
@@ -903,17 +888,17 @@ long arch_ptrace(struct task_struct *child, long request,
 
 #if defined CONFIG_X86_32 || defined CONFIG_IA32_EMULATION
 	case PTRACE_GET_THREAD_AREA:
-		if ((int) addr < 0)
+		if (addr < 0)
 			return -EIO;
 		ret = do_get_thread_area(child, addr,
-					(struct user_desc __user *)data);
+					 (struct user_desc __user *) data);
 		break;
 
 	case PTRACE_SET_THREAD_AREA:
-		if ((int) addr < 0)
+		if (addr < 0)
 			return -EIO;
 		ret = do_set_thread_area(child, addr,
-					(struct user_desc __user *)data, 0);
+					 (struct user_desc __user *) data, 0);
 		break;
 #endif
 
@@ -1363,7 +1348,7 @@ void send_sigtrap(struct task_struct *tsk, struct pt_regs *regs,
  * We must return the syscall number to actually look up in the table.
  * This can be -1L to skip running any syscall at all.
  */
-long syscall_trace_enter(struct pt_regs *regs)
+asmregparm long syscall_trace_enter(struct pt_regs *regs)
 {
 	long ret = 0;
 
@@ -1408,7 +1393,7 @@ long syscall_trace_enter(struct pt_regs *regs)
 	return ret ?: regs->orig_ax;
 }
 
-void syscall_trace_leave(struct pt_regs *regs)
+asmregparm void syscall_trace_leave(struct pt_regs *regs)
 {
 	bool step;
 

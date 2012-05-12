@@ -43,9 +43,30 @@
  * for interrupt lines
  */
 
+
+static void end_sb1250_irq(unsigned int irq);
+static void enable_sb1250_irq(unsigned int irq);
+static void disable_sb1250_irq(unsigned int irq);
+static void ack_sb1250_irq(unsigned int irq);
+#ifdef CONFIG_SMP
+static int sb1250_set_affinity(unsigned int irq, const struct cpumask *mask);
+#endif
+
 #ifdef CONFIG_SIBYTE_HAS_LDT
 extern unsigned long ldt_eoi_space;
 #endif
+
+static struct irq_chip sb1250_irq_type = {
+	.name = "SB1250-IMR",
+	.ack = ack_sb1250_irq,
+	.mask = disable_sb1250_irq,
+	.mask_ack = ack_sb1250_irq,
+	.unmask = enable_sb1250_irq,
+	.end = end_sb1250_irq,
+#ifdef CONFIG_SMP
+	.set_affinity = sb1250_set_affinity
+#endif
+};
 
 /* Store the CPU id (not the logical number) */
 int sb1250_irq_owner[SB1250_NR_IRQS];
@@ -81,11 +102,9 @@ void sb1250_unmask_irq(int cpu, int irq)
 }
 
 #ifdef CONFIG_SMP
-static int sb1250_set_affinity(struct irq_data *d, const struct cpumask *mask,
-			       bool force)
+static int sb1250_set_affinity(unsigned int irq, const struct cpumask *mask)
 {
 	int i = 0, old_cpu, cpu, int_on;
-	unsigned int irq = d->irq;
 	u64 cur_ints;
 	unsigned long flags;
 
@@ -123,17 +142,21 @@ static int sb1250_set_affinity(struct irq_data *d, const struct cpumask *mask,
 }
 #endif
 
-static void enable_sb1250_irq(struct irq_data *d)
-{
-	unsigned int irq = d->irq;
+/*****************************************************************************/
 
+static void disable_sb1250_irq(unsigned int irq)
+{
+	sb1250_mask_irq(sb1250_irq_owner[irq], irq);
+}
+
+static void enable_sb1250_irq(unsigned int irq)
+{
 	sb1250_unmask_irq(sb1250_irq_owner[irq], irq);
 }
 
 
-static void ack_sb1250_irq(struct irq_data *d)
+static void ack_sb1250_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
 #ifdef CONFIG_SIBYTE_HAS_LDT
 	u64 pending;
 
@@ -176,22 +199,21 @@ static void ack_sb1250_irq(struct irq_data *d)
 	sb1250_mask_irq(sb1250_irq_owner[irq], irq);
 }
 
-static struct irq_chip sb1250_irq_type = {
-	.name = "SB1250-IMR",
-	.irq_mask_ack = ack_sb1250_irq,
-	.irq_unmask = enable_sb1250_irq,
-#ifdef CONFIG_SMP
-	.irq_set_affinity = sb1250_set_affinity
-#endif
-};
+
+static void end_sb1250_irq(unsigned int irq)
+{
+	if (!(irq_desc[irq].status & (IRQ_DISABLED | IRQ_INPROGRESS))) {
+		sb1250_unmask_irq(sb1250_irq_owner[irq], irq);
+	}
+}
+
 
 void __init init_sb1250_irqs(void)
 {
 	int i;
 
 	for (i = 0; i < SB1250_NR_IRQS; i++) {
-		irq_set_chip_and_handler(i, &sb1250_irq_type,
-					 handle_level_irq);
+		set_irq_chip_and_handler(i, &sb1250_irq_type, handle_level_irq);
 		sb1250_irq_owner[i] = 0;
 	}
 }

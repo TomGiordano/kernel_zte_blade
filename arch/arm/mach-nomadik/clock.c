@@ -7,7 +7,7 @@
 #include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/clk.h>
-#include <linux/clkdev.h>
+#include <asm/clkdev.h>
 #include "clock.h"
 
 /*
@@ -53,10 +53,6 @@ static struct clk clk_default;
 	}
 
 static struct clk_lookup lookups[] = {
-	{
-		.con_id		= "apb_pclk",
-		.clk		= &clk_default,
-	},
 	CLK(&clk_24, "mtu0"),
 	CLK(&clk_24, "mtu1"),
 	CLK(&clk_48, "uart0"),

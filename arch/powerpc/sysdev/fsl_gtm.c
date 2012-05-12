@@ -14,7 +14,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/list.h>
 #include <linux/io.h>

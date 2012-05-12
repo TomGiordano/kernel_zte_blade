@@ -74,4 +74,5 @@ static inline u32 sms_read_reg(u16 reg)
  */
 #define SDRC_MPURATE_LOOPS		96
 
+
 #endif

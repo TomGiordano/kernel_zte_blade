@@ -30,6 +30,9 @@
 
 #include <linux/mtd/nand.h>
 
+#define NRCSR_OFFSET		0x00
+#define AWCCR_OFFSET		0x04
+#define A1CR_OFFSET		0x10
 #define NANDFCR_OFFSET		0x60
 #define NANDFSR_OFFSET		0x64
 #define NANDF1ECC_OFFSET	0x70
@@ -80,9 +83,6 @@ struct davinci_nand_pdata {		/* platform_data */
 	/* Main and mirror bbt descriptor overrides */
 	struct nand_bbt_descr	*bbt_td;
 	struct nand_bbt_descr	*bbt_md;
-
-	/* Access timings */
-	struct davinci_aemif_timing	*timing;
 };
 
 #endif	/* __ARCH_ARM_DAVINCI_NAND_H */

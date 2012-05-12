@@ -33,10 +33,12 @@
 #error "Unknown RealView platform"
 #endif
 
-		.macro	addruart, rp, rv
-		mov	\rp, #DEBUG_LL_UART_OFFSET
-		orr	\rv, \rp, #0xfb000000	@ virtual base
-		orr	\rp, \rp, #0x10000000	@ physical base
+		.macro	addruart, rx, tmp
+		mrc	p15, 0, \rx, c1, c0
+		tst	\rx, #1			@ MMU enabled?
+		moveq	\rx,      #0x10000000
+		movne	\rx,      #0xfb000000	@ virtual base
+		orr	\rx, \rx, #DEBUG_LL_UART_OFFSET
 		.endm
 
 #include <asm/hardware/debug-pl01x.S>

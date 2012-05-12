@@ -12,7 +12,7 @@ DOCBOOKS := z8530book.xml mcabook.xml device-drivers.xml \
 	    kernel-api.xml filesystems.xml lsm.xml usb.xml kgdb.xml \
 	    gadget.xml libata.xml mtdnand.xml librs.xml rapidio.xml \
 	    genericirq.xml s390-drivers.xml uio-howto.xml scsi.xml \
-	    80211.xml debugobjects.xml sh.xml regulator.xml \
+	    mac80211.xml debugobjects.xml sh.xml regulator.xml \
 	    alsa-driver-api.xml writing-an-alsa-driver.xml \
 	    tracepoint.xml media.xml drm.xml
 
@@ -35,7 +35,7 @@ PS_METHOD	= $(prefer-db2x)
 PHONY += xmldocs sgmldocs psdocs pdfdocs htmldocs mandocs installmandocs cleandocs xmldoclinks
 
 BOOKS := $(addprefix $(obj)/,$(DOCBOOKS))
-xmldocs: $(BOOKS)
+xmldocs: $(BOOKS) xmldoclinks
 sgmldocs: xmldocs
 
 PS := $(patsubst %.xml, %.ps, $(BOOKS))
@@ -45,7 +45,7 @@ PDF := $(patsubst %.xml, %.pdf, $(BOOKS))
 pdfdocs: $(PDF)
 
 HTML := $(sort $(patsubst %.xml, %.html, $(BOOKS)))
-htmldocs: $(HTML) xmldoclinks
+htmldocs: $(HTML)
 	$(call build_main_index)
 	$(call build_images)
 
@@ -53,9 +53,7 @@ MAN := $(patsubst %.xml, %.9, $(BOOKS))
 mandocs: $(MAN)
 
 build_images = mkdir -p $(objtree)/Documentation/DocBook/media/ && \
-	       cp $(srctree)/Documentation/DocBook/dvb/*.png \
-	          $(srctree)/Documentation/DocBook/v4l/*.gif \
-		  $(objtree)/Documentation/DocBook/media/
+	       cp $(srctree)/Documentation/DocBook/dvb/*.png $(srctree)/Documentation/DocBook/v4l/*.gif $(objtree)/Documentation/DocBook/media/
 
 xmldoclinks:
 ifneq ($(objtree),$(srctree))
@@ -73,7 +71,7 @@ installmandocs: mandocs
 ###
 #External programs used
 KERNELDOC = $(srctree)/scripts/kernel-doc
-DOCPROC   = $(objtree)/scripts/docproc
+DOCPROC   = $(objtree)/scripts/basic/docproc
 
 XMLTOFLAGS = -m $(srctree)/Documentation/DocBook/stylesheet.xsl
 XMLTOFLAGS += --skip-validation
@@ -97,7 +95,7 @@ define rule_docproc
         ) > $(dir $@).$(notdir $@).cmd
 endef
 
-%.xml: %.tmpl xmldoclinks FORCE
+%.xml: %.tmpl FORCE
 	$(call if_changed_rule,docproc)
 
 ###

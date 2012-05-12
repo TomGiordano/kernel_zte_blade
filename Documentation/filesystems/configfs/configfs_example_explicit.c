@@ -89,7 +89,7 @@ static ssize_t childless_storeme_write(struct childless *childless,
 	char *p = (char *) page;
 
 	tmp = simple_strtoul(p, &p, 10);
-	if ((*p != '\0') && (*p != '\n'))
+	if (!p || (*p && (*p != '\n')))
 		return -EINVAL;
 
 	if (tmp > INT_MAX)
@@ -464,8 +464,9 @@ static int __init configfs_example_init(void)
 	return 0;
 
 out_unregister:
-	for (i--; i >= 0; i--)
+	for (; i >= 0; i--) {
 		configfs_unregister_subsystem(example_subsys[i]);
+	}
 
 	return ret;
 }
@@ -474,8 +475,9 @@ static void __exit configfs_example_exit(void)
 {
 	int i;
 
-	for (i = 0; example_subsys[i]; i++)
+	for (i = 0; example_subsys[i]; i++) {
 		configfs_unregister_subsystem(example_subsys[i]);
+	}
 }
 
 module_init(configfs_example_init);

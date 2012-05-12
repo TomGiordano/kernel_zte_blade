@@ -101,6 +101,7 @@ static struct clocksource clk32k = {
 	.rating		= 150,
 	.read		= read_clk32k,
 	.mask		= CLOCKSOURCE_MASK(20),
+	.shift		= 10,
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
@@ -200,7 +201,8 @@ void __init at91rm9200_timer_init(void)
 	clockevents_register_device(&clkevt);
 
 	/* register clocksource */
-	clocksource_register_hz(&clk32k, AT91_SLOW_CLOCK);
+	clk32k.mult = clocksource_hz2mult(AT91_SLOW_CLOCK, clk32k.shift);
+	clocksource_register(&clk32k);
 }
 
 struct sys_timer at91rm9200_timer = {

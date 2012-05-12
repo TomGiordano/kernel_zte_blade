@@ -6,17 +6,11 @@
 #include <asm/page_types.h>
 #include <asm/pgtable_types.h>
 #include <asm/processor-flags.h>
-#include "wakeup.h"
 
 	.code16
-	.section ".jump", "ax"
-	.globl	_start
-_start:
-	cli
-	jmp	wakeup_code
+	.section ".header", "a"
 
 /* This should match the structure in wakeup.h */
-		.section ".header", "a"
 		.globl	wakeup_header
 wakeup_header:
 video_mode:	.short	0	/* Video mode number */
@@ -28,8 +22,6 @@ pmode_cr3:	.long	0	/* Saved %cr3 */
 pmode_cr4:	.long	0	/* Saved %cr4 */
 pmode_efer:	.quad	0	/* Saved EFER */
 pmode_gdt:	.quad	0
-pmode_misc_en:	.quad	0	/* Saved MISC_ENABLE MSR */
-pmode_behavior:	.long	0	/* Wakeup behavior flags */
 realmode_flags:	.long	0
 real_magic:	.long	0
 trampoline_segment:	.word 0
@@ -38,11 +30,14 @@ wakeup_jmp:	.byte	0xea	/* ljmpw */
 wakeup_jmp_off:	.word	3f
 wakeup_jmp_seg:	.word	0
 wakeup_gdt:	.quad	0, 0, 0
-signature:	.long	WAKEUP_HEADER_SIGNATURE
+signature:	.long	0x51ee1111
 
 	.text
+	.globl	_start
 	.code16
 wakeup_code:
+_start:
+	cli
 	cld
 
 	/* Apparently some dimwit BIOS programmers don't know how to
@@ -82,28 +77,16 @@ wakeup_code:
 
 	/* Check header signature... */
 	movl	signature, %eax
-	cmpl	$WAKEUP_HEADER_SIGNATURE, %eax
+	cmpl	$0x51ee1111, %eax
 	jne	bogus_real_magic
 
 	/* Check we really have everything... */
 	movl	end_signature, %eax
-	cmpl	$WAKEUP_END_SIGNATURE, %eax
+	cmpl	$0x65a22c82, %eax
 	jne	bogus_real_magic
 
 	/* Call the C code */
 	calll	main
-
-	/* Restore MISC_ENABLE before entering protected mode, in case
-	   BIOS decided to clear XD_DISABLE during S3. */
-	movl	pmode_behavior, %eax
-	btl	$WAKEUP_BEHAVIOR_RESTORE_MISC_ENABLE, %eax
-	jnc	1f
-
-	movl	pmode_misc_en, %eax
-	movl	pmode_misc_en + 4, %edx
-	movl	$MSR_IA32_MISC_ENABLE, %ecx
-	wrmsr
-1:
 
 	/* Do any other stuff... */
 
@@ -121,7 +104,7 @@ wakeup_code:
 	movl	%eax, %ecx
 	orl	%edx, %ecx
 	jz	1f
-	movl	$MSR_EFER, %ecx
+	movl	$0xc0000080, %ecx
 	wrmsr
 1:
 
@@ -164,7 +147,3 @@ wakeup_heap:
 wakeup_stack:
 	.space	2048
 wakeup_stack_end:
-
-	.section ".signature","a"
-end_signature:
-	.long	WAKEUP_END_SIGNATURE

@@ -17,6 +17,9 @@ ENTRY(_sleep_mode)
 
 	call _set_sic_iwr;
 
+	R0 = 0xFFFF (Z);
+	call _set_rtc_istat;
+
 	P0.H = hi(PLL_CTL);
 	P0.L = lo(PLL_CTL);
 	R1 = W[P0](z);
@@ -62,6 +65,9 @@ ENTRY(_hibernate_mode)
 	call _set_dram_srfs;
 	SSYNC;
 
+	R0 = 0xFFFF (Z);
+	call _set_rtc_istat;
+
 	P0.H = hi(VR_CTL);
 	P0.L = lo(VR_CTL);
 
@@ -89,6 +95,9 @@ ENTRY(_sleep_deeper)
 	call _set_sic_iwr;
 	call _set_dram_srfs;	/* Set SDRAM Self Refresh */
 
+	/* Clear all the interrupts,bits sticky */
+	R0 = 0xFFFF (Z);
+	call _set_rtc_istat;
 	P0.H = hi(PLL_DIV);
 	P0.L = lo(PLL_DIV);
 	R6 = W[P0](z);
@@ -260,6 +269,21 @@ ENTRY(_set_sic_iwr)
 	RTS;
 ENDPROC(_set_sic_iwr)
 
+ENTRY(_set_rtc_istat)
+#ifndef CONFIG_BF561
+	P0.H = hi(RTC_ISTAT);
+	P0.L = lo(RTC_ISTAT);
+	w[P0] = R0.L;
+	SSYNC;
+#elif (ANOMALY_05000371)
+	nop;
+	nop;
+	nop;
+	nop;
+#endif
+	RTS;
+ENDPROC(_set_rtc_istat)
+
 ENTRY(_test_pll_locked)
 	P0.H = hi(PLL_STAT);
 	P0.L = lo(PLL_STAT);
@@ -292,7 +316,13 @@ ENTRY(_do_hibernate)
 #ifdef SIC_IMASK
 	PM_SYS_PUSH(SIC_IMASK)
 #endif
-#ifdef SIC_IAR0
+#ifdef SICA_IMASK0
+	PM_SYS_PUSH(SICA_IMASK0)
+#endif
+#ifdef SICA_IMASK1
+	PM_SYS_PUSH(SICA_IMASK1)
+#endif
+#ifdef SIC_IAR2
 	PM_SYS_PUSH(SIC_IAR0)
 	PM_SYS_PUSH(SIC_IAR1)
 	PM_SYS_PUSH(SIC_IAR2)
@@ -315,6 +345,17 @@ ENTRY(_do_hibernate)
 	PM_SYS_PUSH(SIC_IAR11)
 #endif
 
+#ifdef SICA_IAR0
+	PM_SYS_PUSH(SICA_IAR0)
+	PM_SYS_PUSH(SICA_IAR1)
+	PM_SYS_PUSH(SICA_IAR2)
+	PM_SYS_PUSH(SICA_IAR3)
+	PM_SYS_PUSH(SICA_IAR4)
+	PM_SYS_PUSH(SICA_IAR5)
+	PM_SYS_PUSH(SICA_IAR6)
+	PM_SYS_PUSH(SICA_IAR7)
+#endif
+
 #ifdef SIC_IWR
 	PM_SYS_PUSH(SIC_IWR)
 #endif
@@ -326,6 +367,12 @@ ENTRY(_do_hibernate)
 #endif
 #ifdef SIC_IWR2
 	PM_SYS_PUSH(SIC_IWR2)
+#endif
+#ifdef SICA_IWR0
+	PM_SYS_PUSH(SICA_IWR0)
+#endif
+#ifdef SICA_IWR1
+	PM_SYS_PUSH(SICA_IWR1)
 #endif
 
 #ifdef PINT0_ASSIGN
@@ -727,6 +774,12 @@ ENTRY(_do_hibernate)
 	PM_SYS_POP(PINT0_MASK_SET)
 #endif
 
+#ifdef SICA_IWR1
+	PM_SYS_POP(SICA_IWR1)
+#endif
+#ifdef SICA_IWR0
+	PM_SYS_POP(SICA_IWR0)
+#endif
 #ifdef SIC_IWR2
 	PM_SYS_POP(SIC_IWR2)
 #endif
@@ -738,6 +791,17 @@ ENTRY(_do_hibernate)
 #endif
 #ifdef SIC_IWR
 	PM_SYS_POP(SIC_IWR)
+#endif
+
+#ifdef SICA_IAR0
+	PM_SYS_POP(SICA_IAR7)
+	PM_SYS_POP(SICA_IAR6)
+	PM_SYS_POP(SICA_IAR5)
+	PM_SYS_POP(SICA_IAR4)
+	PM_SYS_POP(SICA_IAR3)
+	PM_SYS_POP(SICA_IAR2)
+	PM_SYS_POP(SICA_IAR1)
+	PM_SYS_POP(SICA_IAR0)
 #endif
 
 #ifdef SIC_IAR8
@@ -757,10 +821,16 @@ ENTRY(_do_hibernate)
 #ifdef SIC_IAR3
 	PM_SYS_POP(SIC_IAR3)
 #endif
-#ifdef SIC_IAR0
+#ifdef SIC_IAR2
 	PM_SYS_POP(SIC_IAR2)
 	PM_SYS_POP(SIC_IAR1)
 	PM_SYS_POP(SIC_IAR0)
+#endif
+#ifdef SICA_IMASK1
+	PM_SYS_POP(SICA_IMASK1)
+#endif
+#ifdef SICA_IMASK0
+	PM_SYS_POP(SICA_IMASK0)
 #endif
 #ifdef SIC_IMASK
 	PM_SYS_POP(SIC_IMASK)

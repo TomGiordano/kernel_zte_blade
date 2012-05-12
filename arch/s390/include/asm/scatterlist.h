@@ -1,3 +1,3 @@
-#include <asm-generic/scatterlist.h>
+#define ISA_DMA_THRESHOLD	(~0UL)
 
-#define ARCH_HAS_SG_CHAIN
+#include <asm-generic/scatterlist.h>

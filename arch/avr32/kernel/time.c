@@ -35,6 +35,7 @@ static struct clocksource counter = {
 	.rating		= 50,
 	.read		= read_cycle_count,
 	.mask		= CLOCKSOURCE_MASK(32),
+	.shift		= 16,
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
@@ -122,7 +123,9 @@ void __init time_init(void)
 
 	/* figure rate for counter */
 	counter_hz = clk_get_rate(boot_cpu_data.clk);
-	ret = clocksource_register_hz(&counter, counter_hz);
+	counter.mult = clocksource_hz2mult(counter_hz, counter.shift);
+
+	ret = clocksource_register(&counter);
 	if (ret)
 		pr_debug("timer: could not register clocksource: %d\n", ret);
 

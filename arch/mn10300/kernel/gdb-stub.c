@@ -133,7 +133,7 @@
 #include <asm/system.h>
 #include <asm/gdb-stub.h>
 #include <asm/exceptions.h>
-#include <asm/debugger.h>
+#include <asm/cacheflush.h>
 #include <asm/serial-regs.h>
 #include <asm/busctl-regs.h>
 #include <unit/leds.h>
@@ -405,7 +405,6 @@ static int hexToInt(char **ptr, int *intValue)
 	return (numChars);
 }
 
-#ifdef CONFIG_GDBSTUB_ALLOW_SINGLE_STEP
 /*
  * We single-step by setting breakpoints. When an exception
  * is handled, we need to restore the instructions hoisted
@@ -441,11 +440,15 @@ static const unsigned char gdbstub_insn_sizes[256] =
 
 static int __gdbstub_mark_bp(u8 *addr, int ix)
 {
-	/* vmalloc area */
-	if (((u8 *) VMALLOC_START <= addr) && (addr < (u8 *) VMALLOC_END))
+	if (addr < (u8 *) 0x70000000UL)
+		return 0;
+	/* 70000000-7fffffff: vmalloc area */
+	if (addr < (u8 *) 0x80000000UL)
 		goto okay;
-	/* SRAM, SDRAM */
-	if (((u8 *) 0x80000000UL <= addr) && (addr < (u8 *) 0xa0000000UL))
+	if (addr < (u8 *) 0x8c000000UL)
+		return 0;
+	/* 8c000000-93ffffff: SRAM, SDRAM */
+	if (addr < (u8 *) 0x94000000UL)
 		goto okay;
 	return 0;
 
@@ -730,7 +733,6 @@ static int gdbstub_single_step(struct pt_regs *regs)
 	__gdbstub_restore_bp();
 	return -EFAULT;
 }
-#endif /* CONFIG_GDBSTUB_ALLOW_SINGLE_STEP */
 
 #ifdef CONFIG_GDBSTUB_CONSOLE
 
@@ -1173,7 +1175,7 @@ int gdbstub_clear_breakpoint(u8 *addr, int len)
 
 /*
  * This function does all command processing for interfacing to gdb
- * - returns 0 if the exception should be skipped, -ERROR otherwise.
+ * - returns 1 if the exception should be skipped, 0 otherwise.
  */
 static int gdbstub(struct pt_regs *regs, enum exception_code excep)
 {
@@ -1188,16 +1190,16 @@ static int gdbstub(struct pt_regs *regs, enum exception_code excep)
 	int loop;
 
 	if (excep == EXCEP_FPU_DISABLED)
-		return -ENOTSUPP;
+		return 0;
 
 	gdbstub_flush_caches = 0;
 
 	mn10300_set_gdbleds(1);
 
 	asm volatile("mov mdr,%0" : "=d"(mdr));
-	local_save_flags(epsw);
-	arch_local_change_intr_mask_level(
-		NUM2EPSW_IM(CONFIG_DEBUGGER_IRQ_LEVEL + 1));
+	asm volatile("mov epsw,%0" : "=d"(epsw));
+	asm volatile("mov %0,epsw"
+		     :: "d"((epsw & ~EPSW_IM) | EPSW_IE | EPSW_IM_1));
 
 	gdbstub_store_fpu();
 
@@ -1210,13 +1212,11 @@ static int gdbstub(struct pt_regs *regs, enum exception_code excep)
 	/* if we were single stepping, restore the opcodes hoisted for the
 	 * breakpoint[s] */
 	broke = 0;
-#ifdef CONFIG_GDBSTUB_ALLOW_SINGLE_STEP
 	if ((step_bp[0].addr && step_bp[0].addr == (u8 *) regs->pc) ||
 	    (step_bp[1].addr && step_bp[1].addr == (u8 *) regs->pc))
 		broke = 1;
 
 	__gdbstub_restore_bp();
-#endif
 
 	if (gdbstub_rx_unget) {
 		sigval = SIGINT;
@@ -1552,21 +1552,17 @@ packet_waiting:
 			 * Step to next instruction
 			 */
 		case 's':
-			/* Using the T flag doesn't seem to perform single
+			/*
+			 * using the T flag doesn't seem to perform single
 			 * stepping (it seems to wind up being caught by the
 			 * JTAG unit), so we have to use breakpoints and
 			 * continue instead.
 			 */
-#ifdef CONFIG_GDBSTUB_ALLOW_SINGLE_STEP
 			if (gdbstub_single_step(regs) < 0)
 				/* ignore any fault error for now */
 				gdbstub_printk("unable to set single-step"
 					       " bp\n");
 			goto done;
-#else
-			gdbstub_strcpy(output_buffer, "E01");
-			break;
-#endif
 
 			/*
 			 * Set baud rate (bBB)
@@ -1665,7 +1661,7 @@ done:
 	 * NB: We flush both caches, just to be sure...
 	 */
 	if (gdbstub_flush_caches)
-		debugger_local_cache_flushinv();
+		gdbstub_purge_cache();
 
 	gdbstub_load_fpu();
 	mn10300_set_gdbleds(0);
@@ -1675,23 +1671,14 @@ done:
 	touch_softlockup_watchdog();
 
 	local_irq_restore(epsw);
-	return 0;
-}
-
-/*
- * Determine if we hit a debugger special breakpoint that needs skipping over
- * automatically.
- */
-int at_debugger_breakpoint(struct pt_regs *regs)
-{
-	return 0;
+	return 1;
 }
 
 /*
  * handle event interception
  */
-asmlinkage int debugger_intercept(enum exception_code excep,
-				  int signo, int si_code, struct pt_regs *regs)
+asmlinkage int gdbstub_intercept(struct pt_regs *regs,
+				 enum exception_code excep)
 {
 	static u8 notfirst = 1;
 	int ret;
@@ -1705,7 +1692,7 @@ asmlinkage int debugger_intercept(enum exception_code excep,
 		asm("mov mdr,%0" : "=d"(mdr));
 
 		gdbstub_entry(
-			"--> debugger_intercept(%p,%04x) [MDR=%lx PC=%lx]\n",
+			"--> gdbstub_intercept(%p,%04x) [MDR=%lx PC=%lx]\n",
 			regs, excep, mdr, regs->pc);
 
 		gdbstub_entry(
@@ -1739,7 +1726,7 @@ asmlinkage int debugger_intercept(enum exception_code excep,
 
 	ret = gdbstub(regs, excep);
 
-	gdbstub_entry("<-- debugger_intercept()\n");
+	gdbstub_entry("<-- gdbstub_intercept()\n");
 	gdbstub_busy = 0;
 	return ret;
 }

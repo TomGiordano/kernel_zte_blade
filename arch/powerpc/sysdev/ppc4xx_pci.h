@@ -324,7 +324,7 @@
 #define PESDR0_460EX_IHS2		0x036D
 
 /*
- * 460SX additional DCRs
+ * 460SX addtional DCRs
  */
 #define PESDRn_460SX_RCEI		0x02
 

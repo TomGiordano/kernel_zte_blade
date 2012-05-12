@@ -35,7 +35,9 @@ void h8300_timer_tick(void)
 {
 	if (current->pid)
 		profile_tick(CPU_PROFILING);
-	xtime_update(1);
+	write_seqlock(&xtime_lock);
+	do_timer(1);
+	write_sequnlock(&xtime_lock);
 	update_process_times(user_mode(get_irq_regs()));
 }
 

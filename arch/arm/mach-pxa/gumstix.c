@@ -26,7 +26,6 @@
 #include <linux/gpio.h>
 #include <linux/err.h>
 #include <linux/clk.h>
-#include <linux/usb/gpio_vbus.h>
 
 #include <asm/setup.h>
 #include <asm/memory.h>
@@ -107,22 +106,14 @@ static void __init gumstix_mmc_init(void)
 #endif
 
 #ifdef CONFIG_USB_GADGET_PXA25X
-static struct gpio_vbus_mach_info gumstix_udc_info = {
+static struct pxa2xx_udc_mach_info gumstix_udc_info __initdata = {
 	.gpio_vbus		= GPIO_GUMSTIX_USB_GPIOn,
 	.gpio_pullup		= GPIO_GUMSTIX_USB_GPIOx,
 };
 
-static struct platform_device gumstix_gpio_vbus = {
-	.name	= "gpio-vbus",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &gumstix_udc_info,
-	},
-};
-
 static void __init gumstix_udc_init(void)
 {
-	platform_device_register(&gumstix_gpio_vbus);
+	pxa_set_udc_info(&gumstix_udc_info);
 }
 #else
 static void gumstix_udc_init(void)
@@ -233,8 +224,10 @@ static void __init gumstix_init(void)
 }
 
 MACHINE_START(GUMSTIX, "Gumstix")
+	.phys_io	= 0x40000000,
 	.boot_params	= 0xa0000100, /* match u-boot bi_boot_params */
-	.map_io		= pxa25x_map_io,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
+	.map_io		= pxa_map_io,
 	.init_irq	= pxa25x_init_irq,
 	.timer		= &pxa_timer,
 	.init_machine	= gumstix_init,

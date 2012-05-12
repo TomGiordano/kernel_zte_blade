@@ -216,7 +216,8 @@ static int gpio_mdio_reset(struct mii_bus *bus)
 }
 
 
-static int __devinit gpio_mdio_probe(struct platform_device *ofdev)
+static int __devinit gpio_mdio_probe(struct of_device *ofdev,
+				     const struct of_device_id *match)
 {
 	struct device *dev = &ofdev->dev;
 	struct device_node *np = ofdev->dev.of_node;
@@ -274,7 +275,7 @@ out:
 }
 
 
-static int gpio_mdio_remove(struct platform_device *dev)
+static int gpio_mdio_remove(struct of_device *dev)
 {
 	struct mii_bus *bus = dev_get_drvdata(&dev->dev);
 
@@ -298,7 +299,7 @@ static struct of_device_id gpio_mdio_match[] =
 };
 MODULE_DEVICE_TABLE(of, gpio_mdio_match);
 
-static struct platform_driver gpio_mdio_driver =
+static struct of_platform_driver gpio_mdio_driver =
 {
 	.probe		= gpio_mdio_probe,
 	.remove		= gpio_mdio_remove,
@@ -325,13 +326,13 @@ int gpio_mdio_init(void)
 	if (!gpio_regs)
 		return -ENODEV;
 
-	return platform_driver_register(&gpio_mdio_driver);
+	return of_register_platform_driver(&gpio_mdio_driver);
 }
 module_init(gpio_mdio_init);
 
 void gpio_mdio_exit(void)
 {
-	platform_driver_unregister(&gpio_mdio_driver);
+	of_unregister_platform_driver(&gpio_mdio_driver);
 	if (gpio_regs)
 		iounmap(gpio_regs);
 }

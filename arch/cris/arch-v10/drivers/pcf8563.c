@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/bcd.h>
 #include <linux/mutex.h>
+#include <linux/smp_lock.h>
 
 #include <asm/uaccess.h>
 #include <asm/system.h>
@@ -48,7 +49,6 @@
 #define rtc_read(x) i2c_readreg(RTC_I2C_READ, x)
 #define rtc_write(x,y) i2c_writereg(RTC_I2C_WRITE, x, y)
 
-static DEFINE_MUTEX(pcf8563_mutex);
 static DEFINE_MUTEX(rtc_lock); /* Protect state etc */
 
 static const unsigned char days_in_month[] =
@@ -64,7 +64,6 @@ static int voltage_low;
 static const struct file_operations pcf8563_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = pcf8563_unlocked_ioctl,
-	.llseek		= noop_llseek,
 };
 
 unsigned char
@@ -344,9 +343,9 @@ static long pcf8563_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned
 {
 	int ret;
 
-	mutex_lock(&pcf8563_mutex);
-	ret = pcf8563_ioctl(filp, cmd, arg);
-	mutex_unlock(&pcf8563_mutex);
+	lock_kernel();
+	return pcf8563_ioctl(filp, cmd, arg);
+	unlock_kernel();
 
 	return ret;
 }

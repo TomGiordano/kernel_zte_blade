@@ -20,6 +20,8 @@ static char local_guest[] = "        ";
 static char all_guests[] = "*       ";
 static char *guest_query;
 
+static struct dentry *dbfs_d2fc_file;
+
 struct diag2fc_data {
 	__u32 version;
 	__u32 flags;
@@ -102,7 +104,7 @@ static void *diag2fc_store(char *query, unsigned int *count, int offset)
 	return data;
 }
 
-static void diag2fc_free(const void *data)
+static void diag2fc_free(void *data)
 {
 	vfree(data);
 }
@@ -237,29 +239,42 @@ struct dbfs_d2fc {
 	char			buf[];	/* d2fc buffer */
 } __attribute__ ((packed));
 
-static int dbfs_diag2fc_create(void **data, void **data_free_ptr, size_t *size)
+static int dbfs_d2fc_open(struct inode *inode, struct file *file)
 {
-	struct dbfs_d2fc *d2fc;
+	struct dbfs_d2fc *data;
 	unsigned int count;
 
-	d2fc = diag2fc_store(guest_query, &count, sizeof(d2fc->hdr));
-	if (IS_ERR(d2fc))
-		return PTR_ERR(d2fc);
-	get_clock_ext(d2fc->hdr.tod_ext);
-	d2fc->hdr.len = count * sizeof(struct diag2fc_data);
-	d2fc->hdr.version = DBFS_D2FC_HDR_VERSION;
-	d2fc->hdr.count = count;
-	memset(&d2fc->hdr.reserved, 0, sizeof(d2fc->hdr.reserved));
-	*data = d2fc;
-	*data_free_ptr = d2fc;
-	*size = d2fc->hdr.len + sizeof(struct dbfs_d2fc_hdr);
+	data = diag2fc_store(guest_query, &count, sizeof(data->hdr));
+	if (IS_ERR(data))
+		return PTR_ERR(data);
+	get_clock_ext(data->hdr.tod_ext);
+	data->hdr.len = count * sizeof(struct diag2fc_data);
+	data->hdr.version = DBFS_D2FC_HDR_VERSION;
+	data->hdr.count = count;
+	memset(&data->hdr.reserved, 0, sizeof(data->hdr.reserved));
+	file->private_data = data;
+	return nonseekable_open(inode, file);
+}
+
+static int dbfs_d2fc_release(struct inode *inode, struct file *file)
+{
+	diag2fc_free(file->private_data);
 	return 0;
 }
 
-static struct hypfs_dbfs_file dbfs_file_2fc = {
-	.name		= "diag_2fc",
-	.data_create	= dbfs_diag2fc_create,
-	.data_free	= diag2fc_free,
+static ssize_t dbfs_d2fc_read(struct file *file, char __user *buf,
+				    size_t size, loff_t *ppos)
+{
+	struct dbfs_d2fc *data = file->private_data;
+
+	return simple_read_from_buffer(buf, size, ppos, data, data->hdr.len +
+				       sizeof(struct dbfs_d2fc_hdr));
+}
+
+static const struct file_operations dbfs_d2fc_ops = {
+	.open		= dbfs_d2fc_open,
+	.read		= dbfs_d2fc_read,
+	.release	= dbfs_d2fc_release,
 };
 
 int hypfs_vm_init(void)
@@ -272,12 +287,18 @@ int hypfs_vm_init(void)
 		guest_query = local_guest;
 	else
 		return -EACCES;
-	return hypfs_dbfs_create_file(&dbfs_file_2fc);
+
+	dbfs_d2fc_file = debugfs_create_file("diag_2fc", 0400, hypfs_dbfs_dir,
+					     NULL, &dbfs_d2fc_ops);
+	if (IS_ERR(dbfs_d2fc_file))
+		return PTR_ERR(dbfs_d2fc_file);
+
+	return 0;
 }
 
 void hypfs_vm_exit(void)
 {
 	if (!MACHINE_IS_VM)
 		return;
-	hypfs_dbfs_remove_file(&dbfs_file_2fc);
+	debugfs_remove(dbfs_d2fc_file);
 }

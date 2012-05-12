@@ -39,6 +39,8 @@ struct spu_gov_info_struct {
 };
 static DEFINE_PER_CPU(struct spu_gov_info_struct, spu_gov_info);
 
+static struct workqueue_struct *kspugov_wq;
+
 static int calc_freq(struct spu_gov_info_struct *info)
 {
 	int cpu;
@@ -69,14 +71,14 @@ static void spu_gov_work(struct work_struct *work)
 	__cpufreq_driver_target(info->policy, target_freq, CPUFREQ_RELATION_H);
 
 	delay = usecs_to_jiffies(info->poll_int);
-	schedule_delayed_work_on(info->policy->cpu, &info->work, delay);
+	queue_delayed_work_on(info->policy->cpu, kspugov_wq, &info->work, delay);
 }
 
 static void spu_gov_init_work(struct spu_gov_info_struct *info)
 {
 	int delay = usecs_to_jiffies(info->poll_int);
 	INIT_DELAYED_WORK_DEFERRABLE(&info->work, spu_gov_work);
-	schedule_delayed_work_on(info->policy->cpu, &info->work, delay);
+	queue_delayed_work_on(info->policy->cpu, kspugov_wq, &info->work, delay);
 }
 
 static void spu_gov_cancel_work(struct spu_gov_info_struct *info)
@@ -150,15 +152,27 @@ static int __init spu_gov_init(void)
 {
 	int ret;
 
+	kspugov_wq = create_workqueue("kspugov");
+	if (!kspugov_wq) {
+		printk(KERN_ERR "creation of kspugov failed\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
 	ret = cpufreq_register_governor(&spu_governor);
-	if (ret)
+	if (ret) {
 		printk(KERN_ERR "registration of governor failed\n");
+		destroy_workqueue(kspugov_wq);
+		goto out;
+	}
+out:
 	return ret;
 }
 
 static void __exit spu_gov_exit(void)
 {
 	cpufreq_unregister_governor(&spu_governor);
+	destroy_workqueue(kspugov_wq);
 }
 
 

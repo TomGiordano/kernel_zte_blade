@@ -11,6 +11,7 @@
 #ifndef _ASM_PGALLOC_H
 #define _ASM_PGALLOC_H
 
+#include <asm/processor.h>
 #include <asm/page.h>
 #include <linux/threads.h>
 #include <linux/mm.h>		/* for struct page */

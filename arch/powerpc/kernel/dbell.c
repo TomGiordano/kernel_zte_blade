@@ -13,39 +13,32 @@
 #include <linux/kernel.h>
 #include <linux/smp.h>
 #include <linux/threads.h>
-#include <linux/hardirq.h>
 
 #include <asm/dbell.h>
-#include <asm/irq_regs.h>
 
 #ifdef CONFIG_SMP
-void doorbell_setup_this_cpu(void)
+unsigned long dbell_smp_message[NR_CPUS];
+
+void smp_dbell_message_pass(int target, int msg)
 {
-	unsigned long tag = mfspr(SPRN_PIR) & 0x3fff;
+	int i;
 
-	smp_muxed_ipi_set_data(smp_processor_id(), tag);
+	if(target < NR_CPUS) {
+		set_bit(msg, &dbell_smp_message[target]);
+		ppc_msgsnd(PPC_DBELL, 0, target);
+	}
+	else if(target == MSG_ALL_BUT_SELF) {
+		for_each_online_cpu(i) {
+			if (i == smp_processor_id())
+				continue;
+			set_bit(msg, &dbell_smp_message[i]);
+			ppc_msgsnd(PPC_DBELL, 0, i);
+		}
+	}
+	else { /* target == MSG_ALL */
+		for_each_online_cpu(i)
+			set_bit(msg, &dbell_smp_message[i]);
+		ppc_msgsnd(PPC_DBELL, PPC_DBELL_MSG_BRDCAST, 0);
+	}
 }
-
-void doorbell_cause_ipi(int cpu, unsigned long data)
-{
-	ppc_msgsnd(PPC_DBELL, 0, data);
-}
-
-void doorbell_exception(struct pt_regs *regs)
-{
-	struct pt_regs *old_regs = set_irq_regs(regs);
-
-	irq_enter();
-
-	smp_ipi_demux();
-
-	irq_exit();
-	set_irq_regs(old_regs);
-}
-#else /* CONFIG_SMP */
-void doorbell_exception(struct pt_regs *regs)
-{
-	printk(KERN_WARNING "Received doorbell on non-smp system\n");
-}
-#endif /* CONFIG_SMP */
-
+#endif

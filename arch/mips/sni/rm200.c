@@ -13,7 +13,6 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/platform_device.h>
 #include <linux/serial_8250.h>
 #include <linux/io.h>
@@ -155,11 +154,12 @@ static __iomem u8 *rm200_pic_slave;
 #define cached_master_mask	(rm200_cached_irq_mask)
 #define cached_slave_mask	(rm200_cached_irq_mask >> 8)
 
-static void sni_rm200_disable_8259A_irq(struct irq_data *d)
+static void sni_rm200_disable_8259A_irq(unsigned int irq)
 {
-	unsigned int mask, irq = d->irq - RM200_I8259A_IRQ_BASE;
+	unsigned int mask;
 	unsigned long flags;
 
+	irq -= RM200_I8259A_IRQ_BASE;
 	mask = 1 << irq;
 	raw_spin_lock_irqsave(&sni_rm200_i8259A_lock, flags);
 	rm200_cached_irq_mask |= mask;
@@ -170,11 +170,12 @@ static void sni_rm200_disable_8259A_irq(struct irq_data *d)
 	raw_spin_unlock_irqrestore(&sni_rm200_i8259A_lock, flags);
 }
 
-static void sni_rm200_enable_8259A_irq(struct irq_data *d)
+static void sni_rm200_enable_8259A_irq(unsigned int irq)
 {
-	unsigned int mask, irq = d->irq - RM200_I8259A_IRQ_BASE;
+	unsigned int mask;
 	unsigned long flags;
 
+	irq -= RM200_I8259A_IRQ_BASE;
 	mask = ~(1 << irq);
 	raw_spin_lock_irqsave(&sni_rm200_i8259A_lock, flags);
 	rm200_cached_irq_mask &= mask;
@@ -208,11 +209,12 @@ static inline int sni_rm200_i8259A_irq_real(unsigned int irq)
  * first, _then_ send the EOI, and the order of EOI
  * to the two 8259s is important!
  */
-void sni_rm200_mask_and_ack_8259A(struct irq_data *d)
+void sni_rm200_mask_and_ack_8259A(unsigned int irq)
 {
-	unsigned int irqmask, irq = d->irq - RM200_I8259A_IRQ_BASE;
+	unsigned int irqmask;
 	unsigned long flags;
 
+	irq -= RM200_I8259A_IRQ_BASE;
 	irqmask = 1 << irq;
 	raw_spin_lock_irqsave(&sni_rm200_i8259A_lock, flags);
 	/*
@@ -282,9 +284,9 @@ spurious_8259A_irq:
 
 static struct irq_chip sni_rm200_i8259A_chip = {
 	.name		= "RM200-XT-PIC",
-	.irq_mask	= sni_rm200_disable_8259A_irq,
-	.irq_unmask	= sni_rm200_enable_8259A_irq,
-	.irq_mask_ack	= sni_rm200_mask_and_ack_8259A,
+	.mask		= sni_rm200_disable_8259A_irq,
+	.unmask		= sni_rm200_enable_8259A_irq,
+	.mask_ack	= sni_rm200_mask_and_ack_8259A,
 };
 
 /*
@@ -413,7 +415,7 @@ void __init sni_rm200_i8259_irqs(void)
 	sni_rm200_init_8259A();
 
 	for (i = RM200_I8259A_IRQ_BASE; i < RM200_I8259A_IRQ_BASE + 16; i++)
-		irq_set_chip_and_handler(i, &sni_rm200_i8259A_chip,
+		set_irq_chip_and_handler(i, &sni_rm200_i8259A_chip,
 					 handle_level_irq);
 
 	setup_irq(RM200_I8259A_IRQ_BASE + PIC_CASCADE_IR, &sni_rm200_irq2);
@@ -426,24 +428,33 @@ void __init sni_rm200_i8259_irqs(void)
 #define SNI_RM200_INT_START  24
 #define SNI_RM200_INT_END    28
 
-static void enable_rm200_irq(struct irq_data *d)
+static void enable_rm200_irq(unsigned int irq)
 {
-	unsigned int mask = 1 << (d->irq - SNI_RM200_INT_START);
+	unsigned int mask = 1 << (irq - SNI_RM200_INT_START);
 
 	*(volatile u8 *)SNI_RM200_INT_ENA_REG &= ~mask;
 }
 
-void disable_rm200_irq(struct irq_data *d)
+void disable_rm200_irq(unsigned int irq)
 {
-	unsigned int mask = 1 << (d->irq - SNI_RM200_INT_START);
+	unsigned int mask = 1 << (irq - SNI_RM200_INT_START);
 
 	*(volatile u8 *)SNI_RM200_INT_ENA_REG |= mask;
 }
 
+void end_rm200_irq(unsigned int irq)
+{
+	if (!(irq_desc[irq].status & (IRQ_DISABLED|IRQ_INPROGRESS)))
+		enable_rm200_irq(irq);
+}
+
 static struct irq_chip rm200_irq_type = {
 	.name = "RM200",
-	.irq_mask = disable_rm200_irq,
-	.irq_unmask = enable_rm200_irq,
+	.ack = disable_rm200_irq,
+	.mask = disable_rm200_irq,
+	.mask_ack = disable_rm200_irq,
+	.unmask = enable_rm200_irq,
+	.end = end_rm200_irq,
 };
 
 static void sni_rm200_hwint(void)
@@ -477,7 +488,7 @@ void __init sni_rm200_irq_init(void)
 	mips_cpu_irq_init();
 	/* Actually we've got more interrupts to handle ...  */
 	for (i = SNI_RM200_INT_START; i <= SNI_RM200_INT_END; i++)
-		irq_set_chip_and_handler(i, &rm200_irq_type, handle_level_irq);
+		set_irq_chip_and_handler(i, &rm200_irq_type, handle_level_irq);
 	sni_hwint = sni_rm200_hwint;
 	change_c0_status(ST0_IM, IE_IRQ0);
 	setup_irq(SNI_RM200_INT_START + 0, &sni_rm200_i8259A_irq);

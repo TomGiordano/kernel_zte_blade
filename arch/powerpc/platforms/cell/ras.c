@@ -173,10 +173,8 @@ static int __init cbe_ptcal_enable(void)
 		return -ENODEV;
 
 	size = of_get_property(np, "ibm,cbe-ptcal-size", NULL);
-	if (!size) {
-		of_node_put(np);
+	if (!size)
 		return -ENODEV;
-	}
 
 	pr_debug("%s: enabling PTCAL, size = 0x%x\n", __func__, *size);
 	order = get_order(*size);

@@ -288,7 +288,8 @@ void __init pci_addr_cache_build(void)
 
 	spin_lock_init(&pci_io_addr_cache_root.piar_lock);
 
-	for_each_pci_dev(dev) {
+	while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev)) != NULL) {
+
 		pci_addr_cache_insert_device(dev);
 
 		dn = pci_device_to_OF_node(dev);

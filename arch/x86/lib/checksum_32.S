@@ -50,9 +50,11 @@ unsigned int csum_partial(const unsigned char * buff, int len, unsigned int sum)
 	   */		
 ENTRY(csum_partial)
 	CFI_STARTPROC
-	pushl_cfi %esi
+	pushl %esi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET esi, 0
-	pushl_cfi %ebx
+	pushl %ebx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ebx, 0
 	movl 20(%esp),%eax	# Function arg: unsigned int sum
 	movl 16(%esp),%ecx	# Function arg: int len
@@ -130,9 +132,11 @@ ENTRY(csum_partial)
 	jz 8f
 	roll $8, %eax
 8:
-	popl_cfi %ebx
+	popl %ebx
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE ebx
-	popl_cfi %esi
+	popl %esi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE esi
 	ret
 	CFI_ENDPROC
@@ -144,9 +148,11 @@ ENDPROC(csum_partial)
 
 ENTRY(csum_partial)
 	CFI_STARTPROC
-	pushl_cfi %esi
+	pushl %esi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET esi, 0
-	pushl_cfi %ebx
+	pushl %ebx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ebx, 0
 	movl 20(%esp),%eax	# Function arg: unsigned int sum
 	movl 16(%esp),%ecx	# Function arg: int len
@@ -254,9 +260,11 @@ ENTRY(csum_partial)
 	jz 90f
 	roll $8, %eax
 90: 
-	popl_cfi %ebx
+	popl %ebx
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE ebx
-	popl_cfi %esi
+	popl %esi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE esi
 	ret
 	CFI_ENDPROC
@@ -301,11 +309,14 @@ ENTRY(csum_partial_copy_generic)
 	CFI_STARTPROC
 	subl  $4,%esp	
 	CFI_ADJUST_CFA_OFFSET 4
-	pushl_cfi %edi
+	pushl %edi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET edi, 0
-	pushl_cfi %esi
+	pushl %esi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET esi, 0
-	pushl_cfi %ebx
+	pushl %ebx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ebx, 0
 	movl ARGBASE+16(%esp),%eax	# sum
 	movl ARGBASE+12(%esp),%ecx	# len
@@ -415,13 +426,17 @@ DST(	movb %cl, (%edi)	)
 
 .previous
 
-	popl_cfi %ebx
+	popl %ebx
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE ebx
-	popl_cfi %esi
+	popl %esi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE esi
-	popl_cfi %edi
+	popl %edi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE edi
-	popl_cfi %ecx			# equivalent to addl $4,%esp
+	popl %ecx			# equivalent to addl $4,%esp
+	CFI_ADJUST_CFA_OFFSET -4
 	ret	
 	CFI_ENDPROC
 ENDPROC(csum_partial_copy_generic)
@@ -444,11 +459,14 @@ ENDPROC(csum_partial_copy_generic)
 		
 ENTRY(csum_partial_copy_generic)
 	CFI_STARTPROC
-	pushl_cfi %ebx
+	pushl %ebx
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ebx, 0
-	pushl_cfi %edi
+	pushl %edi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET edi, 0
-	pushl_cfi %esi
+	pushl %esi
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET esi, 0
 	movl ARGBASE+4(%esp),%esi	#src
 	movl ARGBASE+8(%esp),%edi	#dst	
@@ -509,11 +527,14 @@ DST(	movb %dl, (%edi)         )
 	jmp  7b			
 .previous				
 
-	popl_cfi %esi
+	popl %esi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE esi
-	popl_cfi %edi
+	popl %edi
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE edi
-	popl_cfi %ebx
+	popl %ebx
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE ebx
 	ret
 	CFI_ENDPROC

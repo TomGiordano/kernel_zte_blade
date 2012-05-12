@@ -1,7 +1,7 @@
 /*
  * Blackfin core clock scaling
  *
- * Copyright 2008-2011 Analog Devices Inc.
+ * Copyright 2008-2009 Analog Devices Inc.
  *
  * Licensed under the GPL-2 or later.
  */
@@ -16,8 +16,10 @@
 #include <asm/time.h>
 #include <asm/dpmc.h>
 
+#define CPUFREQ_CPU 0
+
 /* this is the table of CCLK frequencies, in Hz */
-/* .index is the entry in the auxiliary dpm_state_table[] */
+/* .index is the entry in the auxillary dpm_state_table[] */
 static struct cpufreq_frequency_table bfin_freq_table[] = {
 	{
 		.frequency = CPUFREQ_TABLE_END,
@@ -44,7 +46,7 @@ static struct bfin_dpm_state {
 
 #if defined(CONFIG_CYCLES_CLOCKSOURCE)
 /*
- * normalized to maximum frequency offset for CYCLES,
+ * normalized to maximum frequncy offset for CYCLES,
  * used in time-ts cycles clock source, but could be used
  * somewhere also.
  */
@@ -132,7 +134,7 @@ static int bfin_target(struct cpufreq_policy *poli,
 
 		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 		if (cpu == CPUFREQ_CPU) {
-			flags = hard_local_irq_save();
+			local_irq_save_hw(flags);
 			plldiv = (bfin_read_PLL_DIV() & SSEL) |
 						dpm_state_table[index].csel;
 			bfin_write_PLL_DIV(plldiv);
@@ -153,7 +155,7 @@ static int bfin_target(struct cpufreq_policy *poli,
 				loops_per_jiffy = cpufreq_scale(lpj_ref,
 						lpj_ref_freq, freqs.new);
 			}
-			hard_local_irq_restore(flags);
+			local_irq_restore_hw(flags);
 		}
 		/* TODO: just test case for cycles clock source, remove later */
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);

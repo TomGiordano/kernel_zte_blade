@@ -21,10 +21,8 @@
 #include <msp_slp_int.h>
 #include <msp_regs.h>
 
-static inline void unmask_msp_slp_irq(struct irq_data *d)
+static inline void unmask_msp_slp_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	/* check for PER interrupt range */
 	if (irq < MSP_PER_INTBASE)
 		*SLP_INT_MSK_REG |= (1 << (irq - MSP_SLP_INTBASE));
@@ -32,10 +30,8 @@ static inline void unmask_msp_slp_irq(struct irq_data *d)
 		*PER_INT_MSK_REG |= (1 << (irq - MSP_PER_INTBASE));
 }
 
-static inline void mask_msp_slp_irq(struct irq_data *d)
+static inline void mask_msp_slp_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	/* check for PER interrupt range */
 	if (irq < MSP_PER_INTBASE)
 		*SLP_INT_MSK_REG &= ~(1 << (irq - MSP_SLP_INTBASE));
@@ -47,10 +43,8 @@ static inline void mask_msp_slp_irq(struct irq_data *d)
  * While we ack the interrupt interrupts are disabled and thus we don't need
  * to deal with concurrency issues.  Same for msp_slp_irq_end.
  */
-static inline void ack_msp_slp_irq(struct irq_data *d)
+static inline void ack_msp_slp_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	/* check for PER interrupt range */
 	if (irq < MSP_PER_INTBASE)
 		*SLP_INT_STS_REG = (1 << (irq - MSP_SLP_INTBASE));
@@ -60,9 +54,9 @@ static inline void ack_msp_slp_irq(struct irq_data *d)
 
 static struct irq_chip msp_slp_irq_controller = {
 	.name = "MSP_SLP",
-	.irq_ack = ack_msp_slp_irq,
-	.irq_mask = mask_msp_slp_irq,
-	.irq_unmask = unmask_msp_slp_irq,
+	.ack = ack_msp_slp_irq,
+	.mask = mask_msp_slp_irq,
+	.unmask = unmask_msp_slp_irq,
 };
 
 void __init msp_slp_irq_init(void)
@@ -77,7 +71,7 @@ void __init msp_slp_irq_init(void)
 
 	/* initialize all the IRQ descriptors */
 	for (i = MSP_SLP_INTBASE; i < MSP_PER_INTBASE + 32; i++)
-		irq_set_chip_and_handler(i, &msp_slp_irq_controller,
+		set_irq_chip_and_handler(i, &msp_slp_irq_controller,
 					 handle_level_irq);
 }
 

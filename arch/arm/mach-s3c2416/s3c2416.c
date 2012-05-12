@@ -32,7 +32,6 @@
 #include <linux/platform_device.h>
 #include <linux/serial_core.h>
 #include <linux/sysdev.h>
-#include <linux/syscore_ops.h>
 #include <linux/clk.h>
 #include <linux/io.h>
 
@@ -54,12 +53,8 @@
 #include <plat/s3c2416.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
-#include <plat/sdhci.h>
-#include <plat/pm.h>
 
 #include <plat/iic-core.h>
-#include <plat/fb-core.h>
-#include <plat/nand-core.h>
 
 static struct map_desc s3c2416_iodesc[] __initdata = {
 	IODESC_ENT(WATCHDOG),
@@ -95,10 +90,7 @@ int __init s3c2416_init(void)
 	s3c_i2c0_setname("s3c2440-i2c");
 	s3c_i2c1_setname("s3c2440-i2c");
 
-	s3c_fb_setname("s3c2443-fb");
-
-	register_syscore_ops(&s3c2416_pm_syscore_ops);
-	register_syscore_ops(&s3c24xx_irq_syscore_ops);
+	s3c_device_fb.name = "s3c2443-fb";
 
 	return sysdev_register(&s3c2416_sysdev);
 }
@@ -107,7 +99,7 @@ void __init s3c2416_init_uarts(struct s3c2410_uartcfg *cfg, int no)
 {
 	s3c24xx_init_uartdevs("s3c2440-uart", s3c2410_uart_resources, cfg, no);
 
-	s3c_nand_setname("s3c2412-nand");
+	s3c_device_nand.name = "s3c2416-nand";
 }
 
 /* s3c2416_map_io
@@ -120,10 +112,6 @@ void __init s3c2416_map_io(void)
 {
 	s3c24xx_gpiocfg_default.set_pull = s3c_gpio_setpull_updown;
 	s3c24xx_gpiocfg_default.get_pull = s3c_gpio_getpull_updown;
-
-	/* initialize device information early */
-	s3c2416_default_sdhci0();
-	s3c2416_default_sdhci1();
 
 	iotable_init(s3c2416_iodesc, ARRAY_SIZE(s3c2416_iodesc));
 }

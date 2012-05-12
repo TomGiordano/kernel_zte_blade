@@ -56,7 +56,6 @@
  */
 
 #ifdef CONFIG_32BIT
-#include <linux/types.h>
 
 struct flock {
 	short	l_type;

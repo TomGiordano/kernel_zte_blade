@@ -162,8 +162,11 @@ irqreturn_t __irq_entry timer_interrupt(int irq, void *dev_id)
 		update_process_times(user_mode(get_irq_regs()));
 	}
 
-	if (cpu == 0)
-		xtime_update(ticks_elapsed);
+	if (cpu == 0) {
+		write_seqlock(&xtime_lock);
+		do_timer(ticks_elapsed);
+		write_sequnlock(&xtime_lock);
+	}
 
 	return IRQ_HANDLED;
 }

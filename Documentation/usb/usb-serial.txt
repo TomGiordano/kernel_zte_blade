@@ -83,7 +83,7 @@ HandSpring Visor, Palm USB, and Clié USB driver
   parameters.  e.g. modprobe visor vendor=0x54c product=0x66
   
   There is a webpage and mailing lists for this portion of the driver at:
-  http://sourceforge.net/projects/usbvisor/
+  http://usbvisor.sourceforge.net/
 
   For any questions or problems with this driver, please contact Greg
   Kroah-Hartman at greg@kroah.com
@@ -184,7 +184,7 @@ Keyspan USA-series Serial Adapters
     functionality.
   
   More information is available at:
-        http://www.carnationsoftware.com/carnation/Keyspan.html
+        http://misc.nu/hugh/keyspan.html
    
   For any questions or problems with this driver, please contact Hugh
   Blemings at hugh@misc.nu

@@ -10,7 +10,6 @@
 
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/pci.h>
 #include <linux/serial_8250.h>
 
@@ -156,24 +155,33 @@ static struct pci_controller sni_pcit_controller = {
 	.io_map_base    = SNI_PORT_BASE
 };
 
-static void enable_pcit_irq(struct irq_data *d)
+static void enable_pcit_irq(unsigned int irq)
 {
-	u32 mask = 1 << (d->irq - SNI_PCIT_INT_START + 24);
+	u32 mask = 1 << (irq - SNI_PCIT_INT_START + 24);
 
 	*(volatile u32 *)SNI_PCIT_INT_REG |= mask;
 }
 
-void disable_pcit_irq(struct irq_data *d)
+void disable_pcit_irq(unsigned int irq)
 {
-	u32 mask = 1 << (d->irq - SNI_PCIT_INT_START + 24);
+	u32 mask = 1 << (irq - SNI_PCIT_INT_START + 24);
 
 	*(volatile u32 *)SNI_PCIT_INT_REG &= ~mask;
 }
 
+void end_pcit_irq(unsigned int irq)
+{
+	if (!(irq_desc[irq].status & (IRQ_DISABLED|IRQ_INPROGRESS)))
+		enable_pcit_irq(irq);
+}
+
 static struct irq_chip pcit_irq_type = {
 	.name = "PCIT",
-	.irq_mask = disable_pcit_irq,
-	.irq_unmask = enable_pcit_irq,
+	.ack = disable_pcit_irq,
+	.mask = disable_pcit_irq,
+	.mask_ack = disable_pcit_irq,
+	.unmask = enable_pcit_irq,
+	.end = end_pcit_irq,
 };
 
 static void pcit_hwint1(void)
@@ -238,7 +246,7 @@ void __init sni_pcit_irq_init(void)
 
 	mips_cpu_irq_init();
 	for (i = SNI_PCIT_INT_START; i <= SNI_PCIT_INT_END; i++)
-		irq_set_chip_and_handler(i, &pcit_irq_type, handle_level_irq);
+		set_irq_chip_and_handler(i, &pcit_irq_type, handle_level_irq);
 	*(volatile u32 *)SNI_PCIT_INT_REG = 0;
 	sni_hwint = sni_pcit_hwint;
 	change_c0_status(ST0_IM, IE_IRQ1);
@@ -251,7 +259,7 @@ void __init sni_pcit_cplus_irq_init(void)
 
 	mips_cpu_irq_init();
 	for (i = SNI_PCIT_INT_START; i <= SNI_PCIT_INT_END; i++)
-		irq_set_chip_and_handler(i, &pcit_irq_type, handle_level_irq);
+		set_irq_chip_and_handler(i, &pcit_irq_type, handle_level_irq);
 	*(volatile u32 *)SNI_PCIT_INT_REG = 0x40000000;
 	sni_hwint = sni_pcit_hwint_cplus;
 	change_c0_status(ST0_IM, IE_IRQ0);

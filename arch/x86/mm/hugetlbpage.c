@@ -72,7 +72,7 @@ static void huge_pmd_share(struct mm_struct *mm, unsigned long addr, pud_t *pud)
 	if (!vma_shareable(vma, addr))
 		return;
 
-	mutex_lock(&mapping->i_mmap_mutex);
+	spin_lock(&mapping->i_mmap_lock);
 	vma_prio_tree_foreach(svma, &iter, &mapping->i_mmap, idx, idx) {
 		if (svma == vma)
 			continue;
@@ -97,7 +97,7 @@ static void huge_pmd_share(struct mm_struct *mm, unsigned long addr, pud_t *pud)
 		put_page(virt_to_page(spte));
 	spin_unlock(&mm->page_table_lock);
 out:
-	mutex_unlock(&mapping->i_mmap_mutex);
+	spin_unlock(&mapping->i_mmap_lock);
 }
 
 /*
@@ -326,7 +326,7 @@ try_again:
 	if (mm->free_area_cache < len)
 		goto fail;
 
-	/* either no address requested or can't fit in requested address hole */
+	/* either no address requested or cant fit in requested address hole */
 	addr = (mm->free_area_cache - len) & huge_page_mask(h);
 	do {
 		/*

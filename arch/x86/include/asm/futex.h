@@ -37,7 +37,7 @@
 		       "+m" (*uaddr), "=&r" (tem)		\
 		     : "r" (oparg), "i" (-EFAULT), "1" (0))
 
-static inline int futex_atomic_op_inuser(int encoded_op, u32 __user *uaddr)
+static inline int futex_atomic_op_inuser(int encoded_op, int __user *uaddr)
 {
 	int op = (encoded_op >> 28) & 7;
 	int cmp = (encoded_op >> 24) & 15;
@@ -48,7 +48,7 @@ static inline int futex_atomic_op_inuser(int encoded_op, u32 __user *uaddr)
 	if (encoded_op & (FUTEX_OP_OPARG_SHIFT << 28))
 		oparg = 1 << oparg;
 
-	if (!access_ok(VERIFY_WRITE, uaddr, sizeof(u32)))
+	if (!access_ok(VERIFY_WRITE, uaddr, sizeof(int)))
 		return -EFAULT;
 
 #if defined(CONFIG_X86_32) && !defined(CONFIG_X86_BSWAP)
@@ -109,10 +109,9 @@ static inline int futex_atomic_op_inuser(int encoded_op, u32 __user *uaddr)
 	return ret;
 }
 
-static inline int futex_atomic_cmpxchg_inatomic(u32 *uval, u32 __user *uaddr,
-						u32 oldval, u32 newval)
+static inline int futex_atomic_cmpxchg_inatomic(int __user *uaddr, int oldval,
+						int newval)
 {
-	int ret = 0;
 
 #if defined(CONFIG_X86_32) && !defined(CONFIG_X86_BSWAP)
 	/* Real i386 machines have no cmpxchg instruction */
@@ -120,22 +119,21 @@ static inline int futex_atomic_cmpxchg_inatomic(u32 *uval, u32 __user *uaddr,
 		return -ENOSYS;
 #endif
 
-	if (!access_ok(VERIFY_WRITE, uaddr, sizeof(u32)))
+	if (!access_ok(VERIFY_WRITE, uaddr, sizeof(int)))
 		return -EFAULT;
 
-	asm volatile("1:\t" LOCK_PREFIX "cmpxchgl %4, %2\n"
+	asm volatile("1:\t" LOCK_PREFIX "cmpxchgl %3, %1\n"
 		     "2:\t.section .fixup, \"ax\"\n"
-		     "3:\tmov     %3, %0\n"
+		     "3:\tmov     %2, %0\n"
 		     "\tjmp     2b\n"
 		     "\t.previous\n"
 		     _ASM_EXTABLE(1b, 3b)
-		     : "+r" (ret), "=a" (oldval), "+m" (*uaddr)
-		     : "i" (-EFAULT), "r" (newval), "1" (oldval)
+		     : "=a" (oldval), "+m" (*uaddr)
+		     : "i" (-EFAULT), "r" (newval), "0" (oldval)
 		     : "memory"
 	);
 
-	*uval = oldval;
-	return ret;
+	return oldval;
 }
 
 #endif

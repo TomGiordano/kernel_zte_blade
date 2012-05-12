@@ -78,9 +78,9 @@ signal_p:
 	call	do_notify_resume
 	 add	%sp, STACKFRAME_SZ, %o0	! pt_regs ptr
 
-	b	signal_p
-	 ld	[%curptr + TI_FLAGS], %g2
-
+	/* Fall through. */
+	ld	[%sp + STACKFRAME_SZ + PT_PSR], %t_psr
+	clr	%l6
 ret_trap_continue:
 	sethi	%hi(PSR_SYSCALL), %g1
 	andn	%t_psr, %g1, %t_psr

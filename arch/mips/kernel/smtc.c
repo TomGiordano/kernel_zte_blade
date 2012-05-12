@@ -677,9 +677,8 @@ void smtc_set_irq_affinity(unsigned int irq, cpumask_t affinity)
 	 */
 }
 
-void smtc_forward_irq(struct irq_data *d)
+void smtc_forward_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
 	int target;
 
 	/*
@@ -693,7 +692,7 @@ void smtc_forward_irq(struct irq_data *d)
 	 * and efficiency, we just pick the easiest one to find.
 	 */
 
-	target = cpumask_first(d->affinity);
+	target = cpumask_first(irq_desc[irq].affinity);
 
 	/*
 	 * We depend on the platform code to have correctly processed
@@ -708,10 +707,12 @@ void smtc_forward_irq(struct irq_data *d)
 	 */
 
 	/* If no one is eligible, service locally */
-	if (target >= NR_CPUS)
+	if (target >= NR_CPUS) {
 		do_IRQ_no_affinity(irq);
-	else
-		smtc_send_ipi(target, IRQ_AFFINITY_IPI, irq);
+		return;
+	}
+
+	smtc_send_ipi(target, IRQ_AFFINITY_IPI, irq);
 }
 
 #endif /* CONFIG_MIPS_MT_SMTC_IRQAFF */
@@ -929,7 +930,7 @@ static void post_direct_ipi(int cpu, struct smtc_ipi *pipi)
 
 static void ipi_resched_interrupt(void)
 {
-	scheduler_ipi();
+	/* Return from interrupt should be enough to cause scheduler check */
 }
 
 static void ipi_call_interrupt(void)
@@ -974,7 +975,8 @@ void ipi_decode(struct smtc_ipi *pipi)
 			ipi_call_interrupt();
 			break;
 		default:
-			printk("Impossible SMTC IPI Argument %p\n", arg_copy);
+			printk("Impossible SMTC IPI Argument 0x%x\n",
+				(int)arg_copy);
 			break;
 		}
 		break;
@@ -1037,7 +1039,7 @@ void deferred_smtc_ipi(void)
 		 * but it's more efficient, given that we're already
 		 * running down the IPI queue.
 		 */
-		__arch_local_irq_restore(flags);
+		__raw_local_irq_restore(flags);
 	}
 }
 
@@ -1146,7 +1148,7 @@ static void setup_cross_vpe_interrupts(unsigned int nvpe)
 
 	setup_irq_smtc(cpu_ipi_irq, &irq_ipi, (0x100 << MIPS_CPU_IPI_IRQ));
 
-	irq_set_handler(cpu_ipi_irq, handle_percpu_irq);
+	set_irq_handler(cpu_ipi_irq, handle_percpu_irq);
 }
 
 /*
@@ -1189,7 +1191,7 @@ void smtc_ipi_replay(void)
 		/*
 		 ** But use a raw restore here to avoid recursion.
 		 */
-		__arch_local_irq_restore(flags);
+		__raw_local_irq_restore(flags);
 
 		if (pipi) {
 			self_ipi(pipi);

@@ -29,7 +29,6 @@
 #include <linux/tty.h>
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
-#include <linux/irq.h>
 
 #include <asm/serial.h>
 #include <asm/mach-rc32434/rb.h>

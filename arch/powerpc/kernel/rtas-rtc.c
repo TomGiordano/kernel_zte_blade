@@ -4,7 +4,6 @@
 #include <linux/init.h>
 #include <linux/rtc.h>
 #include <linux/delay.h>
-#include <linux/ratelimit.h>
 #include <asm/prom.h>
 #include <asm/rtas.h>
 #include <asm/time.h>
@@ -30,10 +29,9 @@ unsigned long __init rtas_get_boot_time(void)
 		}
 	} while (wait_time && (get_tb() < max_wait_tb));
 
-	if (error != 0) {
-		printk_ratelimited(KERN_WARNING
-				   "error: reading the clock failed (%d)\n",
-				   error);
+	if (error != 0 && printk_ratelimit()) {
+		printk(KERN_WARNING "error: reading the clock failed (%d)\n",
+			error);
 		return 0;
 	}
 
@@ -57,21 +55,19 @@ void rtas_get_rtc_time(struct rtc_time *rtc_tm)
 
 		wait_time = rtas_busy_delay_time(error);
 		if (wait_time) {
-			if (in_interrupt()) {
+			if (in_interrupt() && printk_ratelimit()) {
 				memset(rtc_tm, 0, sizeof(struct rtc_time));
-				printk_ratelimited(KERN_WARNING
-						   "error: reading clock "
-						   "would delay interrupt\n");
+				printk(KERN_WARNING "error: reading clock"
+				       " would delay interrupt\n");
 				return;	/* delay not allowed */
 			}
 			msleep(wait_time);
 		}
 	} while (wait_time && (get_tb() < max_wait_tb));
 
-	if (error != 0) {
-		printk_ratelimited(KERN_WARNING
-				   "error: reading the clock failed (%d)\n",
-				   error);
+        if (error != 0 && printk_ratelimit()) {
+                printk(KERN_WARNING "error: reading the clock failed (%d)\n",
+		       error);
 		return;
         }
 
@@ -103,10 +99,9 @@ int rtas_set_rtc_time(struct rtc_time *tm)
 		}
 	} while (wait_time && (get_tb() < max_wait_tb));
 
-	if (error != 0)
-		printk_ratelimited(KERN_WARNING
-				   "error: setting the clock failed (%d)\n",
-				   error);
+        if (error != 0 && printk_ratelimit())
+                printk(KERN_WARNING "error: setting the clock failed (%d)\n",
+		       error);
 
         return 0;
 }

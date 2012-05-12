@@ -6,7 +6,6 @@
  */
 
 	.globl	csum_partial
-	.type   csum_partial,@function
 csum_partial:
 
 	;; r10 - src
@@ -84,5 +83,3 @@ _do_byte:
 	addu.b	[$r10],$r12
 	ret
 	move.d	$r12,$r10
-
-	.size   csum_partial, .-csum_partial

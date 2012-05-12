@@ -12,13 +12,12 @@
 static struct irq_chip	ia64_msi_chip;
 
 #ifdef CONFIG_SMP
-static int ia64_set_msi_irq_affinity(struct irq_data *idata,
-				     const cpumask_t *cpu_mask, bool force)
+static int ia64_set_msi_irq_affinity(unsigned int irq,
+				      const cpumask_t *cpu_mask)
 {
 	struct msi_msg msg;
 	u32 addr, data;
 	int cpu = first_cpu(*cpu_mask);
-	unsigned int irq = idata->irq;
 
 	if (!cpu_online(cpu))
 		return -1;
@@ -39,7 +38,7 @@ static int ia64_set_msi_irq_affinity(struct irq_data *idata,
 	msg.data = data;
 
 	write_msi_msg(irq, &msg);
-	cpumask_copy(idata->affinity, cpumask_of(cpu));
+	cpumask_copy(irq_desc[irq].affinity, cpumask_of(cpu));
 
 	return 0;
 }
@@ -56,7 +55,7 @@ int ia64_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 	if (irq < 0)
 		return irq;
 
-	irq_set_msi_desc(irq, desc);
+	set_irq_msi(irq, desc);
 	cpus_and(mask, irq_to_domain(irq), cpu_online_map);
 	dest_phys_id = cpu_physical_id(first_cpu(mask));
 	vector = irq_to_vector(irq);
@@ -75,7 +74,7 @@ int ia64_setup_msi_irq(struct pci_dev *pdev, struct msi_desc *desc)
 		MSI_DATA_VECTOR(vector);
 
 	write_msi_msg(irq, &msg);
-	irq_set_chip_and_handler(irq, &ia64_msi_chip, handle_edge_irq);
+	set_irq_chip_and_handler(irq, &ia64_msi_chip, handle_edge_irq);
 
 	return 0;
 }
@@ -85,16 +84,16 @@ void ia64_teardown_msi_irq(unsigned int irq)
 	destroy_irq(irq);
 }
 
-static void ia64_ack_msi_irq(struct irq_data *data)
+static void ia64_ack_msi_irq(unsigned int irq)
 {
-	irq_complete_move(data->irq);
-	irq_move_irq(data);
+	irq_complete_move(irq);
+	move_native_irq(irq);
 	ia64_eoi();
 }
 
-static int ia64_msi_retrigger_irq(struct irq_data *data)
+static int ia64_msi_retrigger_irq(unsigned int irq)
 {
-	unsigned int vector = irq_to_vector(data->irq);
+	unsigned int vector = irq_to_vector(irq);
 	ia64_resend_irq(vector);
 
 	return 1;
@@ -104,14 +103,14 @@ static int ia64_msi_retrigger_irq(struct irq_data *data)
  * Generic ops used on most IA64 platforms.
  */
 static struct irq_chip ia64_msi_chip = {
-	.name			= "PCI-MSI",
-	.irq_mask		= mask_msi_irq,
-	.irq_unmask		= unmask_msi_irq,
-	.irq_ack		= ia64_ack_msi_irq,
+	.name		= "PCI-MSI",
+	.mask		= mask_msi_irq,
+	.unmask		= unmask_msi_irq,
+	.ack		= ia64_ack_msi_irq,
 #ifdef CONFIG_SMP
-	.irq_set_affinity	= ia64_set_msi_irq_affinity,
+	.set_affinity	= ia64_set_msi_irq_affinity,
 #endif
-	.irq_retrigger		= ia64_msi_retrigger_irq,
+	.retrigger	= ia64_msi_retrigger_irq,
 };
 
 
@@ -133,10 +132,8 @@ void arch_teardown_msi_irq(unsigned int irq)
 
 #ifdef CONFIG_DMAR
 #ifdef CONFIG_SMP
-static int dmar_msi_set_affinity(struct irq_data *data,
-				 const struct cpumask *mask, bool force)
+static int dmar_msi_set_affinity(unsigned int irq, const struct cpumask *mask)
 {
-	unsigned int irq = data->irq;
 	struct irq_cfg *cfg = irq_cfg + irq;
 	struct msi_msg msg;
 	int cpu = cpumask_first(mask);
@@ -155,7 +152,7 @@ static int dmar_msi_set_affinity(struct irq_data *data,
 	msg.address_lo |= MSI_ADDR_DEST_ID_CPU(cpu_physical_id(cpu));
 
 	dmar_msi_write(irq, &msg);
-	cpumask_copy(data->affinity, mask);
+	cpumask_copy(irq_desc[irq].affinity, mask);
 
 	return 0;
 }
@@ -163,13 +160,13 @@ static int dmar_msi_set_affinity(struct irq_data *data,
 
 static struct irq_chip dmar_msi_type = {
 	.name = "DMAR_MSI",
-	.irq_unmask = dmar_msi_unmask,
-	.irq_mask = dmar_msi_mask,
-	.irq_ack = ia64_ack_msi_irq,
+	.unmask = dmar_msi_unmask,
+	.mask = dmar_msi_mask,
+	.ack = ia64_ack_msi_irq,
 #ifdef CONFIG_SMP
-	.irq_set_affinity = dmar_msi_set_affinity,
+	.set_affinity = dmar_msi_set_affinity,
 #endif
-	.irq_retrigger = ia64_msi_retrigger_irq,
+	.retrigger = ia64_msi_retrigger_irq,
 };
 
 static int
@@ -206,8 +203,8 @@ int arch_setup_dmar_msi(unsigned int irq)
 	if (ret < 0)
 		return ret;
 	dmar_msi_write(irq, &msg);
-	irq_set_chip_and_handler_name(irq, &dmar_msi_type, handle_edge_irq,
-				      "edge");
+	set_irq_chip_and_handler_name(irq, &dmar_msi_type, handle_edge_irq,
+		"edge");
 	return 0;
 }
 #endif /* CONFIG_DMAR */

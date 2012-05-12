@@ -48,13 +48,12 @@
 #include <mach/gpio.h>
 #include <mach/at91sam9_smc.h>
 #include <mach/at91_shdwc.h>
-#include <mach/system_rev.h>
 
 #include "sam9_smc.h"
 #include "generic.h"
 
 
-static void __init ek_init_early(void)
+static void __init ek_map_io(void)
 {
 	/* Initialize processor: 18.432 MHz crystal */
 	at91sam9261_initialize(18432000);
@@ -94,12 +93,11 @@ static struct resource dm9000_resource[] = {
 		.start	= AT91_PIN_PC11,
 		.end	= AT91_PIN_PC11,
 		.flags	= IORESOURCE_IRQ
-			| IORESOURCE_IRQ_LOWEDGE | IORESOURCE_IRQ_HIGHEDGE,
 	}
 };
 
 static struct dm9000_plat_data dm9000_platdata = {
-	.flags		= DM9000_PLATF_16BITONLY | DM9000_PLATF_NO_EEPROM,
+	.flags		= DM9000_PLATF_16BITONLY,
 };
 
 static struct platform_device dm9000_device = {
@@ -170,6 +168,17 @@ static struct at91_udc_data __initdata ek_udc_data = {
 
 
 /*
+ * MCI (SD/MMC)
+ */
+static struct at91_mmc_data __initdata ek_mmc_data = {
+	.wire4		= 1,
+//	.det_pin	= ... not connected
+//	.wp_pin		= ... not connected
+//	.vcc_pin	= ... not connected
+};
+
+
+/*
  * NAND flash
  */
 static struct mtd_partition __initdata ek_nand_partition[] = {
@@ -198,6 +207,11 @@ static struct atmel_nand_data __initdata ek_nand_data = {
 	.rdy_pin	= AT91_PIN_PC15,
 	.enable_pin	= AT91_PIN_PC14,
 	.partition_info	= nand_partitions,
+#if defined(CONFIG_MTD_NAND_ATMEL_BUSWIDTH_16)
+	.bus_width_16	= 1,
+#else
+	.bus_width_16	= 0,
+#endif
 };
 
 static struct sam9_smc_config __initdata ek_nand_smc_config = {
@@ -220,7 +234,6 @@ static struct sam9_smc_config __initdata ek_nand_smc_config = {
 
 static void __init ek_add_device_nand(void)
 {
-	ek_nand_data.bus_width_16 = board_have_nand_16bit();
 	/* setup bus-width (8 or 16) */
 	if (ek_nand_data.bus_width_16)
 		ek_nand_smc_config.mode |= AT91_SMC_DBW_16;
@@ -233,10 +246,6 @@ static void __init ek_add_device_nand(void)
 	at91_add_device_nand(&ek_nand_data);
 }
 
-/*
- * SPI related devices
- */
-#if defined(CONFIG_SPI_ATMEL) || defined(CONFIG_SPI_ATMEL_MODULE)
 
 /*
  * ADS7846 Touchscreen
@@ -346,19 +355,6 @@ static struct spi_board_info ek_spi_devices[] = {
 	},
 #endif
 };
-
-#else /* CONFIG_SPI_ATMEL_* */
-/* spi0 and mmc/sd share the same PIO pins: cannot be used at the same time */
-
-/*
- * MCI (SD/MMC)
- * det_pin, wp_pin and vcc_pin are not connected
- */
-static struct at91_mmc_data __initdata ek_mmc_data = {
-	.wire4		= 1,
-};
-
-#endif /* CONFIG_SPI_ATMEL_* */
 
 
 /*
@@ -620,9 +616,11 @@ MACHINE_START(AT91SAM9261EK, "Atmel AT91SAM9261-EK")
 MACHINE_START(AT91SAM9G10EK, "Atmel AT91SAM9G10-EK")
 #endif
 	/* Maintainer: Atmel */
+	.phys_io	= AT91_BASE_SYS,
+	.io_pg_offst	= (AT91_VA_BASE_SYS >> 18) & 0xfffc,
+	.boot_params	= AT91_SDRAM_BASE + 0x100,
 	.timer		= &at91sam926x_timer,
-	.map_io		= at91sam9261_map_io,
-	.init_early	= ek_init_early,
+	.map_io		= ek_map_io,
 	.init_irq	= ek_init_irq,
 	.init_machine	= ek_board_init,
 MACHINE_END

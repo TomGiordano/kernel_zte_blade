@@ -30,8 +30,6 @@
 #include <linux/kprobes.h>
 #include <linux/kdebug.h>
 #include <linux/perf_event.h>
-#include <linux/magic.h>
-#include <linux/ratelimit.h>
 
 #include <asm/firmware.h>
 #include <asm/page.h>
@@ -347,10 +345,11 @@ bad_area_nosemaphore:
 		return 0;
 	}
 
-	if (is_exec && (error_code & DSISR_PROTFAULT))
-		printk_ratelimited(KERN_CRIT "kernel tried to execute NX-protected"
-				   " page (%lx) - exploit attempt? (uid: %d)\n",
-				   address, current_uid());
+	if (is_exec && (error_code & DSISR_PROTFAULT)
+	    && printk_ratelimit())
+		printk(KERN_CRIT "kernel tried to execute NX-protected"
+		       " page (%lx) - exploit attempt? (uid: %d)\n",
+		       address, current_uid());
 
 	return SIGSEGV;
 
@@ -386,7 +385,6 @@ do_sigbus:
 void bad_page_fault(struct pt_regs *regs, unsigned long address, int sig)
 {
 	const struct exception_table_entry *entry;
-	unsigned long *stackend;
 
 	/* Are we prepared to handle this fault?  */
 	if ((entry = search_exception_tables(regs->nip)) != NULL) {
@@ -414,10 +412,6 @@ void bad_page_fault(struct pt_regs *regs, unsigned long address, int sig)
 	}
 	printk(KERN_ALERT "Faulting instruction address: 0x%08lx\n",
 		regs->nip);
-
-	stackend = end_of_stack(current);
-	if (current != &init_task && *stackend != STACK_END_MAGIC)
-		printk(KERN_ALERT "Thread overran stack, or stack corrupted\n");
 
 	die("Kernel access of bad area", regs, sig);
 }

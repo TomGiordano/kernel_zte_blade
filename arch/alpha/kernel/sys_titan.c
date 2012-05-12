@@ -65,11 +65,10 @@ titan_update_irq_hw(unsigned long mask)
 	register int bcpu = boot_cpuid;
 
 #ifdef CONFIG_SMP
-	cpumask_t cpm;
+	cpumask_t cpm = cpu_present_map;
 	volatile unsigned long *dim0, *dim1, *dim2, *dim3;
 	unsigned long mask0, mask1, mask2, mask3, dummy;
 
-	cpumask_copy(&cpm, cpu_present_mask);
 	mask &= ~isa_enable;
 	mask0 = mask & titan_cpu_irq_affinity[0];
 	mask1 = mask & titan_cpu_irq_affinity[1];
@@ -85,10 +84,10 @@ titan_update_irq_hw(unsigned long mask)
 	dim1 = &cchip->dim1.csr;
 	dim2 = &cchip->dim2.csr;
 	dim3 = &cchip->dim3.csr;
-	if (!cpumask_test_cpu(0, &cpm)) dim0 = &dummy;
-	if (!cpumask_test_cpu(1, &cpm)) dim1 = &dummy;
-	if (!cpumask_test_cpu(2, &cpm)) dim2 = &dummy;
-	if (!cpumask_test_cpu(3, &cpm)) dim3 = &dummy;
+	if (!cpu_isset(0, cpm)) dim0 = &dummy;
+	if (!cpu_isset(1, cpm)) dim1 = &dummy;
+	if (!cpu_isset(2, cpm)) dim2 = &dummy;
+	if (!cpu_isset(3, cpm)) dim3 = &dummy;
 
 	*dim0 = mask0;
 	*dim1 = mask1;
@@ -113,9 +112,8 @@ titan_update_irq_hw(unsigned long mask)
 }
 
 static inline void
-titan_enable_irq(struct irq_data *d)
+titan_enable_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
 	spin_lock(&titan_irq_lock);
 	titan_cached_irq_mask |= 1UL << (irq - 16);
 	titan_update_irq_hw(titan_cached_irq_mask);
@@ -123,13 +121,26 @@ titan_enable_irq(struct irq_data *d)
 }
 
 static inline void
-titan_disable_irq(struct irq_data *d)
+titan_disable_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq;
 	spin_lock(&titan_irq_lock);
 	titan_cached_irq_mask &= ~(1UL << (irq - 16));
 	titan_update_irq_hw(titan_cached_irq_mask);
 	spin_unlock(&titan_irq_lock);
+}
+
+static unsigned int
+titan_startup_irq(unsigned int irq)
+{
+	titan_enable_irq(irq);
+	return 0;	/* never anything pending */
+}
+
+static void
+titan_end_irq(unsigned int irq)
+{
+	if (!(irq_desc[irq].status & (IRQ_DISABLED|IRQ_INPROGRESS)))
+		titan_enable_irq(irq);
 }
 
 static void
@@ -138,7 +149,7 @@ titan_cpu_set_irq_affinity(unsigned int irq, cpumask_t affinity)
 	int cpu;
 
 	for (cpu = 0; cpu < 4; cpu++) {
-		if (cpumask_test_cpu(cpu, &affinity))
+		if (cpu_isset(cpu, affinity))
 			titan_cpu_irq_affinity[cpu] |= 1UL << irq;
 		else
 			titan_cpu_irq_affinity[cpu] &= ~(1UL << irq);
@@ -147,10 +158,8 @@ titan_cpu_set_irq_affinity(unsigned int irq, cpumask_t affinity)
 }
 
 static int
-titan_set_irq_affinity(struct irq_data *d, const struct cpumask *affinity,
-		       bool force)
+titan_set_irq_affinity(unsigned int irq, const struct cpumask *affinity)
 { 
-	unsigned int irq = d->irq;
 	spin_lock(&titan_irq_lock);
 	titan_cpu_set_irq_affinity(irq - 16, *affinity);
 	titan_update_irq_hw(titan_cached_irq_mask);
@@ -180,17 +189,20 @@ init_titan_irqs(struct irq_chip * ops, int imin, int imax)
 {
 	long i;
 	for (i = imin; i <= imax; ++i) {
-		irq_set_chip_and_handler(i, ops, handle_level_irq);
-		irq_set_status_flags(i, IRQ_LEVEL);
+		irq_desc[i].status = IRQ_DISABLED | IRQ_LEVEL;
+		irq_desc[i].chip = ops;
 	}
 }
 
 static struct irq_chip titan_irq_type = {
-       .name			= "TITAN",
-       .irq_unmask		= titan_enable_irq,
-       .irq_mask		= titan_disable_irq,
-       .irq_mask_ack		= titan_disable_irq,
-       .irq_set_affinity	= titan_set_irq_affinity,
+       .name	       = "TITAN",
+       .startup        = titan_startup_irq,
+       .shutdown       = titan_disable_irq,
+       .enable         = titan_enable_irq,
+       .disable        = titan_disable_irq,
+       .ack            = titan_disable_irq,
+       .end            = titan_end_irq,
+       .set_affinity   = titan_set_irq_affinity,
 };
 
 static irqreturn_t

@@ -45,7 +45,6 @@
 #include <linux/cpu.h>
 #include <linux/pci.h>
 #include <linux/smp.h>
-#include <linux/syscore_ops.h>
 
 #include <asm/processor.h>
 #include <asm/e820.h>
@@ -248,25 +247,6 @@ set_mtrr(unsigned int reg, unsigned long base, unsigned long size, mtrr_type typ
 	unsigned long flags;
 	int cpu;
 
-#ifdef CONFIG_SMP
-	/*
-	 * If this cpu is not yet active, we are in the cpu online path. There
-	 * can be no stop_machine() in parallel, as stop machine ensures this
-	 * by using get_online_cpus(). We can skip taking the stop_cpus_mutex,
-	 * as we don't need it and also we can't afford to block while waiting
-	 * for the mutex.
-	 *
-	 * If this cpu is active, we need to prevent stop_machine() happening
-	 * in parallel by taking the stop cpus mutex.
-	 *
-	 * Also, this is called in the context of cpu online path or in the
-	 * context where cpu hotplug is prevented. So checking the active status
-	 * of the raw_smp_processor_id() is safe.
-	 */
-	if (cpu_active(raw_smp_processor_id()))
-		mutex_lock(&stop_cpus_mutex);
-#endif
-
 	preempt_disable();
 
 	data.smp_reg = reg;
@@ -312,24 +292,14 @@ set_mtrr(unsigned int reg, unsigned long base, unsigned long size, mtrr_type typ
 
 	/*
 	 * HACK!
-	 *
-	 * We use this same function to initialize the mtrrs during boot,
-	 * resume, runtime cpu online and on an explicit request to set a
-	 * specific MTRR.
-	 *
-	 * During boot or suspend, the state of the boot cpu's mtrrs has been
-	 * saved, and we want to replicate that across all the cpus that come
-	 * online (either at the end of boot or resume or during a runtime cpu
-	 * online). If we're doing that, @reg is set to something special and on
-	 * this cpu we still do mtrr_if->set_all(). During boot/resume, this
-	 * is unnecessary if at this point we are still on the cpu that started
-	 * the boot/resume sequence. But there is no guarantee that we are still
-	 * on the same cpu. So we do mtrr_if->set_all() on this cpu aswell to be
-	 * sure that we are in sync with everyone else.
+	 * We use this same function to initialize the mtrrs on boot.
+	 * The state of the boot cpu's mtrrs has been saved, and we want
+	 * to replicate across all the APs.
+	 * If we're doing that @reg is set to something special...
 	 */
 	if (reg != ~0U)
 		mtrr_if->set(reg, base, size, type);
-	else
+	else if (!mtrr_aps_delayed_init)
 		mtrr_if->set_all();
 
 	/* Wait for the others */
@@ -349,10 +319,6 @@ set_mtrr(unsigned int reg, unsigned long base, unsigned long size, mtrr_type typ
 
 	local_irq_restore(flags);
 	preempt_enable();
-#ifdef CONFIG_SMP
-	if (cpu_active(raw_smp_processor_id()))
-		mutex_unlock(&stop_cpus_mutex);
-#endif
 }
 
 /**
@@ -664,7 +630,7 @@ struct mtrr_value {
 
 static struct mtrr_value mtrr_value[MTRR_MAX_VAR_RANGES];
 
-static int mtrr_save(void)
+static int mtrr_save(struct sys_device *sysdev, pm_message_t state)
 {
 	int i;
 
@@ -676,7 +642,7 @@ static int mtrr_save(void)
 	return 0;
 }
 
-static void mtrr_restore(void)
+static int mtrr_restore(struct sys_device *sysdev)
 {
 	int i;
 
@@ -687,11 +653,12 @@ static void mtrr_restore(void)
 				    mtrr_value[i].ltype);
 		}
 	}
+	return 0;
 }
 
 
 
-static struct syscore_ops mtrr_syscore_ops = {
+static struct sysdev_driver mtrr_sysdev_driver = {
 	.suspend	= mtrr_save,
 	.resume		= mtrr_restore,
 };
@@ -826,19 +793,11 @@ void set_mtrr_aps_delayed_init(void)
 }
 
 /*
- * Delayed MTRR initialization for all AP's
+ * MTRR initialization for all AP's
  */
 void mtrr_aps_init(void)
 {
 	if (!use_intel())
-		return;
-
-	/*
-	 * Check if someone has requested the delay of AP MTRR initialization,
-	 * by doing set_mtrr_aps_delayed_init(), prior to this point. If not,
-	 * then we are done.
-	 */
-	if (!mtrr_aps_delayed_init)
 		return;
 
 	set_mtrr(~0U, 0, 0, 0);
@@ -872,7 +831,7 @@ static int __init mtrr_init_finialize(void)
 	 * TBD: is there any system with such CPU which supports
 	 * suspend/resume? If no, we should remove the code.
 	 */
-	register_syscore_ops(&mtrr_syscore_ops);
+	sysdev_driver_register(&cpu_sysdev_class, &mtrr_sysdev_driver);
 
 	return 0;
 }

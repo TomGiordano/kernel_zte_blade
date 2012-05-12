@@ -28,7 +28,6 @@
 #define A9_MPCORE_SCU		(CT_CA9X4_MPIC + 0x0000)
 #define A9_MPCORE_GIC_CPU	(CT_CA9X4_MPIC + 0x0100)
 #define A9_MPCORE_GIT		(CT_CA9X4_MPIC + 0x0200)
-#define A9_MPCORE_TWD		(CT_CA9X4_MPIC + 0x0600)
 #define A9_MPCORE_GIC_DIST	(CT_CA9X4_MPIC + 0x1000)
 
 /*
@@ -44,7 +43,5 @@
 #define IRQ_CT_CA9X4_PMU_CPU1	93
 #define IRQ_CT_CA9X4_PMU_CPU2	94
 #define IRQ_CT_CA9X4_PMU_CPU3	95
-
-extern struct ct_desc ct_ca9x4_desc;
 
 #endif

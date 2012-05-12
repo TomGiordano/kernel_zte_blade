@@ -25,7 +25,6 @@
 #include <linux/amba/bus.h>
 
 extern void __init versatile_init(void);
-extern void __init versatile_init_early(void);
 extern void __init versatile_init_irq(void);
 extern void __init versatile_map_io(void);
 extern struct sys_timer versatile_timer;
@@ -45,6 +44,7 @@ static struct amba_device name##_device = {			\
 	},							\
 	.dma_mask	= ~0,					\
 	.irq		= base##_IRQ,				\
+	/* .dma		= base##_DMA,*/				\
 }
 
 #endif

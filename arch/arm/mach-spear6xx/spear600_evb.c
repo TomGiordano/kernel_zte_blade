@@ -14,7 +14,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
 #include <mach/generic.h>
-#include <mach/hardware.h>
+#include <mach/spear.h>
 
 static struct amba_device *amba_devs[] __initdata = {
 	&gpio_device[0],
@@ -46,6 +46,6 @@ MACHINE_START(SPEAR600, "ST-SPEAR600-EVB")
 	.boot_params	=	0x00000100,
 	.map_io		=	spear6xx_map_io,
 	.init_irq	=	spear6xx_init_irq,
-	.timer		=	&spear6xx_timer,
+	.timer		=	&spear_sys_timer,
 	.init_machine	=	spear600_evb_init,
 MACHINE_END

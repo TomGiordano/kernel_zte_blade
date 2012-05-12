@@ -207,7 +207,7 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 0, 201600, ACPU_PLL_2, 2, 5,  67200, 2, 4,  61440 },
 	{ 1, 245760, ACPU_PLL_1, 1, 0, 122880, 1, 4,  61440 },
 	{ 1, 320000, ACPU_PLL_0, 4, 2, 160000, 1, 5, 122880 },
-#ifndef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
+#ifdef CONFIG_MSM_CPU_FREQ_OVERCLOCK_AHB
 /* Conservative AHB overclocking */
 	{ 0, 403200, ACPU_PLL_2, 2, 2, 134400, 2, 5, 122880 },
 	{ 1, 480000, ACPU_PLL_0, 4, 1, 160000, 2, 5, 122880 },
@@ -223,9 +223,6 @@ static struct clkctl_acpu_speed pll0_960_pll1_245_pll2_1200[] = {
 	{ 1, 768000, ACPU_PLL_0, 4, 0, 256000, 2, 7, 200000 },
 	{ 1, 787200, ACPU_PLL_0, 4, 0, 262400, 2, 7, 200000 },
 	{ 1, 806400, ACPU_PLL_0, 4, 0, 268800, 2, 7, 200000 },
-	{ 1, 825600, ACPU_PLL_0, 4, 0, 275200, 2, 7, 200000 },
-	{ 1, 844800, ACPU_PLL_0, 4, 0, 281600, 2, 7, 200000 },
-	{ 1, 864000, ACPU_PLL_0, 4, 0, 288000, 2, 7, 200000 },
 #else
 /* Agressive AHB overclocking */
 	{ 0, 403200, ACPU_PLL_2, 2, 2, 201600, 1, 5, 122880 },

@@ -2,44 +2,61 @@
  * ld.script for compressed kernel support of MIPS
  *
  * Copyright (C) 2009 Lemote Inc.
- * Author: Wu Zhangjin <wuzhanjing@gmail.com>
- * Copyright (C) 2010 "Wu Zhangjin" <wuzhanjing@gmail.com>
+ * Author: Wu Zhangjin <wuzj@lemote.com>
  */
 
 OUTPUT_ARCH(mips)
 ENTRY(start)
 SECTIONS
 {
-	/* Text and read-only data */
-	/* . = VMLINUZ_LOAD_ADDRESS; */
-	.text : {
+	/* . = VMLINUZ_LOAD_ADDRESS */
+	/* read-only */
+	_text = .;	/* Text and read-only data */
+	.text	: {
+		_ftext = . ;
 		*(.text)
 		*(.rodata)
-	}
-	/* End of text section */
+	} = 0
+	_etext = .;	/* End of text section */
 
-	/* Writable data */
-	.data : {
+	/* writable */
+	.data	: {	/* Data */
+		_fdata = . ;
 		*(.data)
-		/* Put the compressed image here */
+		/* Put the compressed image here, so bss is on the end. */
 		__image_begin = .;
 		*(.image)
 		__image_end = .;
 		CONSTRUCTORS
 	}
-	. = ALIGN(16);
-	_edata = .;
-	/* End of data section */
+	.sdata	: { *(.sdata) }
+	. = ALIGN(4);
+	_edata  =  .;	/* End of data section */
 
 	/* BSS */
-	.bss : {
+	__bss_start = .;
+	_fbss = .;
+	.sbss	: { *(.sbss) *(.scommon) }
+	.bss	: {
+		*(.dynbss)
 		*(.bss)
+		*(COMMON)
 	}
-	. = ALIGN(16);
-	_end = .;
+	.  = ALIGN(4);
+	_end = . ;
+
+	/* These are needed for ELF backends which have not yet been converted
+	 * to the new style linker.  */
+
+	.stab 0 : { *(.stab) }
+	.stabstr 0 : { *(.stabstr) }
+
+	/* These must appear regardless of  .  */
+	.gptab.sdata : { *(.gptab.data) *(.gptab.sdata) }
+	.gptab.sbss : { *(.gptab.bss) *(.gptab.sbss) }
 
 	/* Sections to be discarded */
-	/DISCARD/ : {
+	/DISCARD/	: {
 		*(.MIPS.options)
 		*(.options)
 		*(.pdr)

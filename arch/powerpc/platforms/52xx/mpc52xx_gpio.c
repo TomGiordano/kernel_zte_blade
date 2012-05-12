@@ -147,24 +147,26 @@ mpc52xx_wkup_gpio_dir_out(struct gpio_chip *gc, unsigned int gpio, int val)
 	return 0;
 }
 
-static int __devinit mpc52xx_wkup_gpiochip_probe(struct platform_device *ofdev)
+static int __devinit mpc52xx_wkup_gpiochip_probe(struct of_device *ofdev,
+					const struct of_device_id *match)
 {
 	struct mpc52xx_gpiochip *chip;
 	struct mpc52xx_gpio_wkup __iomem *regs;
-	struct gpio_chip *gc;
+	struct of_gpio_chip *ofchip;
 	int ret;
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
 
-	gc = &chip->mmchip.gc;
+	ofchip = &chip->mmchip.of_gc;
 
-	gc->ngpio            = 8;
-	gc->direction_input  = mpc52xx_wkup_gpio_dir_in;
-	gc->direction_output = mpc52xx_wkup_gpio_dir_out;
-	gc->get              = mpc52xx_wkup_gpio_get;
-	gc->set              = mpc52xx_wkup_gpio_set;
+	ofchip->gpio_cells          = 2;
+	ofchip->gc.ngpio            = 8;
+	ofchip->gc.direction_input  = mpc52xx_wkup_gpio_dir_in;
+	ofchip->gc.direction_output = mpc52xx_wkup_gpio_dir_out;
+	ofchip->gc.get              = mpc52xx_wkup_gpio_get;
+	ofchip->gc.set              = mpc52xx_wkup_gpio_set;
 
 	ret = of_mm_gpiochip_add(ofdev->dev.of_node, &chip->mmchip);
 	if (ret)
@@ -178,7 +180,7 @@ static int __devinit mpc52xx_wkup_gpiochip_probe(struct platform_device *ofdev)
 	return 0;
 }
 
-static int mpc52xx_gpiochip_remove(struct platform_device *ofdev)
+static int mpc52xx_gpiochip_remove(struct of_device *ofdev)
 {
 	return -EBUSY;
 }
@@ -190,7 +192,7 @@ static const struct of_device_id mpc52xx_wkup_gpiochip_match[] = {
 	{}
 };
 
-static struct platform_driver mpc52xx_wkup_gpiochip_driver = {
+static struct of_platform_driver mpc52xx_wkup_gpiochip_driver = {
 	.driver = {
 		.name = "gpio_wkup",
 		.owner = THIS_MODULE,
@@ -309,10 +311,11 @@ mpc52xx_simple_gpio_dir_out(struct gpio_chip *gc, unsigned int gpio, int val)
 	return 0;
 }
 
-static int __devinit mpc52xx_simple_gpiochip_probe(struct platform_device *ofdev)
+static int __devinit mpc52xx_simple_gpiochip_probe(struct of_device *ofdev,
+					const struct of_device_id *match)
 {
 	struct mpc52xx_gpiochip *chip;
-	struct gpio_chip *gc;
+	struct of_gpio_chip *ofchip;
 	struct mpc52xx_gpio __iomem *regs;
 	int ret;
 
@@ -320,13 +323,14 @@ static int __devinit mpc52xx_simple_gpiochip_probe(struct platform_device *ofdev
 	if (!chip)
 		return -ENOMEM;
 
-	gc = &chip->mmchip.gc;
+	ofchip = &chip->mmchip.of_gc;
 
-	gc->ngpio            = 32;
-	gc->direction_input  = mpc52xx_simple_gpio_dir_in;
-	gc->direction_output = mpc52xx_simple_gpio_dir_out;
-	gc->get              = mpc52xx_simple_gpio_get;
-	gc->set              = mpc52xx_simple_gpio_set;
+	ofchip->gpio_cells          = 2;
+	ofchip->gc.ngpio            = 32;
+	ofchip->gc.direction_input  = mpc52xx_simple_gpio_dir_in;
+	ofchip->gc.direction_output = mpc52xx_simple_gpio_dir_out;
+	ofchip->gc.get              = mpc52xx_simple_gpio_get;
+	ofchip->gc.set              = mpc52xx_simple_gpio_set;
 
 	ret = of_mm_gpiochip_add(ofdev->dev.of_node, &chip->mmchip);
 	if (ret)
@@ -347,7 +351,7 @@ static const struct of_device_id mpc52xx_simple_gpiochip_match[] = {
 	{}
 };
 
-static struct platform_driver mpc52xx_simple_gpiochip_driver = {
+static struct of_platform_driver mpc52xx_simple_gpiochip_driver = {
 	.driver = {
 		.name = "gpio",
 		.owner = THIS_MODULE,
@@ -359,10 +363,10 @@ static struct platform_driver mpc52xx_simple_gpiochip_driver = {
 
 static int __init mpc52xx_gpio_init(void)
 {
-	if (platform_driver_register(&mpc52xx_wkup_gpiochip_driver))
+	if (of_register_platform_driver(&mpc52xx_wkup_gpiochip_driver))
 		printk(KERN_ERR "Unable to register wakeup GPIO driver\n");
 
-	if (platform_driver_register(&mpc52xx_simple_gpiochip_driver))
+	if (of_register_platform_driver(&mpc52xx_simple_gpiochip_driver))
 		printk(KERN_ERR "Unable to register simple GPIO driver\n");
 
 	return 0;

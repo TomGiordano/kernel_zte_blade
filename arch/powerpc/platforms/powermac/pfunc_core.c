@@ -837,10 +837,8 @@ struct pmf_function *__pmf_find_function(struct device_node *target,
 		return NULL;
  find_it:
 	dev = pmf_find_device(actor);
-	if (dev == NULL) {
-		result = NULL;
-		goto out;
-	}
+	if (dev == NULL)
+		return NULL;
 
 	list_for_each_entry(func, &dev->functions, link) {
 		if (name && strcmp(name, func->name))
@@ -852,9 +850,8 @@ struct pmf_function *__pmf_find_function(struct device_node *target,
 		result = func;
 		break;
 	}
-	pmf_put_device(dev);
-out:
 	of_node_put(actor);
+	pmf_put_device(dev);
 	return result;
 }
 

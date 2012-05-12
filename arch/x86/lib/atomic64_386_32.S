@@ -15,12 +15,14 @@
 
 /* if you want SMP support, implement these with real spinlocks */
 .macro LOCK reg
-	pushfl_cfi
+	pushfl
+	CFI_ADJUST_CFA_OFFSET 4
 	cli
 .endm
 
 .macro UNLOCK reg
-	popfl_cfi
+	popfl
+	CFI_ADJUST_CFA_OFFSET -4
 .endm
 
 #define BEGIN(op) \

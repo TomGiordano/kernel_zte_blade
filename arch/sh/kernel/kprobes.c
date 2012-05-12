@@ -20,9 +20,9 @@
 DEFINE_PER_CPU(struct kprobe *, current_kprobe) = NULL;
 DEFINE_PER_CPU(struct kprobe_ctlblk, kprobe_ctlblk);
 
-static DEFINE_PER_CPU(struct kprobe, saved_current_opcode);
-static DEFINE_PER_CPU(struct kprobe, saved_next_opcode);
-static DEFINE_PER_CPU(struct kprobe, saved_next_opcode2);
+static struct kprobe saved_current_opcode;
+static struct kprobe saved_next_opcode;
+static struct kprobe saved_next_opcode2;
 
 #define OPCODE_JMP(x)	(((x) & 0xF0FF) == 0x402b)
 #define OPCODE_JSR(x)	(((x) & 0xF0FF) == 0x400b)
@@ -102,21 +102,16 @@ int __kprobes kprobe_handle_illslot(unsigned long pc)
 
 void __kprobes arch_remove_kprobe(struct kprobe *p)
 {
-	struct kprobe *saved = &__get_cpu_var(saved_next_opcode);
-
-	if (saved->addr) {
+	if (saved_next_opcode.addr != 0x0) {
 		arch_disarm_kprobe(p);
-		arch_disarm_kprobe(saved);
+		arch_disarm_kprobe(&saved_next_opcode);
+		saved_next_opcode.addr = 0x0;
+		saved_next_opcode.opcode = 0x0;
 
-		saved->addr = NULL;
-		saved->opcode = 0;
-
-		saved = &__get_cpu_var(saved_next_opcode2);
-		if (saved->addr) {
-			arch_disarm_kprobe(saved);
-
-			saved->addr = NULL;
-			saved->opcode = 0;
+		if (saved_next_opcode2.addr != 0x0) {
+			arch_disarm_kprobe(&saved_next_opcode2);
+			saved_next_opcode2.addr = 0x0;
+			saved_next_opcode2.opcode = 0x0;
 		}
 	}
 }
@@ -146,59 +141,57 @@ static void __kprobes set_current_kprobe(struct kprobe *p, struct pt_regs *regs,
  */
 static void __kprobes prepare_singlestep(struct kprobe *p, struct pt_regs *regs)
 {
-	__get_cpu_var(saved_current_opcode).addr = (kprobe_opcode_t *)regs->pc;
+	kprobe_opcode_t *addr = NULL;
+	saved_current_opcode.addr = (kprobe_opcode_t *) (regs->pc);
+	addr = saved_current_opcode.addr;
 
 	if (p != NULL) {
-		struct kprobe *op1, *op2;
-
 		arch_disarm_kprobe(p);
-
-		op1 = &__get_cpu_var(saved_next_opcode);
-		op2 = &__get_cpu_var(saved_next_opcode2);
 
 		if (OPCODE_JSR(p->opcode) || OPCODE_JMP(p->opcode)) {
 			unsigned int reg_nr = ((p->opcode >> 8) & 0x000F);
-			op1->addr = (kprobe_opcode_t *) regs->regs[reg_nr];
+			saved_next_opcode.addr =
+			    (kprobe_opcode_t *) regs->regs[reg_nr];
 		} else if (OPCODE_BRA(p->opcode) || OPCODE_BSR(p->opcode)) {
 			unsigned long disp = (p->opcode & 0x0FFF);
-			op1->addr =
+			saved_next_opcode.addr =
 			    (kprobe_opcode_t *) (regs->pc + 4 + disp * 2);
 
 		} else if (OPCODE_BRAF(p->opcode) || OPCODE_BSRF(p->opcode)) {
 			unsigned int reg_nr = ((p->opcode >> 8) & 0x000F);
-			op1->addr =
+			saved_next_opcode.addr =
 			    (kprobe_opcode_t *) (regs->pc + 4 +
 						 regs->regs[reg_nr]);
 
 		} else if (OPCODE_RTS(p->opcode)) {
-			op1->addr = (kprobe_opcode_t *) regs->pr;
+			saved_next_opcode.addr = (kprobe_opcode_t *) regs->pr;
 
 		} else if (OPCODE_BF(p->opcode) || OPCODE_BT(p->opcode)) {
 			unsigned long disp = (p->opcode & 0x00FF);
 			/* case 1 */
-			op1->addr = p->addr + 1;
+			saved_next_opcode.addr = p->addr + 1;
 			/* case 2 */
-			op2->addr =
+			saved_next_opcode2.addr =
 			    (kprobe_opcode_t *) (regs->pc + 4 + disp * 2);
-			op2->opcode = *(op2->addr);
-			arch_arm_kprobe(op2);
+			saved_next_opcode2.opcode = *(saved_next_opcode2.addr);
+			arch_arm_kprobe(&saved_next_opcode2);
 
 		} else if (OPCODE_BF_S(p->opcode) || OPCODE_BT_S(p->opcode)) {
 			unsigned long disp = (p->opcode & 0x00FF);
 			/* case 1 */
-			op1->addr = p->addr + 2;
+			saved_next_opcode.addr = p->addr + 2;
 			/* case 2 */
-			op2->addr =
+			saved_next_opcode2.addr =
 			    (kprobe_opcode_t *) (regs->pc + 4 + disp * 2);
-			op2->opcode = *(op2->addr);
-			arch_arm_kprobe(op2);
+			saved_next_opcode2.opcode = *(saved_next_opcode2.addr);
+			arch_arm_kprobe(&saved_next_opcode2);
 
 		} else {
-			op1->addr = p->addr + 1;
+			saved_next_opcode.addr = p->addr + 1;
 		}
 
-		op1->opcode = *(op1->addr);
-		arch_arm_kprobe(op1);
+		saved_next_opcode.opcode = *(saved_next_opcode.addr);
+		arch_arm_kprobe(&saved_next_opcode);
 	}
 }
 
@@ -383,23 +376,21 @@ static int __kprobes post_kprobe_handler(struct pt_regs *regs)
 		cur->post_handler(cur, regs, 0);
 	}
 
-	p = &__get_cpu_var(saved_next_opcode);
-	if (p->addr) {
-		arch_disarm_kprobe(p);
-		p->addr = NULL;
-		p->opcode = 0;
+	if (saved_next_opcode.addr != 0x0) {
+		arch_disarm_kprobe(&saved_next_opcode);
+		saved_next_opcode.addr = 0x0;
+		saved_next_opcode.opcode = 0x0;
 
-		addr = __get_cpu_var(saved_current_opcode).addr;
-		__get_cpu_var(saved_current_opcode).addr = NULL;
+		addr = saved_current_opcode.addr;
+		saved_current_opcode.addr = 0x0;
 
 		p = get_kprobe(addr);
 		arch_arm_kprobe(p);
 
-		p = &__get_cpu_var(saved_next_opcode2);
-		if (p->addr) {
-			arch_disarm_kprobe(p);
-			p->addr = NULL;
-			p->opcode = 0;
+		if (saved_next_opcode2.addr != 0x0) {
+			arch_disarm_kprobe(&saved_next_opcode2);
+			saved_next_opcode2.addr = 0x0;
+			saved_next_opcode2.opcode = 0x0;
 		}
 	}
 
@@ -581,5 +572,14 @@ static struct kprobe trampoline_p = {
 
 int __init arch_init_kprobes(void)
 {
+	saved_next_opcode.addr = 0x0;
+	saved_next_opcode.opcode = 0x0;
+
+	saved_current_opcode.addr = 0x0;
+	saved_current_opcode.opcode = 0x0;
+
+	saved_next_opcode2.addr = 0x0;
+	saved_next_opcode2.opcode = 0x0;
+
 	return register_kprobe(&trampoline_p);
 }

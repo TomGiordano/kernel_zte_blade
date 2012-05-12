@@ -12,7 +12,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/platform_device.h>
-#include <linux/syscore_ops.h>
+#include <linux/sysdev.h>
 
 #include <asm/io.h>
 
@@ -21,6 +21,7 @@
 struct intc {
 	void __iomem		*regs;
 	struct irq_chip		chip;
+	struct sys_device	sysdev;
 #ifdef CONFIG_PM
 	unsigned long		suspend_ipr;
 	unsigned long		saved_ipr[64];
@@ -33,12 +34,12 @@ extern struct platform_device at32_intc0_device;
  * TODO: We may be able to implement mask/unmask by setting IxM flags
  * in the status register.
  */
-static void intc_mask_irq(struct irq_data *d)
+static void intc_mask_irq(unsigned int irq)
 {
 
 }
 
-static void intc_unmask_irq(struct irq_data *d)
+static void intc_unmask_irq(unsigned int irq)
 {
 
 }
@@ -46,8 +47,8 @@ static void intc_unmask_irq(struct irq_data *d)
 static struct intc intc0 = {
 	.chip = {
 		.name		= "intc",
-		.irq_mask	= intc_mask_irq,
-		.irq_unmask	= intc_unmask_irq,
+		.mask		= intc_mask_irq,
+		.unmask		= intc_unmask_irq,
 	},
 };
 
@@ -56,6 +57,7 @@ static struct intc intc0 = {
  */
 asmlinkage void do_IRQ(int level, struct pt_regs *regs)
 {
+	struct irq_desc *desc;
 	struct pt_regs *old_regs;
 	unsigned int irq;
 	unsigned long status_reg;
@@ -67,7 +69,8 @@ asmlinkage void do_IRQ(int level, struct pt_regs *regs)
 	irq_enter();
 
 	irq = intc_readl(&intc0, INTCAUSE0 - 4 * level);
-	generic_handle_irq(irq);
+	desc = irq_desc + irq;
+	desc->handle_irq(irq, desc);
 
 	/*
 	 * Clear all interrupt level masks so that we may handle
@@ -125,7 +128,7 @@ void __init init_IRQ(void)
 		intc_writel(&intc0, INTPR0 + 4 * i, offset);
 		readback = intc_readl(&intc0, INTPR0 + 4 * i);
 		if (readback == offset)
-			irq_set_chip_and_handler(i, &intc0.chip,
+			set_irq_chip_and_handler(i, &intc0.chip,
 						 handle_simple_irq);
 	}
 
@@ -145,8 +148,9 @@ void intc_set_suspend_handler(unsigned long offset)
 	intc0.suspend_ipr = offset;
 }
 
-static int intc_suspend(void)
+static int intc_suspend(struct sys_device *sdev, pm_message_t state)
 {
+	struct intc *intc = container_of(sdev, struct intc, sysdev);
 	int i;
 
 	if (unlikely(!irqs_disabled())) {
@@ -154,43 +158,57 @@ static int intc_suspend(void)
 		return -EINVAL;
 	}
 
-	if (unlikely(!intc0.suspend_ipr)) {
+	if (unlikely(!intc->suspend_ipr)) {
 		pr_err("intc_suspend: suspend_ipr not initialized\n");
 		return -EINVAL;
 	}
 
 	for (i = 0; i < 64; i++) {
-		intc0.saved_ipr[i] = intc_readl(&intc0, INTPR0 + 4 * i);
-		intc_writel(&intc0, INTPR0 + 4 * i, intc0.suspend_ipr);
+		intc->saved_ipr[i] = intc_readl(intc, INTPR0 + 4 * i);
+		intc_writel(intc, INTPR0 + 4 * i, intc->suspend_ipr);
 	}
 
 	return 0;
 }
 
-static void intc_resume(void)
+static int intc_resume(struct sys_device *sdev)
 {
+	struct intc *intc = container_of(sdev, struct intc, sysdev);
 	int i;
 
+	WARN_ON(!irqs_disabled());
+
 	for (i = 0; i < 64; i++)
-		intc_writel(&intc0, INTPR0 + 4 * i, intc0.saved_ipr[i]);
+		intc_writel(intc, INTPR0 + 4 * i, intc->saved_ipr[i]);
+
+	return 0;
 }
 #else
 #define intc_suspend	NULL
 #define intc_resume	NULL
 #endif
 
-static struct syscore_ops intc_syscore_ops = {
+static struct sysdev_class intc_class = {
+	.name		= "intc",
 	.suspend	= intc_suspend,
 	.resume		= intc_resume,
 };
 
-static int __init intc_init_syscore(void)
+static int __init intc_init_sysdev(void)
 {
-	register_syscore_ops(&intc_syscore_ops);
+	int ret;
 
-	return 0;
+	ret = sysdev_class_register(&intc_class);
+	if (ret)
+		return ret;
+
+	intc0.sysdev.id = 0;
+	intc0.sysdev.cls = &intc_class;
+	ret = sysdev_register(&intc0.sysdev);
+
+	return ret;
 }
-device_initcall(intc_init_syscore);
+device_initcall(intc_init_sysdev);
 
 unsigned long intc_get_pending(unsigned int group)
 {

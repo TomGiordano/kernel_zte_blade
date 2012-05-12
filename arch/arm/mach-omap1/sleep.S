@@ -58,7 +58,6 @@
  */
 
 #if defined(CONFIG_ARCH_OMAP730) || defined(CONFIG_ARCH_OMAP850)
-	.align	3
 ENTRY(omap7xx_cpu_suspend)
 
 	@ save registers on stack
@@ -138,7 +137,6 @@ ENTRY(omap7xx_cpu_suspend_sz)
 #endif /* CONFIG_ARCH_OMAP730 || CONFIG_ARCH_OMAP850 */
 
 #ifdef CONFIG_ARCH_OMAP15XX
-	.align	3
 ENTRY(omap1510_cpu_suspend)
 
 	@ save registers on stack
@@ -213,7 +211,6 @@ ENTRY(omap1510_cpu_suspend_sz)
 #endif /* CONFIG_ARCH_OMAP15XX */
 
 #if defined(CONFIG_ARCH_OMAP16XX)
-	.align	3
 ENTRY(omap1610_cpu_suspend)
 
 	@ save registers on stack

@@ -130,11 +130,6 @@ void main(void)
 	/* First, copy the boot header into the "zeropage" */
 	copy_boot_params();
 
-	/* Initialize the early-boot console */
-	console_init();
-	if (cmdline_find_option_bool("debug"))
-		puts("early console in setup code\n");
-
 	/* End of heap check */
 	init_heap();
 
@@ -172,6 +167,10 @@ void main(void)
 
 	/* Set the video mode */
 	set_video();
+
+	/* Parse command line for 'quiet' and pass it to decompressor. */
+	if (cmdline_find_option_bool("quiet"))
+		boot_params.hdr.loadflags |= QUIET_FLAG;
 
 	/* Do the last things and invoke protected mode */
 	go_to_protected_mode();

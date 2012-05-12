@@ -40,7 +40,7 @@ static unsigned char *dispDeviceBase __force_data;
 
 static unsigned char vga_font[cmapsz];
 
-static int __init btext_initialize(phandle node)
+static int __init btext_initialize(unsigned int node)
 {
 	unsigned int width, height, depth, pitch;
 	unsigned long address = 0;
@@ -309,7 +309,7 @@ static struct console btext_console = {
 
 int __init btext_find_display(void)
 {
-	phandle node;
+	unsigned int node;
 	char type[32];
 	int ret;
 

@@ -30,9 +30,9 @@
 #include <plat/fpga.h>
 #include <mach/gpio.h>
 
-static void fpga_mask_irq(struct irq_data *d)
+static void fpga_mask_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq - OMAP_FPGA_IRQ_BASE;
+	irq -= OMAP_FPGA_IRQ_BASE;
 
 	if (irq < 8)
 		__raw_writeb((__raw_readb(OMAP1510_FPGA_IMR_LO)
@@ -58,14 +58,14 @@ static inline u32 get_fpga_unmasked_irqs(void)
 }
 
 
-static void fpga_ack_irq(struct irq_data *d)
+static void fpga_ack_irq(unsigned int irq)
 {
 	/* Don't need to explicitly ACK FPGA interrupts */
 }
 
-static void fpga_unmask_irq(struct irq_data *d)
+static void fpga_unmask_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq - OMAP_FPGA_IRQ_BASE;
+	irq -= OMAP_FPGA_IRQ_BASE;
 
 	if (irq < 8)
 		__raw_writeb((__raw_readb(OMAP1510_FPGA_IMR_LO) | (1 << irq)),
@@ -78,10 +78,10 @@ static void fpga_unmask_irq(struct irq_data *d)
 			      | (1 << (irq - 16))), INNOVATOR_FPGA_IMR2);
 }
 
-static void fpga_mask_ack_irq(struct irq_data *d)
+static void fpga_mask_ack_irq(unsigned int irq)
 {
-	fpga_mask_irq(d);
-	fpga_ack_irq(d);
+	fpga_mask_irq(irq);
+	fpga_ack_irq(irq);
 }
 
 void innovator_fpga_IRQ_demux(unsigned int irq, struct irq_desc *desc)
@@ -105,17 +105,17 @@ void innovator_fpga_IRQ_demux(unsigned int irq, struct irq_desc *desc)
 
 static struct irq_chip omap_fpga_irq_ack = {
 	.name		= "FPGA-ack",
-	.irq_ack	= fpga_mask_ack_irq,
-	.irq_mask	= fpga_mask_irq,
-	.irq_unmask	= fpga_unmask_irq,
+	.ack		= fpga_mask_ack_irq,
+	.mask		= fpga_mask_irq,
+	.unmask		= fpga_unmask_irq,
 };
 
 
 static struct irq_chip omap_fpga_irq = {
 	.name		= "FPGA",
-	.irq_ack	= fpga_ack_irq,
-	.irq_mask	= fpga_mask_irq,
-	.irq_unmask	= fpga_unmask_irq,
+	.ack		= fpga_ack_irq,
+	.mask		= fpga_mask_irq,
+	.unmask		= fpga_unmask_irq,
 };
 
 /*
@@ -143,7 +143,7 @@ static struct irq_chip omap_fpga_irq = {
  */
 void omap1510_fpga_init_irq(void)
 {
-	int i, res;
+	int i;
 
 	__raw_writeb(0, OMAP1510_FPGA_IMR_LO);
 	__raw_writeb(0, OMAP1510_FPGA_IMR_HI);
@@ -156,17 +156,17 @@ void omap1510_fpga_init_irq(void)
 			 * The touchscreen interrupt is level-sensitive, so
 			 * we'll use the regular mask_ack routine for it.
 			 */
-			irq_set_chip(i, &omap_fpga_irq_ack);
+			set_irq_chip(i, &omap_fpga_irq_ack);
 		}
 		else {
 			/*
 			 * All FPGA interrupts except the touchscreen are
 			 * edge-sensitive, so we won't mask them.
 			 */
-			irq_set_chip(i, &omap_fpga_irq);
+			set_irq_chip(i, &omap_fpga_irq);
 		}
 
-		irq_set_handler(i, handle_edge_irq);
+		set_irq_handler(i, handle_edge_irq);
 		set_irq_flags(i, IRQF_VALID);
 	}
 
@@ -177,12 +177,10 @@ void omap1510_fpga_init_irq(void)
 	 * NOTE: For general GPIO/MPUIO access and interrupts, please see
 	 * gpio.[ch]
 	 */
-	res = gpio_request(13, "FPGA irq");
-	if (res) {
-		pr_err("%s failed to get gpio\n", __func__);
-		return;
-	}
+	gpio_request(13, "FPGA irq");
 	gpio_direction_input(13);
-	irq_set_irq_type(gpio_to_irq(13), IRQ_TYPE_EDGE_RISING);
-	irq_set_chained_handler(OMAP1510_INT_FPGA, innovator_fpga_IRQ_demux);
+	set_irq_type(gpio_to_irq(13), IRQ_TYPE_EDGE_RISING);
+	set_irq_chained_handler(OMAP1510_INT_FPGA, innovator_fpga_IRQ_demux);
 }
+
+EXPORT_SYMBOL(omap1510_fpga_init_irq);

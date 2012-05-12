@@ -2,7 +2,7 @@
 # Makefile for the FPU instruction emulation.
 #
 
-ccflags-y := -w
+EXTRA_CFLAGS := -w
 
 obj-$(CONFIG_MATHEMU) += math-emu.o
 

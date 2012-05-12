@@ -19,7 +19,6 @@
  */
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/types.h>
 #include <asm/irq_cpu.h>
 #include <asm/txx9irq.h>
@@ -50,9 +49,9 @@ static struct {
 	unsigned char mode;
 } tx4939irq[TX4939_NUM_IR] __read_mostly;
 
-static void tx4939_irq_unmask(struct irq_data *d)
+static void tx4939_irq_unmask(unsigned int irq)
 {
-	unsigned int irq_nr = d->irq - TXX9_IRQ_BASE;
+	unsigned int irq_nr = irq - TXX9_IRQ_BASE;
 	u32 __iomem *lvlp;
 	int ofs;
 	if (irq_nr < 32) {
@@ -68,9 +67,9 @@ static void tx4939_irq_unmask(struct irq_data *d)
 		     lvlp);
 }
 
-static inline void tx4939_irq_mask(struct irq_data *d)
+static inline void tx4939_irq_mask(unsigned int irq)
 {
-	unsigned int irq_nr = d->irq - TXX9_IRQ_BASE;
+	unsigned int irq_nr = irq - TXX9_IRQ_BASE;
 	u32 __iomem *lvlp;
 	int ofs;
 	if (irq_nr < 32) {
@@ -87,11 +86,11 @@ static inline void tx4939_irq_mask(struct irq_data *d)
 	mmiowb();
 }
 
-static void tx4939_irq_mask_ack(struct irq_data *d)
+static void tx4939_irq_mask_ack(unsigned int irq)
 {
-	unsigned int irq_nr = d->irq - TXX9_IRQ_BASE;
+	unsigned int irq_nr = irq - TXX9_IRQ_BASE;
 
-	tx4939_irq_mask(d);
+	tx4939_irq_mask(irq);
 	if (TXx9_IRCR_EDGE(tx4939irq[irq_nr].mode)) {
 		irq_nr--;
 		/* clear edge detection */
@@ -101,9 +100,9 @@ static void tx4939_irq_mask_ack(struct irq_data *d)
 	}
 }
 
-static int tx4939_irq_set_type(struct irq_data *d, unsigned int flow_type)
+static int tx4939_irq_set_type(unsigned int irq, unsigned int flow_type)
 {
-	unsigned int irq_nr = d->irq - TXX9_IRQ_BASE;
+	unsigned int irq_nr = irq - TXX9_IRQ_BASE;
 	u32 cr;
 	u32 __iomem *crp;
 	int ofs;
@@ -145,11 +144,11 @@ static int tx4939_irq_set_type(struct irq_data *d, unsigned int flow_type)
 
 static struct irq_chip tx4939_irq_chip = {
 	.name		= "TX4939",
-	.irq_ack	= tx4939_irq_mask_ack,
-	.irq_mask	= tx4939_irq_mask,
-	.irq_mask_ack	= tx4939_irq_mask_ack,
-	.irq_unmask	= tx4939_irq_unmask,
-	.irq_set_type	= tx4939_irq_set_type,
+	.ack		= tx4939_irq_mask_ack,
+	.mask		= tx4939_irq_mask,
+	.mask_ack	= tx4939_irq_mask_ack,
+	.unmask		= tx4939_irq_unmask,
+	.set_type	= tx4939_irq_set_type,
 };
 
 static int tx4939_irq_set_pri(int irc_irq, int new_pri)
@@ -176,8 +175,8 @@ void __init tx4939_irq_init(void)
 	for (i = 1; i < TX4939_NUM_IR; i++) {
 		tx4939irq[i].level = 4; /* middle level */
 		tx4939irq[i].mode = TXx9_IRCR_LOW;
-		irq_set_chip_and_handler(TXX9_IRQ_BASE + i, &tx4939_irq_chip,
-					 handle_level_irq);
+		set_irq_chip_and_handler(TXX9_IRQ_BASE + i,
+					 &tx4939_irq_chip, handle_level_irq);
 	}
 
 	/* mask all IRC interrupts */
@@ -193,7 +192,7 @@ void __init tx4939_irq_init(void)
 	__raw_writel(TXx9_IRCER_ICE, &tx4939_ircptr->den.r);
 	__raw_writel(irc_elevel, &tx4939_ircptr->msk.r);
 
-	irq_set_chained_handler(MIPS_CPU_IRQ_BASE + TX4939_IRC_INT,
+	set_irq_chained_handler(MIPS_CPU_IRQ_BASE + TX4939_IRC_INT,
 				handle_simple_irq);
 
 	/* raise priority for errors, timers, sio */

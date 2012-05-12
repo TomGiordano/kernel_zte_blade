@@ -398,31 +398,9 @@ static int check_excludes(struct perf_event **ctrs, unsigned int cflags[],
 	return 0;
 }
 
-static u64 check_and_compute_delta(u64 prev, u64 val)
-{
-	u64 delta = (val - prev) & 0xfffffffful;
-
-	/*
-	 * POWER7 can roll back counter values, if the new value is smaller
-	 * than the previous value it will cause the delta and the counter to
-	 * have bogus values unless we rolled a counter over.  If a coutner is
-	 * rolled back, it will be smaller, but within 256, which is the maximum
-	 * number of events to rollback at once.  If we dectect a rollback
-	 * return 0.  This can lead to a small lack of precision in the
-	 * counters.
-	 */
-	if (prev > val && (prev - val) < 256)
-		delta = 0;
-
-	return delta;
-}
-
 static void power_pmu_read(struct perf_event *event)
 {
 	s64 val, delta, prev;
-
-	if (event->hw.state & PERF_HES_STOPPED)
-		return;
 
 	if (!event->hw.idx)
 		return;
@@ -432,16 +410,15 @@ static void power_pmu_read(struct perf_event *event)
 	 * Therefore we treat them like NMIs.
 	 */
 	do {
-		prev = local64_read(&event->hw.prev_count);
+		prev = atomic64_read(&event->hw.prev_count);
 		barrier();
 		val = read_pmc(event->hw.idx);
-		delta = check_and_compute_delta(prev, val);
-		if (!delta)
-			return;
-	} while (local64_cmpxchg(&event->hw.prev_count, prev, val) != prev);
+	} while (atomic64_cmpxchg(&event->hw.prev_count, prev, val) != prev);
 
-	local64_add(delta, &event->count);
-	local64_sub(delta, &event->hw.period_left);
+	/* The counters are only 32 bits wide */
+	delta = (val - prev) & 0xfffffffful;
+	atomic64_add(delta, &event->count);
+	atomic64_sub(delta, &event->hw.period_left);
 }
 
 /*
@@ -467,11 +444,10 @@ static void freeze_limited_counters(struct cpu_hw_events *cpuhw,
 		if (!event->hw.idx)
 			continue;
 		val = (event->hw.idx == 5) ? pmc5 : pmc6;
-		prev = local64_read(&event->hw.prev_count);
+		prev = atomic64_read(&event->hw.prev_count);
 		event->hw.idx = 0;
-		delta = check_and_compute_delta(prev, val);
-		if (delta)
-			local64_add(delta, &event->count);
+		delta = (val - prev) & 0xfffffffful;
+		atomic64_add(delta, &event->count);
 	}
 }
 
@@ -479,16 +455,14 @@ static void thaw_limited_counters(struct cpu_hw_events *cpuhw,
 				  unsigned long pmc5, unsigned long pmc6)
 {
 	struct perf_event *event;
-	u64 val, prev;
+	u64 val;
 	int i;
 
 	for (i = 0; i < cpuhw->n_limited; ++i) {
 		event = cpuhw->limited_counter[i];
 		event->hw.idx = cpuhw->limited_hwidx[i];
 		val = (event->hw.idx == 5) ? pmc5 : pmc6;
-		prev = local64_read(&event->hw.prev_count);
-		if (check_and_compute_delta(prev, val))
-			local64_set(&event->hw.prev_count, val);
+		atomic64_set(&event->hw.prev_count, val);
 		perf_event_update_userpage(event);
 	}
 }
@@ -543,7 +517,7 @@ static void write_mmcr0(struct cpu_hw_events *cpuhw, unsigned long mmcr0)
  * Disable all events to prevent PMU interrupts and to allow
  * events to be added or removed.
  */
-static void power_pmu_disable(struct pmu *pmu)
+void hw_perf_disable(void)
 {
 	struct cpu_hw_events *cpuhw;
 	unsigned long flags;
@@ -591,7 +565,7 @@ static void power_pmu_disable(struct pmu *pmu)
  * If we were previously disabled and events were added, then
  * put the new config on the PMU.
  */
-static void power_pmu_enable(struct pmu *pmu)
+void hw_perf_enable(void)
 {
 	struct perf_event *event;
 	struct cpu_hw_events *cpuhw;
@@ -692,14 +666,12 @@ static void power_pmu_enable(struct pmu *pmu)
 		}
 		val = 0;
 		if (event->hw.sample_period) {
-			left = local64_read(&event->hw.period_left);
+			left = atomic64_read(&event->hw.period_left);
 			if (left < 0x80000000L)
 				val = 0x80000000L - left;
 		}
-		local64_set(&event->hw.prev_count, val);
+		atomic64_set(&event->hw.prev_count, val);
 		event->hw.idx = idx;
-		if (event->hw.state & PERF_HES_STOPPED)
-			val = 0;
 		write_pmc(idx, val);
 		perf_event_update_userpage(event);
 	}
@@ -755,7 +727,7 @@ static int collect_events(struct perf_event *group, int max_count,
  * re-enable the PMU in order to get hw_perf_enable to do the
  * actual work of reconfiguring the PMU.
  */
-static int power_pmu_add(struct perf_event *event, int ef_flags)
+static int power_pmu_enable(struct perf_event *event)
 {
 	struct cpu_hw_events *cpuhw;
 	unsigned long flags;
@@ -763,7 +735,7 @@ static int power_pmu_add(struct perf_event *event, int ef_flags)
 	int ret = -EAGAIN;
 
 	local_irq_save(flags);
-	perf_pmu_disable(event->pmu);
+	perf_disable();
 
 	/*
 	 * Add the event to the list (if there is room)
@@ -777,15 +749,12 @@ static int power_pmu_add(struct perf_event *event, int ef_flags)
 	cpuhw->events[n0] = event->hw.config;
 	cpuhw->flags[n0] = event->hw.event_base;
 
-	if (!(ef_flags & PERF_EF_START))
-		event->hw.state = PERF_HES_STOPPED | PERF_HES_UPTODATE;
-
 	/*
 	 * If group events scheduling transaction was started,
-	 * skip the schedulability test here, it will be performed
+	 * skip the schedulability test here, it will be peformed
 	 * at commit time(->commit_txn) as a whole
 	 */
-	if (cpuhw->group_flag & PERF_EVENT_TXN)
+	if (cpuhw->group_flag & PERF_EVENT_TXN_STARTED)
 		goto nocheck;
 
 	if (check_excludes(cpuhw->event, cpuhw->flags, n0, 1))
@@ -800,7 +769,7 @@ nocheck:
 
 	ret = 0;
  out:
-	perf_pmu_enable(event->pmu);
+	perf_enable();
 	local_irq_restore(flags);
 	return ret;
 }
@@ -808,14 +777,14 @@ nocheck:
 /*
  * Remove a event from the PMU.
  */
-static void power_pmu_del(struct perf_event *event, int ef_flags)
+static void power_pmu_disable(struct perf_event *event)
 {
 	struct cpu_hw_events *cpuhw;
 	long i;
 	unsigned long flags;
 
 	local_irq_save(flags);
-	perf_pmu_disable(event->pmu);
+	perf_disable();
 
 	power_pmu_read(event);
 
@@ -852,60 +821,34 @@ static void power_pmu_del(struct perf_event *event, int ef_flags)
 		cpuhw->mmcr[0] &= ~(MMCR0_PMXE | MMCR0_FCECE);
 	}
 
-	perf_pmu_enable(event->pmu);
+	perf_enable();
 	local_irq_restore(flags);
 }
 
 /*
- * POWER-PMU does not support disabling individual counters, hence
- * program their cycle counter to their max value and ignore the interrupts.
+ * Re-enable interrupts on a event after they were throttled
+ * because they were coming too fast.
  */
-
-static void power_pmu_start(struct perf_event *event, int ef_flags)
+static void power_pmu_unthrottle(struct perf_event *event)
 {
-	unsigned long flags;
-	s64 left;
-
-	if (!event->hw.idx || !event->hw.sample_period)
-		return;
-
-	if (!(event->hw.state & PERF_HES_STOPPED))
-		return;
-
-	if (ef_flags & PERF_EF_RELOAD)
-		WARN_ON_ONCE(!(event->hw.state & PERF_HES_UPTODATE));
-
-	local_irq_save(flags);
-	perf_pmu_disable(event->pmu);
-
-	event->hw.state = 0;
-	left = local64_read(&event->hw.period_left);
-	write_pmc(event->hw.idx, left);
-
-	perf_event_update_userpage(event);
-	perf_pmu_enable(event->pmu);
-	local_irq_restore(flags);
-}
-
-static void power_pmu_stop(struct perf_event *event, int ef_flags)
-{
+	s64 val, left;
 	unsigned long flags;
 
 	if (!event->hw.idx || !event->hw.sample_period)
 		return;
-
-	if (event->hw.state & PERF_HES_STOPPED)
-		return;
-
 	local_irq_save(flags);
-	perf_pmu_disable(event->pmu);
-
+	perf_disable();
 	power_pmu_read(event);
-	event->hw.state |= PERF_HES_STOPPED | PERF_HES_UPTODATE;
-	write_pmc(event->hw.idx, 0);
-
+	left = event->hw.sample_period;
+	event->hw.last_period = left;
+	val = 0;
+	if (left < 0x80000000L)
+		val = 0x80000000L - left;
+	write_pmc(event->hw.idx, val);
+	atomic64_set(&event->hw.prev_count, val);
+	atomic64_set(&event->hw.period_left, left);
 	perf_event_update_userpage(event);
-	perf_pmu_enable(event->pmu);
+	perf_enable();
 	local_irq_restore(flags);
 }
 
@@ -914,12 +857,11 @@ static void power_pmu_stop(struct perf_event *event, int ef_flags)
  * Set the flag to make pmu::enable() not perform the
  * schedulability test, it will be performed at commit time
  */
-void power_pmu_start_txn(struct pmu *pmu)
+void power_pmu_start_txn(const struct pmu *pmu)
 {
 	struct cpu_hw_events *cpuhw = &__get_cpu_var(cpu_hw_events);
 
-	perf_pmu_disable(pmu);
-	cpuhw->group_flag |= PERF_EVENT_TXN;
+	cpuhw->group_flag |= PERF_EVENT_TXN_STARTED;
 	cpuhw->n_txn_start = cpuhw->n_events;
 }
 
@@ -928,12 +870,11 @@ void power_pmu_start_txn(struct pmu *pmu)
  * Clear the flag and pmu::enable() will perform the
  * schedulability test.
  */
-void power_pmu_cancel_txn(struct pmu *pmu)
+void power_pmu_cancel_txn(const struct pmu *pmu)
 {
 	struct cpu_hw_events *cpuhw = &__get_cpu_var(cpu_hw_events);
 
-	cpuhw->group_flag &= ~PERF_EVENT_TXN;
-	perf_pmu_enable(pmu);
+	cpuhw->group_flag &= ~PERF_EVENT_TXN_STARTED;
 }
 
 /*
@@ -941,7 +882,7 @@ void power_pmu_cancel_txn(struct pmu *pmu)
  * Perform the group schedulability test as a whole
  * Return 0 if success
  */
-int power_pmu_commit_txn(struct pmu *pmu)
+int power_pmu_commit_txn(const struct pmu *pmu)
 {
 	struct cpu_hw_events *cpuhw;
 	long i, n;
@@ -959,10 +900,18 @@ int power_pmu_commit_txn(struct pmu *pmu)
 	for (i = cpuhw->n_txn_start; i < n; ++i)
 		cpuhw->event[i]->hw.config = cpuhw->events[i];
 
-	cpuhw->group_flag &= ~PERF_EVENT_TXN;
-	perf_pmu_enable(pmu);
 	return 0;
 }
+
+struct pmu power_pmu = {
+	.enable		= power_pmu_enable,
+	.disable	= power_pmu_disable,
+	.read		= power_pmu_read,
+	.unthrottle	= power_pmu_unthrottle,
+	.start_txn	= power_pmu_start_txn,
+	.cancel_txn	= power_pmu_cancel_txn,
+	.commit_txn	= power_pmu_commit_txn,
+};
 
 /*
  * Return 1 if we might be able to put event on a limited PMC,
@@ -1064,7 +1013,7 @@ static int hw_perf_cache_event(u64 config, u64 *eventp)
 	return 0;
 }
 
-static int power_pmu_event_init(struct perf_event *event)
+const struct pmu *hw_perf_event_init(struct perf_event *event)
 {
 	u64 ev;
 	unsigned long flags;
@@ -1076,27 +1025,25 @@ static int power_pmu_event_init(struct perf_event *event)
 	struct cpu_hw_events *cpuhw;
 
 	if (!ppmu)
-		return -ENOENT;
-
+		return ERR_PTR(-ENXIO);
 	switch (event->attr.type) {
 	case PERF_TYPE_HARDWARE:
 		ev = event->attr.config;
 		if (ev >= ppmu->n_generic || ppmu->generic_events[ev] == 0)
-			return -EOPNOTSUPP;
+			return ERR_PTR(-EOPNOTSUPP);
 		ev = ppmu->generic_events[ev];
 		break;
 	case PERF_TYPE_HW_CACHE:
 		err = hw_perf_cache_event(event->attr.config, &ev);
 		if (err)
-			return err;
+			return ERR_PTR(err);
 		break;
 	case PERF_TYPE_RAW:
 		ev = event->attr.config;
 		break;
 	default:
-		return -ENOENT;
+		return ERR_PTR(-EINVAL);
 	}
-
 	event->hw.config_base = ev;
 	event->hw.idx = 0;
 
@@ -1115,7 +1062,7 @@ static int power_pmu_event_init(struct perf_event *event)
 	 * XXX we should check if the task is an idle task.
 	 */
 	flags = 0;
-	if (event->attach_state & PERF_ATTACH_TASK)
+	if (event->ctx->task)
 		flags |= PPMU_ONLY_COUNT_RUN;
 
 	/*
@@ -1133,7 +1080,7 @@ static int power_pmu_event_init(struct perf_event *event)
 			 */
 			ev = normal_pmc_alternative(ev, flags);
 			if (!ev)
-				return -EINVAL;
+				return ERR_PTR(-EINVAL);
 		}
 	}
 
@@ -1147,24 +1094,24 @@ static int power_pmu_event_init(struct perf_event *event)
 		n = collect_events(event->group_leader, ppmu->n_counter - 1,
 				   ctrs, events, cflags);
 		if (n < 0)
-			return -EINVAL;
+			return ERR_PTR(-EINVAL);
 	}
 	events[n] = ev;
 	ctrs[n] = event;
 	cflags[n] = flags;
 	if (check_excludes(ctrs, cflags, n, 1))
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	cpuhw = &get_cpu_var(cpu_hw_events);
 	err = power_check_constraints(cpuhw, events, cflags, n + 1);
 	put_cpu_var(cpu_hw_events);
 	if (err)
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 
 	event->hw.config = events[n];
 	event->hw.event_base = cflags[n];
 	event->hw.last_period = event->hw.sample_period;
-	local64_set(&event->hw.period_left, event->hw.last_period);
+	atomic64_set(&event->hw.period_left, event->hw.last_period);
 
 	/*
 	 * See if we need to reserve the PMU.
@@ -1184,22 +1131,10 @@ static int power_pmu_event_init(struct perf_event *event)
 	}
 	event->destroy = hw_perf_event_destroy;
 
-	return err;
+	if (err)
+		return ERR_PTR(err);
+	return &power_pmu;
 }
-
-struct pmu power_pmu = {
-	.pmu_enable	= power_pmu_enable,
-	.pmu_disable	= power_pmu_disable,
-	.event_init	= power_pmu_event_init,
-	.add		= power_pmu_add,
-	.del		= power_pmu_del,
-	.start		= power_pmu_start,
-	.stop		= power_pmu_stop,
-	.read		= power_pmu_read,
-	.start_txn	= power_pmu_start_txn,
-	.cancel_txn	= power_pmu_cancel_txn,
-	.commit_txn	= power_pmu_commit_txn,
-};
 
 /*
  * A counter has overflowed; update its count and record
@@ -1213,38 +1148,27 @@ static void record_and_restart(struct perf_event *event, unsigned long val,
 	s64 prev, delta, left;
 	int record = 0;
 
-	if (event->hw.state & PERF_HES_STOPPED) {
-		write_pmc(event->hw.idx, 0);
-		return;
-	}
-
 	/* we don't have to worry about interrupts here */
-	prev = local64_read(&event->hw.prev_count);
-	delta = check_and_compute_delta(prev, val);
-	local64_add(delta, &event->count);
+	prev = atomic64_read(&event->hw.prev_count);
+	delta = (val - prev) & 0xfffffffful;
+	atomic64_add(delta, &event->count);
 
 	/*
 	 * See if the total period for this event has expired,
 	 * and update for the next period.
 	 */
 	val = 0;
-	left = local64_read(&event->hw.period_left) - delta;
+	left = atomic64_read(&event->hw.period_left) - delta;
 	if (period) {
 		if (left <= 0) {
 			left += period;
 			if (left <= 0)
 				left = period;
 			record = 1;
-			event->hw.last_period = event->hw.sample_period;
 		}
 		if (left < 0x80000000LL)
 			val = 0x80000000LL - left;
 	}
-
-	write_pmc(event->hw.idx, val);
-	local64_set(&event->hw.prev_count, val);
-	local64_set(&event->hw.period_left, left);
-	perf_event_update_userpage(event);
 
 	/*
 	 * Finally record data if requested.
@@ -1258,9 +1182,23 @@ static void record_and_restart(struct perf_event *event, unsigned long val,
 		if (event->attr.sample_type & PERF_SAMPLE_ADDR)
 			perf_get_data_addr(regs, &data.addr);
 
-		if (perf_event_overflow(event, nmi, &data, regs))
-			power_pmu_stop(event, 0);
+		if (perf_event_overflow(event, nmi, &data, regs)) {
+			/*
+			 * Interrupts are coming too fast - throttle them
+			 * by setting the event to 0, so it will be
+			 * at least 2^30 cycles until the next interrupt
+			 * (assuming each event counts at most 2 counts
+			 * per cycle).
+			 */
+			val = 0;
+			left = ~0ULL >> 1;
+		}
 	}
+
+	write_pmc(event->hw.idx, val);
+	atomic64_set(&event->hw.prev_count, val);
+	atomic64_set(&event->hw.period_left, left);
+	perf_event_update_userpage(event);
 }
 
 /*
@@ -1290,28 +1228,6 @@ unsigned long perf_instruction_pointer(struct pt_regs *regs)
 
 	ip = mfspr(SPRN_SIAR) + perf_ip_adjust(regs);
 	return ip;
-}
-
-static bool pmc_overflow(unsigned long val)
-{
-	if ((int)val < 0)
-		return true;
-
-	/*
-	 * Events on POWER7 can roll back if a speculative event doesn't
-	 * eventually complete. Unfortunately in some rare cases they will
-	 * raise a performance monitor exception. We need to catch this to
-	 * ensure we reset the PMC. In all cases the PMC will be 256 or less
-	 * cycles from overflow.
-	 *
-	 * We only do this if the first pass fails to find any overflowing
-	 * PMCs because a user might set a period of less than 256 and we
-	 * don't want to mistakenly reset them.
-	 */
-	if (__is_processor(PV_POWER7) && ((0x80000000 - val) <= 256))
-		return true;
-
-	return false;
 }
 
 /*
@@ -1361,7 +1277,7 @@ static void perf_event_interrupt(struct pt_regs *regs)
 			if (is_limited_pmc(i + 1))
 				continue;
 			val = read_pmc(i + 1);
-			if (pmc_overflow(val))
+			if ((int)val < 0)
 				write_pmc(i + 1, 0);
 		}
 	}
@@ -1425,7 +1341,6 @@ int register_power_pmu(struct power_pmu *pmu)
 		freeze_events_kernel = MMCR0_FCHV;
 #endif /* CONFIG_PPC64 */
 
-	perf_pmu_register(&power_pmu, "cpu", PERF_TYPE_RAW);
 	perf_cpu_notifier(power_pmu_notifier);
 
 	return 0;

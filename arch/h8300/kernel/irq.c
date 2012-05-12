@@ -38,30 +38,34 @@ static inline int is_ext_irq(unsigned int irq)
 	return (irq >= EXT_IRQ0 && irq <= (EXT_IRQ0 + EXT_IRQS));
 }
 
-static void h8300_enable_irq(struct irq_data *data)
+static void h8300_enable_irq(unsigned int irq)
 {
-	if (is_ext_irq(data->irq))
-		IER_REGS |= 1 << (data->irq - EXT_IRQ0);
+	if (is_ext_irq(irq))
+		IER_REGS |= 1 << (irq - EXT_IRQ0);
 }
 
-static void h8300_disable_irq(struct irq_data *data)
+static void h8300_disable_irq(unsigned int irq)
 {
-	if (is_ext_irq(data->irq))
-		IER_REGS &= ~(1 << (data->irq - EXT_IRQ0));
+	if (is_ext_irq(irq))
+		IER_REGS &= ~(1 << (irq - EXT_IRQ0));
 }
 
-static unsigned int h8300_startup_irq(struct irq_data *data)
+static void h8300_end_irq(unsigned int irq)
 {
-	if (is_ext_irq(data->irq))
-		return h8300_enable_irq_pin(data->irq);
+}
+
+static unsigned int h8300_startup_irq(unsigned int irq)
+{
+	if (is_ext_irq(irq))
+		return h8300_enable_irq_pin(irq);
 	else
 		return 0;
 }
 
-static void h8300_shutdown_irq(struct irq_data *data)
+static void h8300_shutdown_irq(unsigned int irq)
 {
-	if (is_ext_irq(data->irq))
-		h8300_disable_irq_pin(data->irq);
+	if (is_ext_irq(irq))
+		h8300_disable_irq_pin(irq);
 }
 
 /*
@@ -69,10 +73,12 @@ static void h8300_shutdown_irq(struct irq_data *data)
  */
 struct irq_chip h8300irq_chip = {
 	.name		= "H8300-INTC",
-	.irq_startup	= h8300_startup_irq,
-	.irq_shutdown	= h8300_shutdown_irq,
-	.irq_enable	= h8300_enable_irq,
-	.irq_disable	= h8300_disable_irq,
+	.startup	= h8300_startup_irq,
+	.shutdown	= h8300_shutdown_irq,
+	.enable		= h8300_enable_irq,
+	.disable	= h8300_disable_irq,
+	.ack		= NULL,
+	.end		= h8300_end_irq,
 };
 
 #if defined(CONFIG_RAMKERNEL)
@@ -154,13 +160,48 @@ void __init init_IRQ(void)
 
 	setup_vector();
 
-	for (c = 0; c < NR_IRQS; c++)
-		irq_set_chip_and_handler(c, &h8300irq_chip, handle_simple_irq);
+	for (c = 0; c < NR_IRQS; c++) {
+		irq_desc[c].status = IRQ_DISABLED;
+		irq_desc[c].action = NULL;
+		irq_desc[c].depth = 1;
+		irq_desc[c].chip = &h8300irq_chip;
+	}
 }
 
 asmlinkage void do_IRQ(int irq)
 {
 	irq_enter();
-	generic_handle_irq(irq);
+	__do_IRQ(irq);
 	irq_exit();
 }
+
+#if defined(CONFIG_PROC_FS)
+int show_interrupts(struct seq_file *p, void *v)
+{
+	int i = *(loff_t *) v;
+	struct irqaction * action;
+	unsigned long flags;
+
+	if (i == 0)
+		seq_puts(p, "           CPU0");
+
+	if (i < NR_IRQS) {
+		raw_spin_lock_irqsave(&irq_desc[i].lock, flags);
+		action = irq_desc[i].action;
+		if (!action)
+			goto unlock;
+		seq_printf(p, "%3d: ",i);
+		seq_printf(p, "%10u ", kstat_irqs(i));
+		seq_printf(p, " %14s", irq_desc[i].chip->name);
+		seq_printf(p, "-%-8s", irq_desc[i].name);
+		seq_printf(p, "  %s", action->name);
+
+		for (action=action->next; action; action = action->next)
+			seq_printf(p, ", %s", action->name);
+		seq_putc(p, '\n');
+unlock:
+		raw_spin_unlock_irqrestore(&irq_desc[i].lock, flags);
+	}
+	return 0;
+}
+#endif

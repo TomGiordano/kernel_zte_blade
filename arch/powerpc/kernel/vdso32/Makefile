@@ -14,10 +14,10 @@ obj-vdso32 := $(addprefix $(obj)/, $(obj-vdso32))
 
 GCOV_PROFILE := n
 
-ccflags-y := -shared -fno-common -fno-builtin
-ccflags-y += -nostdlib -Wl,-soname=linux-vdso32.so.1 \
+EXTRA_CFLAGS := -shared -fno-common -fno-builtin
+EXTRA_CFLAGS += -nostdlib -Wl,-soname=linux-vdso32.so.1 \
 		$(call cc-ldoption, -Wl$(comma)--hash-style=sysv)
-asflags-y := -D__VDSO32__ -s
+EXTRA_AFLAGS := -D__VDSO32__ -s
 
 obj-y += vdso32_wrapper.o
 extra-y += vdso32.lds

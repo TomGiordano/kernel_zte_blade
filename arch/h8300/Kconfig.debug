@@ -48,7 +48,7 @@ config DEFAULT_CMDLINE
 	  builtin kernel commandline enabled.
 
 config KERNEL_COMMAND
-	string "Buildin command string"
+	string "Buildin commmand string"
 	depends on DEFAULT_CMDLINE
 	help
 	  builtin kernel commandline strings.

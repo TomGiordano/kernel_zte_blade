@@ -29,7 +29,6 @@
 #include <asm/thread_info.h>
 #include <asm/ppc_asm.h>
 #include <asm/asm-offsets.h>
-#include <asm/ptrace.h>
 
 /* Macro to make the code more readable. */
 #ifdef CONFIG_8xx_CPU6

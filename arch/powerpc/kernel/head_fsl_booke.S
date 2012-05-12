@@ -41,7 +41,6 @@
 #include <asm/ppc_asm.h>
 #include <asm/asm-offsets.h>
 #include <asm/cache.h>
-#include <asm/ptrace.h>
 #include "head_booke.h"
 
 /* As with the other PowerPC ports, it is expected that when code
@@ -153,11 +152,8 @@ _ENTRY(__early_start)
 	/* Check to see if we're the second processor, and jump
 	 * to the secondary_start code if so
 	 */
-	lis	r24, boot_cpuid@h
-	ori	r24, r24, boot_cpuid@l
-	lwz	r24, 0(r24)
-	cmpwi	r24, -1
-	mfspr   r24,SPRN_PIR
+	mfspr	r24,SPRN_PIR
+	cmpwi	r24,0
 	bne	__secondary_start
 #endif
 
@@ -178,9 +174,6 @@ _ENTRY(__early_start)
 	ori	r1,r1,init_thread_union@l
 	li	r0,0
 	stwu	r0,THREAD_SIZE-STACK_FRAME_OVERHEAD(r1)
-
-	rlwinm  r22,r1,0,0,31-THREAD_SHIFT      /* current thread_info */
-	stw	r24, TI_CPU(r22)
 
 	bl	early_init
 
@@ -326,7 +319,7 @@ interrupt_base:
 	NORMAL_EXCEPTION_PROLOG
 	EXC_XFER_EE_LITE(0x0c00, DoSyscall)
 
-	/* Auxiliary Processor Unavailable Interrupt */
+	/* Auxillary Processor Unavailable Interrupt */
 	EXCEPTION(0x2900, AuxillaryProcessorUnavailable, unknown_exception, EXC_XFER_EE)
 
 	/* Decrementer Interrupt */

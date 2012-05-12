@@ -75,6 +75,14 @@ static void gamecube_shutdown(void)
 	flipper_quiesce();
 }
 
+#ifdef CONFIG_KEXEC
+static int gamecube_kexec_prepare(struct kimage *image)
+{
+	return 0;
+}
+#endif /* CONFIG_KEXEC */
+
+
 define_machine(gamecube) {
 	.name			= "gamecube",
 	.probe			= gamecube_probe,
@@ -87,6 +95,9 @@ define_machine(gamecube) {
 	.calibrate_decr		= generic_calibrate_decr,
 	.progress		= udbg_progress,
 	.machine_shutdown	= gamecube_shutdown,
+#ifdef CONFIG_KEXEC
+	.machine_kexec_prepare	= gamecube_kexec_prepare,
+#endif
 };
 
 

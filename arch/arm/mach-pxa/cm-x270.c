@@ -10,6 +10,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/sysdev.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
@@ -18,12 +19,12 @@
 #include <video/mbxfb.h>
 
 #include <linux/spi/spi.h>
-#include <linux/spi/pxa2xx_spi.h>
 #include <linux/spi/libertas_spi.h>
 
 #include <mach/pxa27x.h>
 #include <mach/ohci.h>
 #include <mach/mmc.h>
+#include <mach/pxa2xx_spi.h>
 
 #include "generic.h"
 

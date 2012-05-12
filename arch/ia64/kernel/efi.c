@@ -23,7 +23,6 @@
  */
 #include <linux/module.h>
 #include <linux/bootmem.h>
-#include <linux/crash_dump.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/types.h>

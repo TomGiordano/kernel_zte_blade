@@ -11,7 +11,6 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/irq.h>
 #include <asm/irq_cpu.h>
 #include <asm/mipsregs.h>
 #include <bcm63xx_cpu.h>
@@ -76,80 +75,88 @@ asmlinkage void plat_irq_dispatch(void)
  * internal IRQs operations: only mask/unmask on PERF irq mask
  * register.
  */
-static inline void bcm63xx_internal_irq_mask(struct irq_data *d)
+static inline void bcm63xx_internal_irq_mask(unsigned int irq)
 {
-	unsigned int irq = d->irq - IRQ_INTERNAL_BASE;
 	u32 mask;
 
+	irq -= IRQ_INTERNAL_BASE;
 	mask = bcm_perf_readl(PERF_IRQMASK_REG);
 	mask &= ~(1 << irq);
 	bcm_perf_writel(mask, PERF_IRQMASK_REG);
 }
 
-static void bcm63xx_internal_irq_unmask(struct irq_data *d)
+static void bcm63xx_internal_irq_unmask(unsigned int irq)
 {
-	unsigned int irq = d->irq - IRQ_INTERNAL_BASE;
 	u32 mask;
 
+	irq -= IRQ_INTERNAL_BASE;
 	mask = bcm_perf_readl(PERF_IRQMASK_REG);
 	mask |= (1 << irq);
 	bcm_perf_writel(mask, PERF_IRQMASK_REG);
+}
+
+static unsigned int bcm63xx_internal_irq_startup(unsigned int irq)
+{
+	bcm63xx_internal_irq_unmask(irq);
+	return 0;
 }
 
 /*
  * external IRQs operations: mask/unmask and clear on PERF external
  * irq control register.
  */
-static void bcm63xx_external_irq_mask(struct irq_data *d)
+static void bcm63xx_external_irq_mask(unsigned int irq)
 {
-	unsigned int irq = d->irq - IRQ_EXT_BASE;
 	u32 reg;
 
+	irq -= IRQ_EXT_BASE;
 	reg = bcm_perf_readl(PERF_EXTIRQ_CFG_REG);
 	reg &= ~EXTIRQ_CFG_MASK(irq);
 	bcm_perf_writel(reg, PERF_EXTIRQ_CFG_REG);
 }
 
-static void bcm63xx_external_irq_unmask(struct irq_data *d)
+static void bcm63xx_external_irq_unmask(unsigned int irq)
 {
-	unsigned int irq = d->irq - IRQ_EXT_BASE;
 	u32 reg;
 
+	irq -= IRQ_EXT_BASE;
 	reg = bcm_perf_readl(PERF_EXTIRQ_CFG_REG);
 	reg |= EXTIRQ_CFG_MASK(irq);
 	bcm_perf_writel(reg, PERF_EXTIRQ_CFG_REG);
 }
 
-static void bcm63xx_external_irq_clear(struct irq_data *d)
+static void bcm63xx_external_irq_clear(unsigned int irq)
 {
-	unsigned int irq = d->irq - IRQ_EXT_BASE;
 	u32 reg;
 
+	irq -= IRQ_EXT_BASE;
 	reg = bcm_perf_readl(PERF_EXTIRQ_CFG_REG);
 	reg |= EXTIRQ_CFG_CLEAR(irq);
 	bcm_perf_writel(reg, PERF_EXTIRQ_CFG_REG);
 }
 
-static unsigned int bcm63xx_external_irq_startup(struct irq_data *d)
+static unsigned int bcm63xx_external_irq_startup(unsigned int irq)
 {
-	set_c0_status(0x100 << (d->irq - IRQ_MIPS_BASE));
+	set_c0_status(0x100 << (irq - IRQ_MIPS_BASE));
 	irq_enable_hazard();
-	bcm63xx_external_irq_unmask(d);
+	bcm63xx_external_irq_unmask(irq);
 	return 0;
 }
 
-static void bcm63xx_external_irq_shutdown(struct irq_data *d)
+static void bcm63xx_external_irq_shutdown(unsigned int irq)
 {
-	bcm63xx_external_irq_mask(d);
-	clear_c0_status(0x100 << (d->irq - IRQ_MIPS_BASE));
+	bcm63xx_external_irq_mask(irq);
+	clear_c0_status(0x100 << (irq - IRQ_MIPS_BASE));
 	irq_disable_hazard();
 }
 
-static int bcm63xx_external_irq_set_type(struct irq_data *d,
+static int bcm63xx_external_irq_set_type(unsigned int irq,
 					 unsigned int flow_type)
 {
-	unsigned int irq = d->irq - IRQ_EXT_BASE;
 	u32 reg;
+	struct irq_desc *desc = irq_desc + irq;
+
+	irq -= IRQ_EXT_BASE;
 
 	flow_type &= IRQ_TYPE_SENSE_MASK;
 
@@ -191,32 +198,37 @@ static int bcm63xx_external_irq_set_type(struct irq_data *d,
 	}
 	bcm_perf_writel(reg, PERF_EXTIRQ_CFG_REG);
 
-	irqd_set_trigger_type(d, flow_type);
-	if (flow_type & (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_LEVEL_HIGH))
-		__irq_set_handler_locked(d->irq, handle_level_irq);
-	else
-		__irq_set_handler_locked(d->irq, handle_edge_irq);
+	if (flow_type & (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_LEVEL_HIGH))  {
+		desc->status |= IRQ_LEVEL;
+		desc->handle_irq = handle_level_irq;
+	} else {
+		desc->handle_irq = handle_edge_irq;
+	}
 
-	return IRQ_SET_MASK_OK_NOCOPY;
+	return 0;
 }
 
 static struct irq_chip bcm63xx_internal_irq_chip = {
 	.name		= "bcm63xx_ipic",
-	.irq_mask	= bcm63xx_internal_irq_mask,
-	.irq_unmask	= bcm63xx_internal_irq_unmask,
+	.startup	= bcm63xx_internal_irq_startup,
+	.shutdown	= bcm63xx_internal_irq_mask,
+
+	.mask		= bcm63xx_internal_irq_mask,
+	.mask_ack	= bcm63xx_internal_irq_mask,
+	.unmask		= bcm63xx_internal_irq_unmask,
 };
 
 static struct irq_chip bcm63xx_external_irq_chip = {
 	.name		= "bcm63xx_epic",
-	.irq_startup	= bcm63xx_external_irq_startup,
-	.irq_shutdown	= bcm63xx_external_irq_shutdown,
+	.startup	= bcm63xx_external_irq_startup,
+	.shutdown	= bcm63xx_external_irq_shutdown,
 
-	.irq_ack	= bcm63xx_external_irq_clear,
+	.ack		= bcm63xx_external_irq_clear,
 
-	.irq_mask	= bcm63xx_external_irq_mask,
-	.irq_unmask	= bcm63xx_external_irq_unmask,
+	.mask		= bcm63xx_external_irq_mask,
+	.unmask		= bcm63xx_external_irq_unmask,
 
-	.irq_set_type	= bcm63xx_external_irq_set_type,
+	.set_type	= bcm63xx_external_irq_set_type,
 };
 
 static struct irqaction cpu_ip2_cascade_action = {
@@ -230,11 +242,11 @@ void __init arch_init_irq(void)
 
 	mips_cpu_irq_init();
 	for (i = IRQ_INTERNAL_BASE; i < NR_IRQS; ++i)
-		irq_set_chip_and_handler(i, &bcm63xx_internal_irq_chip,
+		set_irq_chip_and_handler(i, &bcm63xx_internal_irq_chip,
 					 handle_level_irq);
 
 	for (i = IRQ_EXT_BASE; i < IRQ_EXT_BASE + 4; ++i)
-		irq_set_chip_and_handler(i, &bcm63xx_external_irq_chip,
+		set_irq_chip_and_handler(i, &bcm63xx_external_irq_chip,
 					 handle_edge_irq);
 
 	setup_irq(IRQ_MIPS_BASE + 2, &cpu_ip2_cascade_action);

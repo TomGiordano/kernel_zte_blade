@@ -197,7 +197,7 @@ unsigned long ixp2000_gettimeoffset (void)
 	return offset / ticks_per_usec;
 }
 
-static irqreturn_t ixp2000_timer_interrupt(int irq, void *dev_id)
+static int ixp2000_timer_interrupt(int irq, void *dev_id)
 {
 	/* clear timer 1 */
 	ixp2000_reg_wrb(IXP2000_T1_CLR, 1);
@@ -309,9 +309,9 @@ static void ixp2000_GPIO_irq_handler(unsigned int irq, struct irq_desc *desc)
 	}
 }
 
-static int ixp2000_GPIO_irq_type(struct irq_data *d, unsigned int type)
+static int ixp2000_GPIO_irq_type(unsigned int irq, unsigned int type)
 {
-	int line = d->irq - IRQ_IXP2000_GPIO0;
+	int line = irq - IRQ_IXP2000_GPIO0;
 
 	/*
 	 * First, configure this GPIO line as an input.
@@ -342,10 +342,8 @@ static int ixp2000_GPIO_irq_type(struct irq_data *d, unsigned int type)
 	return 0;
 }
 
-static void ixp2000_GPIO_irq_mask_ack(struct irq_data *d)
+static void ixp2000_GPIO_irq_mask_ack(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	ixp2000_reg_write(IXP2000_GPIO_INCR, (1 << (irq - IRQ_IXP2000_GPIO0)));
 
 	ixp2000_reg_write(IXP2000_GPIO_EDSR, (1 << (irq - IRQ_IXP2000_GPIO0)));
@@ -353,42 +351,38 @@ static void ixp2000_GPIO_irq_mask_ack(struct irq_data *d)
 	ixp2000_reg_wrb(IXP2000_GPIO_INST, (1 << (irq - IRQ_IXP2000_GPIO0)));
 }
 
-static void ixp2000_GPIO_irq_mask(struct irq_data *d)
+static void ixp2000_GPIO_irq_mask(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	ixp2000_reg_wrb(IXP2000_GPIO_INCR, (1 << (irq - IRQ_IXP2000_GPIO0)));
 }
 
-static void ixp2000_GPIO_irq_unmask(struct irq_data *d)
+static void ixp2000_GPIO_irq_unmask(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	ixp2000_reg_write(IXP2000_GPIO_INSR, (1 << (irq - IRQ_IXP2000_GPIO0)));
 }
 
 static struct irq_chip ixp2000_GPIO_irq_chip = {
-	.irq_ack	= ixp2000_GPIO_irq_mask_ack,
-	.irq_mask	= ixp2000_GPIO_irq_mask,
-	.irq_unmask	= ixp2000_GPIO_irq_unmask,
-	.irq_set_type	= ixp2000_GPIO_irq_type,
+	.ack		= ixp2000_GPIO_irq_mask_ack,
+	.mask		= ixp2000_GPIO_irq_mask,
+	.unmask		= ixp2000_GPIO_irq_unmask,
+	.set_type	= ixp2000_GPIO_irq_type,
 };
 
-static void ixp2000_pci_irq_mask(struct irq_data *d)
+static void ixp2000_pci_irq_mask(unsigned int irq)
 {
 	unsigned long temp = *IXP2000_PCI_XSCALE_INT_ENABLE;
-	if (d->irq == IRQ_IXP2000_PCIA)
+	if (irq == IRQ_IXP2000_PCIA)
 		ixp2000_reg_wrb(IXP2000_PCI_XSCALE_INT_ENABLE, (temp & ~(1 << 26)));
-	else if (d->irq == IRQ_IXP2000_PCIB)
+	else if (irq == IRQ_IXP2000_PCIB)
 		ixp2000_reg_wrb(IXP2000_PCI_XSCALE_INT_ENABLE, (temp & ~(1 << 27)));
 }
 
-static void ixp2000_pci_irq_unmask(struct irq_data *d)
+static void ixp2000_pci_irq_unmask(unsigned int irq)
 {
 	unsigned long temp = *IXP2000_PCI_XSCALE_INT_ENABLE;
-	if (d->irq == IRQ_IXP2000_PCIA)
+	if (irq == IRQ_IXP2000_PCIA)
 		ixp2000_reg_write(IXP2000_PCI_XSCALE_INT_ENABLE, (temp | (1 << 26)));
-	else if (d->irq == IRQ_IXP2000_PCIB)
+	else if (irq == IRQ_IXP2000_PCIB)
 		ixp2000_reg_write(IXP2000_PCI_XSCALE_INT_ENABLE, (temp | (1 << 27)));
 }
 
@@ -407,44 +401,44 @@ static void ixp2000_err_irq_handler(unsigned int irq, struct irq_desc *desc)
 	}
 }
 
-static void ixp2000_err_irq_mask(struct irq_data *d)
+static void ixp2000_err_irq_mask(unsigned int irq)
 {
 	ixp2000_reg_write(IXP2000_IRQ_ERR_ENABLE_CLR,
-			(1 << (d->irq - IRQ_IXP2000_DRAM0_MIN_ERR)));
+			(1 << (irq - IRQ_IXP2000_DRAM0_MIN_ERR)));
 }
 
-static void ixp2000_err_irq_unmask(struct irq_data *d)
+static void ixp2000_err_irq_unmask(unsigned int irq)
 {
 	ixp2000_reg_write(IXP2000_IRQ_ERR_ENABLE_SET,
-			(1 << (d->irq - IRQ_IXP2000_DRAM0_MIN_ERR)));
+			(1 << (irq - IRQ_IXP2000_DRAM0_MIN_ERR)));
 }
 
 static struct irq_chip ixp2000_err_irq_chip = {
-	.irq_ack	= ixp2000_err_irq_mask,
-	.irq_mask	= ixp2000_err_irq_mask,
-	.irq_unmask	= ixp2000_err_irq_unmask
+	.ack	= ixp2000_err_irq_mask,
+	.mask	= ixp2000_err_irq_mask,
+	.unmask	= ixp2000_err_irq_unmask
 };
 
 static struct irq_chip ixp2000_pci_irq_chip = {
-	.irq_ack	= ixp2000_pci_irq_mask,
-	.irq_mask	= ixp2000_pci_irq_mask,
-	.irq_unmask	= ixp2000_pci_irq_unmask
+	.ack	= ixp2000_pci_irq_mask,
+	.mask	= ixp2000_pci_irq_mask,
+	.unmask	= ixp2000_pci_irq_unmask
 };
 
-static void ixp2000_irq_mask(struct irq_data *d)
+static void ixp2000_irq_mask(unsigned int irq)
 {
-	ixp2000_reg_wrb(IXP2000_IRQ_ENABLE_CLR, (1 << d->irq));
+	ixp2000_reg_wrb(IXP2000_IRQ_ENABLE_CLR, (1 << irq));
 }
 
-static void ixp2000_irq_unmask(struct irq_data *d)
+static void ixp2000_irq_unmask(unsigned int irq)
 {
-	ixp2000_reg_write(IXP2000_IRQ_ENABLE_SET, (1 << d->irq));
+	ixp2000_reg_write(IXP2000_IRQ_ENABLE_SET, (1 << irq));
 }
 
 static struct irq_chip ixp2000_irq_chip = {
-	.irq_ack	= ixp2000_irq_mask,
-	.irq_mask	= ixp2000_irq_mask,
-	.irq_unmask	= ixp2000_irq_unmask
+	.ack	= ixp2000_irq_mask,
+	.mask	= ixp2000_irq_mask,
+	.unmask	= ixp2000_irq_unmask
 };
 
 void __init ixp2000_init_irq(void)
@@ -476,8 +470,8 @@ void __init ixp2000_init_irq(void)
 	 */
 	for (irq = IRQ_IXP2000_SOFT_INT; irq <= IRQ_IXP2000_THDB3; irq++) {
 		if ((1 << irq) & IXP2000_VALID_IRQ_MASK) {
-			irq_set_chip_and_handler(irq, &ixp2000_irq_chip,
-						 handle_level_irq);
+			set_irq_chip(irq, &ixp2000_irq_chip);
+			set_irq_handler(irq, handle_level_irq);
 			set_irq_flags(irq, IRQF_VALID);
 		} else set_irq_flags(irq, 0);
 	}
@@ -485,21 +479,21 @@ void __init ixp2000_init_irq(void)
 	for (irq = IRQ_IXP2000_DRAM0_MIN_ERR; irq <= IRQ_IXP2000_SP_INT; irq++) {
 		if((1 << (irq - IRQ_IXP2000_DRAM0_MIN_ERR)) &
 				IXP2000_VALID_ERR_IRQ_MASK) {
-			irq_set_chip_and_handler(irq, &ixp2000_err_irq_chip,
-						 handle_level_irq);
+			set_irq_chip(irq, &ixp2000_err_irq_chip);
+			set_irq_handler(irq, handle_level_irq);
 			set_irq_flags(irq, IRQF_VALID);
 		}
 		else
 			set_irq_flags(irq, 0);
 	}
-	irq_set_chained_handler(IRQ_IXP2000_ERRSUM, ixp2000_err_irq_handler);
+	set_irq_chained_handler(IRQ_IXP2000_ERRSUM, ixp2000_err_irq_handler);
 
 	for (irq = IRQ_IXP2000_GPIO0; irq <= IRQ_IXP2000_GPIO7; irq++) {
-		irq_set_chip_and_handler(irq, &ixp2000_GPIO_irq_chip,
-					 handle_level_irq);
+		set_irq_chip(irq, &ixp2000_GPIO_irq_chip);
+		set_irq_handler(irq, handle_level_irq);
 		set_irq_flags(irq, IRQF_VALID);
 	}
-	irq_set_chained_handler(IRQ_IXP2000_GPIO, ixp2000_GPIO_irq_handler);
+	set_irq_chained_handler(IRQ_IXP2000_GPIO, ixp2000_GPIO_irq_handler);
 
 	/*
 	 * Enable PCI irqs.  The actual PCI[AB] decoding is done in
@@ -508,8 +502,8 @@ void __init ixp2000_init_irq(void)
 	 */
 	ixp2000_reg_write(IXP2000_IRQ_ENABLE_SET, (1 << IRQ_IXP2000_PCI));
 	for (irq = IRQ_IXP2000_PCIA; irq <= IRQ_IXP2000_PCIB; irq++) {
-		irq_set_chip_and_handler(irq, &ixp2000_pci_irq_chip,
-					 handle_level_irq);
+		set_irq_chip(irq, &ixp2000_pci_irq_chip);
+		set_irq_handler(irq, handle_level_irq);
 		set_irq_flags(irq, IRQF_VALID);
 	}
 }

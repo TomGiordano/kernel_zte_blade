@@ -143,6 +143,18 @@ static inline void clear_highpage(struct page *page)
 	kunmap_atomic(kaddr, KM_USER0);
 }
 
+static inline void sanitize_highpage(struct page *page)
+{
+  void *kaddr;
+  unsigned long flags;
+
+  local_irq_save(flags);
+  kaddr = kmap_atomic(page, KM_CLEARPAGE);
+  clear_page(kaddr);
+  kunmap_atomic(kaddr, KM_CLEARPAGE);
+  local_irq_restore(flags);
+}
+
 static inline void zero_user_segments(struct page *page,
 	unsigned start1, unsigned end1,
 	unsigned start2, unsigned end2)

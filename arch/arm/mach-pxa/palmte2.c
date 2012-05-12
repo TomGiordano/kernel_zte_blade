@@ -23,7 +23,7 @@
 #include <linux/pda_power.h>
 #include <linux/pwm_backlight.h>
 #include <linux/gpio.h>
-#include <linux/wm97xx.h>
+#include <linux/wm97xx_batt.h>
 #include <linux/power_supply.h>
 #include <linux/usb/gpio_vbus.h>
 
@@ -136,14 +136,30 @@ static struct platform_device palmte2_pxa_keys = {
 /******************************************************************************
  * Backlight
  ******************************************************************************/
-static struct gpio palmte_bl_gpios[] = {
-	{ GPIO_NR_PALMTE2_BL_POWER, GPIOF_INIT_LOW, "Backlight power" },
-	{ GPIO_NR_PALMTE2_LCD_POWER, GPIOF_INIT_LOW, "LCD power" },
-};
-
 static int palmte2_backlight_init(struct device *dev)
 {
-	return gpio_request_array(ARRAY_AND_SIZE(palmte_bl_gpios));
+	int ret;
+
+	ret = gpio_request(GPIO_NR_PALMTE2_BL_POWER, "BL POWER");
+	if (ret)
+		goto err;
+	ret = gpio_direction_output(GPIO_NR_PALMTE2_BL_POWER, 0);
+	if (ret)
+		goto err2;
+	ret = gpio_request(GPIO_NR_PALMTE2_LCD_POWER, "LCD POWER");
+	if (ret)
+		goto err2;
+	ret = gpio_direction_output(GPIO_NR_PALMTE2_LCD_POWER, 0);
+	if (ret)
+		goto err3;
+
+	return 0;
+err3:
+	gpio_free(GPIO_NR_PALMTE2_LCD_POWER);
+err2:
+	gpio_free(GPIO_NR_PALMTE2_BL_POWER);
+err:
+	return ret;
 }
 
 static int palmte2_backlight_notify(struct device *dev, int brightness)
@@ -155,7 +171,8 @@ static int palmte2_backlight_notify(struct device *dev, int brightness)
 
 static void palmte2_backlight_exit(struct device *dev)
 {
-	gpio_free_array(ARRAY_AND_SIZE(palmte_bl_gpios));
+	gpio_free(GPIO_NR_PALMTE2_BL_POWER);
+	gpio_free(GPIO_NR_PALMTE2_LCD_POWER);
 }
 
 static struct platform_pwm_backlight_data palmte2_backlight_data = {
@@ -254,9 +271,9 @@ static struct platform_device power_supply = {
 };
 
 /******************************************************************************
- * WM97xx audio, battery
+ * WM97xx battery
  ******************************************************************************/
-static struct wm97xx_batt_pdata palmte2_batt_pdata = {
+static struct wm97xx_batt_info wm97xx_batt_pdata = {
 	.batt_aux	= WM97XX_AUX_ID3,
 	.temp_aux	= WM97XX_AUX_ID2,
 	.charge_gpio	= -1,
@@ -270,14 +287,9 @@ static struct wm97xx_batt_pdata palmte2_batt_pdata = {
 	.batt_name	= "main-batt",
 };
 
-static struct wm97xx_pdata palmte2_wm97xx_pdata = {
-	.batt_pdata	= &palmte2_batt_pdata,
-};
-
-static pxa2xx_audio_ops_t palmte2_ac97_pdata = {
-	.codec_pdata	= { &palmte2_wm97xx_pdata, },
-};
-
+/******************************************************************************
+ * aSoC audio
+ ******************************************************************************/
 static struct palm27x_asoc_info palmte2_asoc_pdata = {
 	.jack_gpio	= GPIO_NR_PALMTE2_EARPHONE_DETECT,
 };
@@ -346,18 +358,21 @@ static void __init palmte2_init(void)
 	pxa_set_btuart_info(NULL);
 	pxa_set_stuart_info(NULL);
 
-	pxa_set_fb_info(NULL, &palmte2_lcd_screen);
+	set_pxa_fb_info(&palmte2_lcd_screen);
 	pxa_set_mci_info(&palmte2_mci_platform_data);
 	palmte2_udc_init();
-	pxa_set_ac97_info(&palmte2_ac97_pdata);
+	pxa_set_ac97_info(NULL);
 	pxa_set_ficp_info(&palmte2_ficp_platform_data);
+	wm97xx_bat_set_pdata(&wm97xx_batt_pdata);
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 }
 
 MACHINE_START(PALMTE2, "Palm Tungsten|E2")
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.boot_params	= 0xa0000100,
-	.map_io		= pxa25x_map_io,
+	.map_io		= pxa_map_io,
 	.init_irq	= pxa25x_init_irq,
 	.timer		= &pxa_timer,
 	.init_machine	= palmte2_init

@@ -49,7 +49,7 @@ static void __init mpc5200_simple_setup_arch(void)
 }
 
 /* list of the supported boards */
-static const char *board[] __initdata = {
+static char *board[] __initdata = {
 	"intercontrol,digsy-mtc",
 	"manroland,mucmc52",
 	"manroland,uc101",
@@ -66,7 +66,16 @@ static const char *board[] __initdata = {
  */
 static int __init mpc5200_simple_probe(void)
 {
-	return of_flat_dt_match(of_get_flat_dt_root(), board);
+	unsigned long node = of_get_flat_dt_root();
+	int i = 0;
+
+	while (board[i]) {
+		if (of_flat_dt_is_compatible(node, board[i]))
+			break;
+		i++;
+	}
+	
+	return (board[i] != NULL);
 }
 
 define_machine(mpc5200_simple_platform) {

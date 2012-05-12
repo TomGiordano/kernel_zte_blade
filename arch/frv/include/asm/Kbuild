@@ -1,4 +1,5 @@
 include include/asm-generic/Kbuild.asm
 
 header-y += registers.h
-header-y += termios.h
+
+unifdef-y += termios.h

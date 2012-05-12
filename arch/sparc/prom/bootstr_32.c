@@ -29,8 +29,7 @@ prom_getbootargs(void)
 		/* Start from 1 and go over fd(0,0,0)kernel */
 		for(iter = 1; iter < 8; iter++) {
 			arg = (*(romvec->pv_v0bootargs))->argv[iter];
-			if (arg == NULL)
-				break;
+			if(arg == 0) break;
 			while(*arg != 0) {
 				/* Leave place for space and null. */
 				if(cp >= barg_buf + BARG_LEN-2){

@@ -21,7 +21,6 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/mc146818rtc.h>
-#include <linux/irq.h>
 
 #include <asm/time.h>
 

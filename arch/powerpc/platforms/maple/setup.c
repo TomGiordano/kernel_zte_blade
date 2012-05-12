@@ -358,7 +358,6 @@ static int __init maple_cpc925_edac_setup(void)
 	model = (const unsigned char *)of_get_property(np, "model", NULL);
 	if (!model) {
 		printk(KERN_ERR "%s: Unabel to get model info\n", __func__);
-		of_node_put(np);
 		return -ENODEV;
 	}
 

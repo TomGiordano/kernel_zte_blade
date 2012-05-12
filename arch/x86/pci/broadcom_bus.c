@@ -9,7 +9,6 @@
  * option) any later version.
  */
 
-#include <linux/acpi.h>
 #include <linux/delay.h>
 #include <linux/dmi.h>
 #include <linux/pci.h>
@@ -26,14 +25,12 @@ static void __devinit cnb20le_res(struct pci_dev *dev)
 	u8 fbus, lbus;
 	int i;
 
-#ifdef CONFIG_ACPI
 	/*
-	 * We should get host bridge information from ACPI unless the BIOS
-	 * doesn't support it.
+	 * The x86_pci_root_bus_res_quirks() function already refuses to use
+	 * this information if ACPI _CRS was used. Therefore, we don't bother
+	 * checking if ACPI is enabled, and just generate the information
+	 * for both the ACPI _CRS and no ACPI cases.
 	 */
-	if (acpi_os_get_root_pointer())
-		return;
-#endif
 
 	info = &pci_root_info[pci_root_num];
 	pci_root_num++;

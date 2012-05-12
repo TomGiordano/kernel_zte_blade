@@ -18,11 +18,7 @@
 #define ARCH_HAS_OWN_IRQ_REGS
 
 #ifndef __ASSEMBLY__
-static inline __attribute__((const))
-struct pt_regs *get_irq_regs(void)
-{
-	return current_frame();
-}
+#define get_irq_regs() (__frame)
 #endif
 
 #endif /* _ASM_IRQ_REGS_H */

@@ -284,7 +284,7 @@ static inline void restore_complete(void)
 		exit_instrs[3] = BR_INSTR;
 		break;
 	default:
-		/* SPU_Status[R]=1. No additional instructions. */
+		/* SPU_Status[R]=1. No additonal instructions. */
 		break;
 	}
 	spu_sync();

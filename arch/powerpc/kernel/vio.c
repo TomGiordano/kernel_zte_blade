@@ -238,7 +238,9 @@ static inline void vio_cmo_dealloc(struct vio_dev *viodev, size_t size)
 	 * memory in this pool does not change.
 	 */
 	if (spare_needed && reserve_freed) {
-		tmp = min3(spare_needed, reserve_freed, (viodev->cmo.entitled - VIO_CMO_MIN_ENT));
+		tmp = min(spare_needed, min(reserve_freed,
+		                            (viodev->cmo.entitled -
+		                             VIO_CMO_MIN_ENT)));
 
 		vio_cmo.spare += tmp;
 		viodev->cmo.entitled -= tmp;
@@ -600,11 +602,6 @@ static void vio_dma_iommu_unmap_sg(struct device *dev,
 	vio_cmo_dealloc(viodev, alloc_size);
 }
 
-static int vio_dma_iommu_dma_supported(struct device *dev, u64 mask)
-{
-        return dma_iommu_ops.dma_supported(dev, mask);
-}
-
 struct dma_map_ops vio_dma_mapping_ops = {
 	.alloc_coherent = vio_dma_iommu_alloc_coherent,
 	.free_coherent  = vio_dma_iommu_free_coherent,
@@ -612,7 +609,6 @@ struct dma_map_ops vio_dma_mapping_ops = {
 	.unmap_sg       = vio_dma_iommu_unmap_sg,
 	.map_page       = vio_dma_iommu_map_page,
 	.unmap_page     = vio_dma_iommu_unmap_page,
-	.dma_supported  = vio_dma_iommu_dma_supported,
 
 };
 
@@ -864,7 +860,8 @@ static void vio_cmo_bus_remove(struct vio_dev *viodev)
 
 static void vio_cmo_set_dma_ops(struct vio_dev *viodev)
 {
-	set_dma_ops(&viodev->dev, &vio_dma_mapping_ops);
+	vio_dma_mapping_ops.dma_supported = dma_iommu_ops.dma_supported;
+	viodev->dev.archdata.dma_ops = &vio_dma_mapping_ops;
 }
 
 /**
@@ -1062,7 +1059,7 @@ static struct iommu_table *vio_build_iommu_table(struct vio_dev *dev)
 	if (!dma_window)
 		return NULL;
 
-	tbl = kzalloc(sizeof(*tbl), GFP_KERNEL);
+	tbl = kmalloc(sizeof(*tbl), GFP_KERNEL);
 	if (tbl == NULL)
 		return NULL;
 
@@ -1075,7 +1072,6 @@ static struct iommu_table *vio_build_iommu_table(struct vio_dev *dev)
 	tbl->it_offset = offset >> IOMMU_PAGE_SHIFT;
 	tbl->it_busno = 0;
 	tbl->it_type = TCE_VB;
-	tbl->it_blocksize = 16;
 
 	return iommu_init_table(tbl, -1);
 }
@@ -1187,12 +1183,7 @@ EXPORT_SYMBOL(vio_unregister_driver);
 /* vio_dev refcount hit 0 */
 static void __devinit vio_dev_release(struct device *dev)
 {
-	struct iommu_table *tbl = get_iommu_table_base(dev);
-
-	/* iSeries uses a common table for all vio devices */
-	if (!firmware_has_feature(FW_FEATURE_ISERIES) && tbl)
-		iommu_free_table(tbl, dev->of_node ?
-			dev->of_node->full_name : dev_name(dev));
+	/* XXX should free TCE table */
 	of_node_put(dev->of_node);
 	kfree(to_vio_dev(dev));
 }
@@ -1249,7 +1240,7 @@ struct vio_dev *vio_register_device_node(struct device_node *of_node)
 	if (firmware_has_feature(FW_FEATURE_CMO))
 		vio_cmo_set_dma_ops(viodev);
 	else
-		set_dma_ops(&viodev->dev, &dma_iommu_ops);
+		viodev->dev.archdata.dma_ops = &dma_iommu_ops;
 	set_iommu_table_base(&viodev->dev, vio_build_iommu_table(viodev));
 	set_dev_node(&viodev->dev, of_node_to_nid(of_node));
 
@@ -1257,16 +1248,13 @@ struct vio_dev *vio_register_device_node(struct device_node *of_node)
 	viodev->dev.parent = &vio_bus_device.dev;
 	viodev->dev.bus = &vio_bus_type;
 	viodev->dev.release = vio_dev_release;
-        /* needed to ensure proper operation of coherent allocations
-         * later, in case driver doesn't set it explicitly */
-        dma_set_mask(&viodev->dev, DMA_BIT_MASK(64));
-        dma_set_coherent_mask(&viodev->dev, DMA_BIT_MASK(64));
 
 	/* register with generic device framework */
 	if (device_register(&viodev->dev)) {
 		printk(KERN_ERR "%s: failed to register device %s\n",
 				__func__, dev_name(&viodev->dev));
-		put_device(&viodev->dev);
+		/* XXX free TCE table */
+		kfree(viodev);
 		return NULL;
 	}
 

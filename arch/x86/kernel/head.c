@@ -1,6 +1,5 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/memblock.h>
 
 #include <asm/setup.h>
 #include <asm/bios_ebda.h>
@@ -52,5 +51,5 @@ void __init reserve_ebda_region(void)
 		lowmem = 0x9f000;
 
 	/* reserve all memory between lowmem and the 1MB mark */
-	memblock_x86_reserve_range(lowmem, 0x100000, "* BIOS reserved");
+	reserve_early_overlap_ok(lowmem, 0x100000, "BIOS reserved");
 }

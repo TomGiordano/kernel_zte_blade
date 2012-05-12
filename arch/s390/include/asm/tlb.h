@@ -22,77 +22,71 @@
  */
 
 #include <linux/mm.h>
-#include <linux/pagemap.h>
 #include <linux/swap.h>
 #include <asm/processor.h>
 #include <asm/pgalloc.h>
+#include <asm/smp.h>
 #include <asm/tlbflush.h>
+
+#ifndef CONFIG_SMP
+#define TLB_NR_PTRS	1
+#else
+#define TLB_NR_PTRS	508
+#endif
 
 struct mmu_gather {
 	struct mm_struct *mm;
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	struct mmu_table_batch *batch;
-#endif
 	unsigned int fullmm;
-	unsigned int need_flush;
+	unsigned int nr_ptes;
+	unsigned int nr_pxds;
+	void *array[TLB_NR_PTRS];
 };
 
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-struct mmu_table_batch {
-	struct rcu_head		rcu;
-	unsigned int		nr;
-	void			*tables[0];
-};
+DECLARE_PER_CPU(struct mmu_gather, mmu_gathers);
 
-#define MAX_TABLE_BATCH		\
-	((PAGE_SIZE - sizeof(struct mmu_table_batch)) / sizeof(void *))
-
-extern void tlb_table_flush(struct mmu_gather *tlb);
-extern void tlb_remove_table(struct mmu_gather *tlb, void *table);
-#endif
-
-static inline void tlb_gather_mmu(struct mmu_gather *tlb,
-				  struct mm_struct *mm,
-				  unsigned int full_mm_flush)
+static inline struct mmu_gather *tlb_gather_mmu(struct mm_struct *mm,
+						unsigned int full_mm_flush)
 {
+	struct mmu_gather *tlb = &get_cpu_var(mmu_gathers);
+
 	tlb->mm = mm;
-	tlb->fullmm = full_mm_flush;
-	tlb->need_flush = 0;
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	tlb->batch = NULL;
-#endif
+	tlb->fullmm = full_mm_flush || (num_online_cpus() == 1) ||
+		(atomic_read(&mm->mm_users) <= 1 && mm == current->active_mm);
+	tlb->nr_ptes = 0;
+	tlb->nr_pxds = TLB_NR_PTRS;
 	if (tlb->fullmm)
 		__tlb_flush_mm(mm);
+	return tlb;
 }
 
-static inline void tlb_flush_mmu(struct mmu_gather *tlb)
+static inline void tlb_flush_mmu(struct mmu_gather *tlb,
+				 unsigned long start, unsigned long end)
 {
-	if (!tlb->need_flush)
-		return;
-	tlb->need_flush = 0;
-	__tlb_flush_mm(tlb->mm);
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	tlb_table_flush(tlb);
-#endif
+	if (!tlb->fullmm && (tlb->nr_ptes > 0 || tlb->nr_pxds < TLB_NR_PTRS))
+		__tlb_flush_mm(tlb->mm);
+	while (tlb->nr_ptes > 0)
+		pte_free(tlb->mm, tlb->array[--tlb->nr_ptes]);
+	while (tlb->nr_pxds < TLB_NR_PTRS)
+		/* pgd_free frees the pointer as region or segment table */
+		pgd_free(tlb->mm, tlb->array[tlb->nr_pxds++]);
 }
 
 static inline void tlb_finish_mmu(struct mmu_gather *tlb,
 				  unsigned long start, unsigned long end)
 {
-	tlb_flush_mmu(tlb);
+	tlb_flush_mmu(tlb, start, end);
+
+	/* keep the page table cache within bounds */
+	check_pgt_cache();
+
+	put_cpu_var(mmu_gathers);
 }
 
 /*
  * Release the page cache reference for a pte removed by
- * tlb_ptep_clear_flush. In both flush modes the tlb for a page cache page
+ * tlb_ptep_clear_flush. In both flush modes the tlb fo a page cache page
  * has already been freed, so just do free_page_and_swap_cache.
  */
-static inline int __tlb_remove_page(struct mmu_gather *tlb, struct page *page)
-{
-	free_page_and_swap_cache(page);
-	return 1; /* avoid calling tlb_flush_mmu */
-}
-
 static inline void tlb_remove_page(struct mmu_gather *tlb, struct page *page)
 {
 	free_page_and_swap_cache(page);
@@ -105,11 +99,12 @@ static inline void tlb_remove_page(struct mmu_gather *tlb, struct page *page)
 static inline void pte_free_tlb(struct mmu_gather *tlb, pgtable_t pte,
 				unsigned long address)
 {
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	if (!tlb->fullmm)
-		return page_table_free_rcu(tlb, (unsigned long *) pte);
-#endif
-	page_table_free(tlb->mm, (unsigned long *) pte);
+	if (!tlb->fullmm) {
+		tlb->array[tlb->nr_ptes++] = pte;
+		if (tlb->nr_ptes >= tlb->nr_pxds)
+			tlb_flush_mmu(tlb, 0, 0);
+	} else
+		pte_free(tlb->mm, pte);
 }
 
 /*
@@ -125,11 +120,12 @@ static inline void pmd_free_tlb(struct mmu_gather *tlb, pmd_t *pmd,
 #ifdef __s390x__
 	if (tlb->mm->context.asce_limit <= (1UL << 31))
 		return;
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	if (!tlb->fullmm)
-		return tlb_remove_table(tlb, pmd);
-#endif
-	crst_table_free(tlb->mm, (unsigned long *) pmd);
+	if (!tlb->fullmm) {
+		tlb->array[--tlb->nr_pxds] = pmd;
+		if (tlb->nr_ptes >= tlb->nr_pxds)
+			tlb_flush_mmu(tlb, 0, 0);
+	} else
+		pmd_free(tlb->mm, pmd);
 #endif
 }
 
@@ -146,11 +142,12 @@ static inline void pud_free_tlb(struct mmu_gather *tlb, pud_t *pud,
 #ifdef __s390x__
 	if (tlb->mm->context.asce_limit <= (1UL << 42))
 		return;
-#ifdef CONFIG_HAVE_RCU_TABLE_FREE
-	if (!tlb->fullmm)
-		return tlb_remove_table(tlb, pud);
-#endif
-	crst_table_free(tlb->mm, (unsigned long *) pud);
+	if (!tlb->fullmm) {
+		tlb->array[--tlb->nr_pxds] = pud;
+		if (tlb->nr_ptes >= tlb->nr_pxds)
+			tlb_flush_mmu(tlb, 0, 0);
+	} else
+		pud_free(tlb->mm, pud);
 #endif
 }
 

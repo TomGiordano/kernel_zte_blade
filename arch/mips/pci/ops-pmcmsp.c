@@ -308,7 +308,7 @@ static struct resource pci_mem_resource = {
  *  RETURNS:     PCIBIOS_SUCCESSFUL  - success
  *
  ****************************************************************************/
-static irqreturn_t bpci_interrupt(int irq, void *dev_id)
+static int bpci_interrupt(int irq, void *dev_id)
 {
 	struct msp_pci_regs *preg = (void *)PCI_BASE_REG;
 	unsigned int stat = preg->if_status;
@@ -326,7 +326,7 @@ static irqreturn_t bpci_interrupt(int irq, void *dev_id)
 	/* write to clear all asserted interrupts */
 	preg->if_status = stat;
 
-	return IRQ_HANDLED;
+	return PCIBIOS_SUCCESSFUL;
 }
 
 /*****************************************************************************
@@ -344,7 +344,7 @@ static irqreturn_t bpci_interrupt(int irq, void *dev_id)
  *                              PCI_ACCESS_WRITE and PCI_ACCESS_READ.
  *
  *               bus          - pointer to the bus number of the device to
- *                              be targeted for the configuration cycle.
+ *                              be targetted for the configuration cycle.
  *                              The only element of the pci_bus structure
  *                              used is bus->number. This argument determines
  *                              if the configuration access will be Type 0 or
@@ -354,7 +354,7 @@ static irqreturn_t bpci_interrupt(int irq, void *dev_id)
  *
  *               devfn        - this is an 8-bit field. The lower three bits
  *                              specify the function number of the device to
- *                              be targeted for the configuration cycle, with
+ *                              be targetted for the configuration cycle, with
  *                              all three-bit combinations being legal. The
  *                              upper five bits specify the device number,
  *                              with legal values being 10 to 31.

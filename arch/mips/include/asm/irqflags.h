@@ -17,7 +17,7 @@
 #include <asm/hazards.h>
 
 __asm__(
-	"	.macro	arch_local_irq_enable				\n"
+	"	.macro	raw_local_irq_enable				\n"
 	"	.set	push						\n"
 	"	.set	reorder						\n"
 	"	.set	noat						\n"
@@ -40,7 +40,7 @@ __asm__(
 
 extern void smtc_ipi_replay(void);
 
-static inline void arch_local_irq_enable(void)
+static inline void raw_local_irq_enable(void)
 {
 #ifdef CONFIG_MIPS_MT_SMTC
 	/*
@@ -50,7 +50,7 @@ static inline void arch_local_irq_enable(void)
 	smtc_ipi_replay();
 #endif
 	__asm__ __volatile__(
-		"arch_local_irq_enable"
+		"raw_local_irq_enable"
 		: /* no outputs */
 		: /* no inputs */
 		: "memory");
@@ -76,7 +76,7 @@ static inline void arch_local_irq_enable(void)
  * Workaround: mask EXL bit of the result or place a nop before mfc0.
  */
 __asm__(
-	"	.macro	arch_local_irq_disable\n"
+	"	.macro	raw_local_irq_disable\n"
 	"	.set	push						\n"
 	"	.set	noat						\n"
 #ifdef CONFIG_MIPS_MT_SMTC
@@ -97,17 +97,17 @@ __asm__(
 	"	.set	pop						\n"
 	"	.endm							\n");
 
-static inline void arch_local_irq_disable(void)
+static inline void raw_local_irq_disable(void)
 {
 	__asm__ __volatile__(
-		"arch_local_irq_disable"
+		"raw_local_irq_disable"
 		: /* no outputs */
 		: /* no inputs */
 		: "memory");
 }
 
 __asm__(
-	"	.macro	arch_local_save_flags flags			\n"
+	"	.macro	raw_local_save_flags flags			\n"
 	"	.set	push						\n"
 	"	.set	reorder						\n"
 #ifdef CONFIG_MIPS_MT_SMTC
@@ -118,15 +118,13 @@ __asm__(
 	"	.set	pop						\n"
 	"	.endm							\n");
 
-static inline unsigned long arch_local_save_flags(void)
-{
-	unsigned long flags;
-	asm volatile("arch_local_save_flags %0" : "=r" (flags));
-	return flags;
-}
+#define raw_local_save_flags(x)						\
+__asm__ __volatile__(							\
+	"raw_local_save_flags %0"					\
+	: "=r" (x))
 
 __asm__(
-	"	.macro	arch_local_irq_save result			\n"
+	"	.macro	raw_local_irq_save result			\n"
 	"	.set	push						\n"
 	"	.set	reorder						\n"
 	"	.set	noat						\n"
@@ -150,18 +148,15 @@ __asm__(
 	"	.set	pop						\n"
 	"	.endm							\n");
 
-static inline unsigned long arch_local_irq_save(void)
-{
-	unsigned long flags;
-	asm volatile("arch_local_irq_save\t%0"
-		     : "=r" (flags)
-		     : /* no inputs */
-		     : "memory");
-	return flags;
-}
+#define raw_local_irq_save(x)						\
+__asm__ __volatile__(							\
+	"raw_local_irq_save\t%0"					\
+	: "=r" (x)							\
+	: /* no inputs */						\
+	: "memory")
 
 __asm__(
-	"	.macro	arch_local_irq_restore flags			\n"
+	"	.macro	raw_local_irq_restore flags			\n"
 	"	.set	push						\n"
 	"	.set	noreorder					\n"
 	"	.set	noat						\n"
@@ -174,7 +169,7 @@ __asm__(
 	"mtc0	\\flags, $2, 1						\n"
 #elif defined(CONFIG_CPU_MIPSR2) && defined(CONFIG_IRQ_CPU)
 	/*
-	 * Slow, but doesn't suffer from a relatively unlikely race
+	 * Slow, but doesn't suffer from a relativly unlikely race
 	 * condition we're having since days 1.
 	 */
 	"	beqz	\\flags, 1f					\n"
@@ -201,7 +196,7 @@ __asm__(
 	"	.endm							\n");
 
 
-static inline void arch_local_irq_restore(unsigned long flags)
+static inline void raw_local_irq_restore(unsigned long flags)
 {
 	unsigned long __tmp1;
 
@@ -216,24 +211,24 @@ static inline void arch_local_irq_restore(unsigned long flags)
 #endif
 
 	__asm__ __volatile__(
-		"arch_local_irq_restore\t%0"
+		"raw_local_irq_restore\t%0"
 		: "=r" (__tmp1)
 		: "0" (flags)
 		: "memory");
 }
 
-static inline void __arch_local_irq_restore(unsigned long flags)
+static inline void __raw_local_irq_restore(unsigned long flags)
 {
 	unsigned long __tmp1;
 
 	__asm__ __volatile__(
-		"arch_local_irq_restore\t%0"
+		"raw_local_irq_restore\t%0"
 		: "=r" (__tmp1)
 		: "0" (flags)
 		: "memory");
 }
 
-static inline int arch_irqs_disabled_flags(unsigned long flags)
+static inline int raw_irqs_disabled_flags(unsigned long flags)
 {
 #ifdef CONFIG_MIPS_MT_SMTC
 	/*

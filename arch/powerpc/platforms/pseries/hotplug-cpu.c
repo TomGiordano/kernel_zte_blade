@@ -19,7 +19,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/cpu.h>
 #include <asm/system.h>
@@ -29,7 +28,7 @@
 #include <asm/machdep.h>
 #include <asm/vdso_datapage.h>
 #include <asm/pSeries_reconfig.h>
-#include <asm/xics.h>
+#include "xics.h"
 #include "plpar_wrappers.h"
 #include "offline_states.h"
 
@@ -117,9 +116,6 @@ static void pseries_mach_cpu_die(void)
 
 	if (get_preferred_offline_state(cpu) == CPU_STATE_INACTIVE) {
 		set_cpu_current_state(cpu, CPU_STATE_INACTIVE);
-		if (ppc_md.suspend_disable_cpu)
-			ppc_md.suspend_disable_cpu();
-
 		cede_latency_hint = 2;
 
 		get_lppaca()->idle = 1;
@@ -194,12 +190,12 @@ static void pseries_cpu_die(unsigned int cpu)
 
 	if (get_preferred_offline_state(cpu) == CPU_STATE_INACTIVE) {
 		cpu_status = 1;
-		for (tries = 0; tries < 5000; tries++) {
+		for (tries = 0; tries < 1000; tries++) {
 			if (get_cpu_current_state(cpu) == CPU_STATE_INACTIVE) {
 				cpu_status = 0;
 				break;
 			}
-			msleep(1);
+			cpu_relax();
 		}
 	} else if (get_preferred_offline_state(cpu) == CPU_STATE_OFFLINE) {
 
@@ -217,7 +213,7 @@ static void pseries_cpu_die(unsigned int cpu)
 		       cpu, pcpu, cpu_status);
 	}
 
-	/* Isolation and deallocation are definitely done by
+	/* Isolation and deallocation are definatly done by
 	 * drslot_chrp_cpu.  If they were not they would be
 	 * done here.  Change isolate state to Isolate and
 	 * change allocation-state to Unusable.
@@ -281,7 +277,7 @@ static int pseries_add_processor(struct device_node *np)
 	}
 
 	for_each_cpu(cpu, tmp) {
-		BUG_ON(cpu_present(cpu));
+		BUG_ON(cpumask_test_cpu(cpu, cpu_present_mask));
 		set_cpu_present(cpu, true);
 		set_hard_smp_processor_id(cpu, *intserv++);
 	}

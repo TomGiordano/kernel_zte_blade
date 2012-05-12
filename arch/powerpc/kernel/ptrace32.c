@@ -280,11 +280,7 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 		/* We only support one DABR and no IABRS at the moment */
 		if (addr > 0)
 			break;
-#ifdef CONFIG_PPC_ADV_DEBUG_REGS
-		ret = put_user(child->thread.dac1, (u32 __user *)data);
-#else
 		ret = put_user(child->thread.dabr, (u32 __user *)data);
-#endif
 		break;
 	}
 
@@ -316,9 +312,6 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 	case PTRACE_SET_DEBUGREG:
 	case PTRACE_SYSCALL:
 	case PTRACE_CONT:
-	case PPC_PTRACE_GETHWDBGINFO:
-	case PPC_PTRACE_SETHWDEBUG:
-	case PPC_PTRACE_DELHWDEBUG:
 		ret = arch_ptrace(child, request, addr, data);
 		break;
 

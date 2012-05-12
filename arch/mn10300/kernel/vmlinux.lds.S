@@ -44,7 +44,6 @@ SECTIONS
   RO_DATA(PAGE_SIZE)
 
   /* writeable */
-  _sdata = .;     /* Start of rw data section */
   RW_DATA_SECTION(32, PAGE_SIZE, THREAD_SIZE)
   _edata = .;
 
@@ -71,7 +70,7 @@ SECTIONS
 	.exit.text : { EXIT_TEXT; }
 	.exit.data : { EXIT_DATA; }
 
-  PERCPU_SECTION(32)
+  PERCPU(32)
   . = ALIGN(PAGE_SIZE);
   __init_end = .;
   /* freed after init ends here */

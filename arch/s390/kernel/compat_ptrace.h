@@ -4,19 +4,40 @@
 #include <asm/ptrace.h>    /* needed for NUM_CR_WORDS */
 #include "compat_linux.h"  /* needed for psw_compat_t */
 
-struct compat_per_struct_kernel {
-	__u32 cr9;		/* PER control bits */
-	__u32 cr10;		/* PER starting address */
-	__u32 cr11;		/* PER ending address */
-	__u32 bits;		/* Obsolete software bits */
-	__u32 starting_addr;	/* User specified start address */
-	__u32 ending_addr;	/* User specified end address */
-	__u16 perc_atmid;	/* PER trap ATMID */
-	__u32 address;		/* PER trap instruction address */
-	__u8  access_id;	/* PER trap access identification */
-};
+typedef struct {
+	__u32 cr[NUM_CR_WORDS];
+} per_cr_words32;
 
-struct compat_user_regs_struct
+typedef struct {
+	__u16          perc_atmid;          /* 0x096 */
+	__u32          address;             /* 0x098 */
+	__u8           access_id;           /* 0x0a1 */
+} per_lowcore_words32;
+
+typedef struct {
+	union {
+		per_cr_words32   words;
+	} control_regs;
+	/*
+	 * Use these flags instead of setting em_instruction_fetch
+	 * directly they are used so that single stepping can be
+	 * switched on & off while not affecting other tracing
+	 */
+	unsigned  single_step       : 1;
+	unsigned  instruction_fetch : 1;
+	unsigned                    : 30;
+	/*
+	 * These addresses are copied into cr10 & cr11 if single
+	 * stepping is switched off
+	 */
+	__u32     starting_addr;
+	__u32     ending_addr;
+	union {
+		per_lowcore_words32 words;
+	} lowcore; 
+} per_struct32;
+
+struct user_regs_struct32
 {
 	psw_compat_t psw;
 	u32 gprs[NUM_GPRS];
@@ -29,14 +50,15 @@ struct compat_user_regs_struct
 	 * itself as there is no "official" ptrace interface for hardware
 	 * watchpoints. This is the way intel does it.
 	 */
-	struct compat_per_struct_kernel per_info;
-	u32  ieee_instruction_pointer;	/* obsolete, always 0 */
+	per_struct32 per_info;
+	u32  ieee_instruction_pointer; 
+	/* Used to give failing instruction back to user for ieee exceptions */
 };
 
-struct compat_user {
+struct user32 {
 	/* We start with the registers, to mimic the way that "memory"
 	   is returned from the ptrace(3,...) function.  */
-	struct compat_user_regs_struct regs;
+	struct user_regs_struct32 regs; /* Where the registers are actually stored */
 	/* The rest of this junk is to help gdb figure out what goes where */
 	u32 u_tsize;		/* Text segment size (pages). */
 	u32 u_dsize;	        /* Data segment size (pages). */
@@ -58,6 +80,6 @@ typedef struct
 	__u32   len;
 	__u32   kernel_addr;
 	__u32   process_addr;
-} compat_ptrace_area;
+} ptrace_area_emu31;
 
 #endif /* _PTRACE32_H */

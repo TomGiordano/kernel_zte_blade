@@ -1,10 +1,8 @@
-# DO NOT CHANGE NAME and EXTRAVERSION TO MATCH WITH VERMAGIC MODULE, squadzone
 VERSION = 3
 PATCHLEVEL = 0
 SUBLEVEL = 2
 EXTRAVERSION = .3
-NAME = Sneaky Weasel
-# DO NOT CHANGE NAME and EXTRAVERSION TO MATCH WITH VERMAGIC MODULE, squadzone
+NAME = Yokohama 
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -194,12 +192,7 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #CROSS_COMPILE	?=
 #CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
 ARCH            =arm
-whoami := $(shell whoami)
-ifeq ($(whoami),squadzone)
-	CROSS_COMPILE = arm-none-eabi-
-else
-	CROSS_COMPILE   = arm-eabi-
-endif
+CROSS_COMPILE   =arm-none-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -359,7 +352,6 @@ LINUXINCLUDE    := -I$(srctree)/arch/$(hdr-arch)/include -Iinclude \
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -Werror \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \

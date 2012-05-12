@@ -42,7 +42,7 @@
 #include <linux/miscdevice.h>
 #include <linux/watchdog.h>
 #include <linux/reboot.h>
-#include <linux/mutex.h>
+#include <linux/smp_lock.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <asm/uaccess.h>
@@ -50,7 +50,6 @@
 
 MODULE_LICENSE("GPL");
 
-static DEFINE_MUTEX(harddog_mutex);
 static DEFINE_SPINLOCK(lock);
 static int timer_alive;
 static int harddog_in_fd = -1;
@@ -67,7 +66,7 @@ static int harddog_open(struct inode *inode, struct file *file)
 	int err = -EBUSY;
 	char *sock = NULL;
 
-	mutex_lock(&harddog_mutex);
+	lock_kernel();
 	spin_lock(&lock);
 	if(timer_alive)
 		goto err;
@@ -84,11 +83,11 @@ static int harddog_open(struct inode *inode, struct file *file)
 
 	timer_alive = 1;
 	spin_unlock(&lock);
-	mutex_unlock(&harddog_mutex);
+	unlock_kernel();
 	return nonseekable_open(inode, file);
 err:
 	spin_unlock(&lock);
-	mutex_unlock(&harddog_mutex);
+	unlock_kernel();
 	return err;
 }
 
@@ -154,9 +153,9 @@ static long harddog_ioctl(struct file *file,
 {
 	long ret;
 
-	mutex_lock(&harddog_mutex);
+	lock_kernel();
 	ret = harddog_ioctl_unlocked(file, cmd, arg);
-	mutex_unlock(&harddog_mutex);
+	unlock_kernel();
 
 	return ret;
 }
@@ -167,7 +166,6 @@ static const struct file_operations harddog_fops = {
 	.unlocked_ioctl	= harddog_ioctl,
 	.open		= harddog_open,
 	.release	= harddog_release,
-	.llseek		= no_llseek,
 };
 
 static struct miscdevice harddog_miscdev = {

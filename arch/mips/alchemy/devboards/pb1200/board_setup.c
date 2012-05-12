@@ -142,7 +142,7 @@ static int __init pb1200_init_irq(void)
 		panic("Game over.  Your score is 0.");
 	}
 
-	irq_set_irq_type(AU1200_GPIO7_INT, IRQF_TRIGGER_LOW);
+	set_irq_type(AU1200_GPIO7_INT, IRQF_TRIGGER_LOW);
 	bcsr_init_irq(PB1200_INT_BEGIN, PB1200_INT_END, AU1200_GPIO7_INT);
 
 	return 0;

@@ -314,7 +314,7 @@ static struct clk timer2_clk = {
 	.name = "timer2",
 	.parent = &pll1_aux_clk,
 	.lpsc = DAVINCI_LPSC_TIMER2,
-	.usecount = 1,              /* REVISIT: why can't this be disabled? */
+	.usecount = 1,              /* REVISIT: why cant' this be disabled? */
 };
 
 static struct clk timer3_clk = {
@@ -359,8 +359,8 @@ static struct clk_lookup dm355_clks[] = {
 	CLK(NULL, "uart1", &uart1_clk),
 	CLK(NULL, "uart2", &uart2_clk),
 	CLK("i2c_davinci.1", NULL, &i2c_clk),
-	CLK("davinci-mcbsp.0", NULL, &asp0_clk),
-	CLK("davinci-mcbsp.1", NULL, &asp1_clk),
+	CLK("davinci-asp.0", NULL, &asp0_clk),
+	CLK("davinci-asp.1", NULL, &asp1_clk),
 	CLK("davinci_mmc.0", NULL, &mmcsd0_clk),
 	CLK("davinci_mmc.1", NULL, &mmcsd1_clk),
 	CLK("spi_davinci.0", NULL, &spi0_clk),
@@ -403,13 +403,21 @@ static struct resource dm355_spi0_resources[] = {
 		.start = 16,
 		.flags = IORESOURCE_DMA,
 	},
+	{
+		.start = EVENTQ_1,
+		.flags = IORESOURCE_DMA,
+	},
 };
 
 static struct davinci_spi_platform_data dm355_spi0_pdata = {
 	.version 	= SPI_VERSION_1,
 	.num_chipselect = 2,
-	.cshold_bug	= true,
-	.dma_event_q	= EVENTQ_1,
+	.clk_internal	= 1,
+	.cs_hold	= 1,
+	.intr_level	= 0,
+	.poll_mode	= 1,	/* 0 -> interrupt mode 1-> polling mode */
+	.c2tdelay	= 0,
+	.t2cdelay	= 0,
 };
 static struct platform_device dm355_spi0_device = {
 	.name = "spi_davinci",
@@ -583,18 +591,16 @@ queue_priority_mapping[][2] = {
 	{-1, -1},
 };
 
-static struct edma_soc_info edma_cc0_info = {
-	.n_channel		= 64,
-	.n_region		= 4,
-	.n_slot			= 128,
-	.n_tc			= 2,
-	.n_cc			= 1,
-	.queue_tc_mapping	= queue_tc_mapping,
-	.queue_priority_mapping	= queue_priority_mapping,
-};
-
-static struct edma_soc_info *dm355_edma_info[EDMA_MAX_CC] = {
-       &edma_cc0_info,
+static struct edma_soc_info dm355_edma_info[] = {
+	{
+		.n_channel		= 64,
+		.n_region		= 4,
+		.n_slot			= 128,
+		.n_tc			= 2,
+		.n_cc			= 1,
+		.queue_tc_mapping	= queue_tc_mapping,
+		.queue_priority_mapping	= queue_priority_mapping,
+	},
 };
 
 static struct resource edma_resources[] = {
@@ -656,7 +662,7 @@ static struct resource dm355_asp1_resources[] = {
 };
 
 static struct platform_device dm355_asp1_device = {
-	.name		= "davinci-mcbsp",
+	.name		= "davinci-asp",
 	.id		= 1,
 	.num_resources	= ARRAY_SIZE(dm355_asp1_resources),
 	.resource	= dm355_asp1_resources,
@@ -761,7 +767,8 @@ static struct map_desc dm355_io_desc[] = {
 		.virtual	= SRAM_VIRT,
 		.pfn		= __phys_to_pfn(0x00010000),
 		.length		= SZ_32K,
-		.type		= MT_MEMORY_NONCACHED,
+		/* MT_MEMORY_NONCACHED requires supersection alignment */
+		.type		= MT_DEVICE,
 	},
 };
 

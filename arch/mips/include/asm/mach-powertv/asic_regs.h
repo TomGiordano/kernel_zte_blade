@@ -27,8 +27,7 @@ enum asic_type {
 	ASIC_CALLIOPE,
 	ASIC_CRONUS,
 	ASIC_CRONUSLITE,
-	ASIC_GAIA,
-	ASICS			/* Number of supported ASICs */
+	ASICS
 };
 
 /* hardcoded values read from Chip Version registers */
@@ -38,7 +37,6 @@ enum asic_type {
 
 #define NAND_FLASH_BASE		0x03000000
 #define CALLIOPE_IO_BASE	0x08000000
-#define GAIA_IO_BASE		0x09000000
 #define CRONUS_IO_BASE		0x09000000
 #define ZEUS_IO_BASE		0x09000000
 
@@ -101,7 +99,6 @@ static inline void register_map_virtualize(struct register_map *map)
 }
 
 extern struct register_map _asic_register_map;
-extern unsigned long asic_phy_base;
 
 /*
  * Macros to interface to registers through their ioremapped address

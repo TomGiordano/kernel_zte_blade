@@ -285,7 +285,7 @@ static irqreturn_t psycho_ce_intr(int irq, void *dev_id)
 #define  PSYCHO_ECCCTRL_CE	 0x2000000000000000UL /* Enable CE INterrupts */
 static void psycho_register_error_handlers(struct pci_pbm_info *pbm)
 {
-	struct platform_device *op = of_find_device_by_node(pbm->op->dev.of_node);
+	struct of_device *op = of_find_device_by_node(pbm->op->dev.of_node);
 	unsigned long base = pbm->controller_regs;
 	u64 tmp;
 	int err;
@@ -302,23 +302,23 @@ static void psycho_register_error_handlers(struct pci_pbm_info *pbm)
 	 * 5: POWER MANAGEMENT
 	 */
 
-	if (op->archdata.num_irqs < 6)
+	if (op->num_irqs < 6)
 		return;
 
 	/* We really mean to ignore the return result here.  Two
 	 * PCI controller share the same interrupt numbers and
 	 * drive the same front-end hardware.
 	 */
-	err = request_irq(op->archdata.irqs[1], psycho_ue_intr, IRQF_SHARED,
+	err = request_irq(op->irqs[1], psycho_ue_intr, IRQF_SHARED,
 			  "PSYCHO_UE", pbm);
-	err = request_irq(op->archdata.irqs[2], psycho_ce_intr, IRQF_SHARED,
+	err = request_irq(op->irqs[2], psycho_ce_intr, IRQF_SHARED,
 			  "PSYCHO_CE", pbm);
 
 	/* This one, however, ought not to fail.  We can just warn
 	 * about it since the system can still operate properly even
 	 * if this fails.
 	 */
-	err = request_irq(op->archdata.irqs[0], psycho_pcierr_intr, IRQF_SHARED,
+	err = request_irq(op->irqs[0], psycho_pcierr_intr, IRQF_SHARED,
 			  "PSYCHO_PCIERR", pbm);
 	if (err)
 		printk(KERN_WARNING "%s: Could not register PCIERR, "
@@ -483,7 +483,7 @@ static void psycho_pbm_strbuf_init(struct pci_pbm_info *pbm,
 #define PSYCHO_MEMSPACE_SIZE	0x07fffffffUL
 
 static void __devinit psycho_pbm_init(struct pci_pbm_info *pbm,
-				      struct platform_device *op, int is_pbm_a)
+				      struct of_device *op, int is_pbm_a)
 {
 	psycho_pbm_init_common(pbm, op, "PSYCHO", PBM_CHIP_TYPE_PSYCHO);
 	psycho_pbm_strbuf_init(pbm, is_pbm_a);
@@ -503,7 +503,8 @@ static struct pci_pbm_info * __devinit psycho_find_sibling(u32 upa_portid)
 
 #define PSYCHO_CONFIGSPACE	0x001000000UL
 
-static int __devinit psycho_probe(struct platform_device *op)
+static int __devinit psycho_probe(struct of_device *op,
+				  const struct of_device_id *match)
 {
 	const struct linux_prom64_registers *pr_regs;
 	struct device_node *dp = op->dev.of_node;
@@ -592,7 +593,7 @@ out_err:
 	return err;
 }
 
-static const struct of_device_id psycho_match[] = {
+static struct of_device_id __initdata psycho_match[] = {
 	{
 		.name = "pci",
 		.compatible = "pci108e,8000",
@@ -600,7 +601,7 @@ static const struct of_device_id psycho_match[] = {
 	{},
 };
 
-static struct platform_driver psycho_driver = {
+static struct of_platform_driver psycho_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
@@ -611,7 +612,7 @@ static struct platform_driver psycho_driver = {
 
 static int __init psycho_init(void)
 {
-	return platform_driver_register(&psycho_driver);
+	return of_register_driver(&psycho_driver, &of_bus_type);
 }
 
 subsys_initcall(psycho_init);

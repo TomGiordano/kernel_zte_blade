@@ -360,25 +360,20 @@ unsigned long get_fb_unmapped_area(struct file *filp, unsigned long orig_addr, u
 }
 EXPORT_SYMBOL(get_fb_unmapped_area);
 
-/* Essentially the same as PowerPC.  */
-static unsigned long mmap_rnd(void)
-{
-	unsigned long rnd = 0UL;
-
-	if (current->flags & PF_RANDOMIZE) {
-		unsigned long val = get_random_int();
-		if (test_thread_flag(TIF_32BIT))
-			rnd = (val % (1UL << (22UL-PAGE_SHIFT)));
-		else
-			rnd = (val % (1UL << (29UL-PAGE_SHIFT)));
-	}
-	return (rnd << PAGE_SHIFT) * 2;
-}
-
+/* Essentially the same as PowerPC... */
 void arch_pick_mmap_layout(struct mm_struct *mm)
 {
-	unsigned long random_factor = mmap_rnd();
+	unsigned long random_factor = 0UL;
 	unsigned long gap;
+
+	if (current->flags & PF_RANDOMIZE) {
+		random_factor = get_random_int();
+		if (test_thread_flag(TIF_32BIT))
+			random_factor &= ((1 * 1024 * 1024) - 1);
+		else
+			random_factor = ((random_factor << PAGE_SHIFT) &
+					 0xffffffffUL);
+	}
 
 	/*
 	 * Fall back to the standard layout if the personality
@@ -460,7 +455,7 @@ SYSCALL_DEFINE6(sparc_ipc, unsigned int, call, int, first, unsigned long, second
 		default:
 			err = -ENOSYS;
 			goto out;
-		}
+		};
 	}
 	if (call <= MSGCTL) {
 		switch (call) {
@@ -481,7 +476,7 @@ SYSCALL_DEFINE6(sparc_ipc, unsigned int, call, int, first, unsigned long, second
 		default:
 			err = -ENOSYS;
 			goto out;
-		}
+		};
 	}
 	if (call <= SHMCTL) {
 		switch (call) {
@@ -507,7 +502,7 @@ SYSCALL_DEFINE6(sparc_ipc, unsigned int, call, int, first, unsigned long, second
 		default:
 			err = -ENOSYS;
 			goto out;
-		}
+		};
 	} else {
 		err = -ENOSYS;
 	}
@@ -763,9 +758,7 @@ SYSCALL_DEFINE5(rt_sigaction, int, sig, const struct sigaction __user *, act,
  * Do a system call from kernel instead of calling sys_execve so we
  * end up with proper pt_regs.
  */
-int kernel_execve(const char *filename,
-		  const char *const argv[],
-		  const char *const envp[])
+int kernel_execve(const char *filename, char *const argv[], char *const envp[])
 {
 	long __res;
 	register long __g1 __asm__ ("g1") = __NR_execve;

@@ -14,7 +14,6 @@
 #define _XTENSA_ELF_H
 
 #include <asm/ptrace.h>
-#include <asm/coprocessor.h>
 
 /* Xtensa processor ELF architecture-magic number */
 

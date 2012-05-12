@@ -592,17 +592,16 @@ void user_enable_single_step(struct task_struct *child)
 
 	if (access_process_vm(child, pc&~3, &insn, sizeof(insn), 0)
 	    != sizeof(insn))
-		return -EIO;
+		break;
 
 	compute_next_pc(insn, pc, &next_pc, child);
 	if (next_pc & 0x80000000)
-		return -EIO;
+		break;
 
 	if (embed_debug_trap(child, next_pc))
-		return -EIO;
+		break;
 
 	invalidate_cache();
-	return 0;
 }
 
 void user_disable_single_step(struct task_struct *child)
@@ -622,11 +621,9 @@ void ptrace_disable(struct task_struct *child)
 }
 
 long
-arch_ptrace(struct task_struct *child, long request,
-	    unsigned long addr, unsigned long data)
+arch_ptrace(struct task_struct *child, long request, long addr, long data)
 {
 	int ret;
-	unsigned long __user *datap = (unsigned long __user *) data;
 
 	switch (request) {
 	/*
@@ -641,7 +638,8 @@ arch_ptrace(struct task_struct *child, long request,
 	 * read the word at location addr in the USER area.
 	 */
 	case PTRACE_PEEKUSR:
-		ret = ptrace_read_user(child, addr, datap);
+		ret = ptrace_read_user(child, addr,
+				       (unsigned long __user *)data);
 		break;
 
 	/*
@@ -662,11 +660,11 @@ arch_ptrace(struct task_struct *child, long request,
 		break;
 
 	case PTRACE_GETREGS:
-		ret = ptrace_getregs(child, datap);
+		ret = ptrace_getregs(child, (void __user *)data);
 		break;
 
 	case PTRACE_SETREGS:
-		ret = ptrace_setregs(child, datap);
+		ret = ptrace_setregs(child, (void __user *)data);
 		break;
 
 	default:

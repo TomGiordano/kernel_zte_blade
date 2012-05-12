@@ -15,7 +15,7 @@
 
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/syscore_ops.h>
+#include <linux/sysdev.h>
 #include <linux/interrupt.h>
 #include <linux/sched.h>
 #include <linux/bitops.h>
@@ -46,7 +46,6 @@
 #include <mach/mmc.h>
 #include <mach/irda.h>
 #include <mach/ohci.h>
-#include <mach/smemc.h>
 
 #include "generic.h"
 #include "devices.h"
@@ -95,9 +94,9 @@ static unsigned long lpd270_pin_config[] __initdata = {
 
 static unsigned int lpd270_irq_enabled;
 
-static void lpd270_mask_irq(struct irq_data *d)
+static void lpd270_mask_irq(unsigned int irq)
 {
-	int lpd270_irq = d->irq - LPD270_IRQ(0);
+	int lpd270_irq = irq - LPD270_IRQ(0);
 
 	__raw_writew(~(1 << lpd270_irq), LPD270_INT_STATUS);
 
@@ -105,9 +104,9 @@ static void lpd270_mask_irq(struct irq_data *d)
 	__raw_writew(lpd270_irq_enabled, LPD270_INT_MASK);
 }
 
-static void lpd270_unmask_irq(struct irq_data *d)
+static void lpd270_unmask_irq(unsigned int irq)
 {
-	int lpd270_irq = d->irq - LPD270_IRQ(0);
+	int lpd270_irq = irq - LPD270_IRQ(0);
 
 	lpd270_irq_enabled |= 1 << lpd270_irq;
 	__raw_writew(lpd270_irq_enabled, LPD270_INT_MASK);
@@ -115,9 +114,9 @@ static void lpd270_unmask_irq(struct irq_data *d)
 
 static struct irq_chip lpd270_irq_chip = {
 	.name		= "CPLD",
-	.irq_ack	= lpd270_mask_irq,
-	.irq_mask	= lpd270_mask_irq,
-	.irq_unmask	= lpd270_unmask_irq,
+	.ack		= lpd270_mask_irq,
+	.mask		= lpd270_mask_irq,
+	.unmask		= lpd270_unmask_irq,
 };
 
 static void lpd270_irq_handler(unsigned int irq, struct irq_desc *desc)
@@ -126,8 +125,7 @@ static void lpd270_irq_handler(unsigned int irq, struct irq_desc *desc)
 
 	pending = __raw_readw(LPD270_INT_STATUS) & lpd270_irq_enabled;
 	do {
-		/* clear useless edge notification */
-		desc->irq_data.chip->irq_ack(&desc->irq_data);
+		desc->chip->ack(irq);	/* clear useless edge notification */
 		if (likely(pending)) {
 			irq = LPD270_IRQ(0) + __ffs(pending);
 			generic_handle_irq(irq);
@@ -149,32 +147,40 @@ static void __init lpd270_init_irq(void)
 
 	/* setup extra LogicPD PXA270 irqs */
 	for (irq = LPD270_IRQ(2); irq <= LPD270_IRQ(4); irq++) {
-		irq_set_chip_and_handler(irq, &lpd270_irq_chip,
-					 handle_level_irq);
+		set_irq_chip(irq, &lpd270_irq_chip);
+		set_irq_handler(irq, handle_level_irq);
 		set_irq_flags(irq, IRQF_VALID | IRQF_PROBE);
 	}
-	irq_set_chained_handler(IRQ_GPIO(0), lpd270_irq_handler);
-	irq_set_irq_type(IRQ_GPIO(0), IRQ_TYPE_EDGE_FALLING);
+	set_irq_chained_handler(IRQ_GPIO(0), lpd270_irq_handler);
+	set_irq_type(IRQ_GPIO(0), IRQ_TYPE_EDGE_FALLING);
 }
 
 
 #ifdef CONFIG_PM
-static void lpd270_irq_resume(void)
+static int lpd270_irq_resume(struct sys_device *dev)
 {
 	__raw_writew(lpd270_irq_enabled, LPD270_INT_MASK);
+	return 0;
 }
 
-static struct syscore_ops lpd270_irq_syscore_ops = {
+static struct sysdev_class lpd270_irq_sysclass = {
+	.name = "cpld_irq",
 	.resume = lpd270_irq_resume,
+};
+
+static struct sys_device lpd270_irq_device = {
+	.cls = &lpd270_irq_sysclass,
 };
 
 static int __init lpd270_irq_device_init(void)
 {
+	int ret = -ENODEV;
 	if (machine_is_logicpd_pxa270()) {
-		register_syscore_ops(&lpd270_irq_syscore_ops);
-		return 0;
+		ret = sysdev_class_register(&lpd270_irq_sysclass);
+		if (ret == 0)
+			ret = sysdev_register(&lpd270_irq_device);
 	}
-	return -ENODEV;
+	return ret;
 }
 
 device_initcall(lpd270_irq_device_init);
@@ -457,7 +463,7 @@ static void __init lpd270_init(void)
 	pxa_set_btuart_info(NULL);
 	pxa_set_stuart_info(NULL);
 
-	lpd270_flash_data[0].width = (__raw_readl(BOOT_DEF) & 1) ? 2 : 4;
+	lpd270_flash_data[0].width = (BOOT_DEF & 1) ? 2 : 4;
 	lpd270_flash_data[1].width = 4;
 
 	/*
@@ -472,7 +478,7 @@ static void __init lpd270_init(void)
 	pxa_set_ac97_info(NULL);
 
 	if (lpd270_lcd_to_use != NULL)
-		pxa_set_fb_info(NULL, lpd270_lcd_to_use);
+		set_pxa_fb_info(lpd270_lcd_to_use);
 
 	pxa_set_ohci_info(&lpd270_ohci_platform_data);
 }
@@ -489,7 +495,7 @@ static struct map_desc lpd270_io_desc[] __initdata = {
 
 static void __init lpd270_map_io(void)
 {
-	pxa27x_map_io();
+	pxa_map_io();
 	iotable_init(lpd270_io_desc, ARRAY_SIZE(lpd270_io_desc));
 
 	/* for use I SRAM as framebuffer.  */
@@ -499,9 +505,10 @@ static void __init lpd270_map_io(void)
 
 MACHINE_START(LOGICPD_PXA270, "LogicPD PXA270 Card Engine")
 	/* Maintainer: Peter Barada */
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.boot_params	= 0xa0000100,
 	.map_io		= lpd270_map_io,
-	.nr_irqs	= LPD270_NR_IRQS,
 	.init_irq	= lpd270_init_irq,
 	.timer		= &pxa_timer,
 	.init_machine	= lpd270_init,

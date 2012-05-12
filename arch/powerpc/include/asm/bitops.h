@@ -209,8 +209,8 @@ static __inline__ unsigned long ffz(unsigned long x)
 		return BITS_PER_LONG;
 
 	/*
-	 * Calculate the bit position of the least significant '1' bit in x
-	 * (since x has been changed this will actually be the least significant
+	 * Calculate the bit position of the least signficant '1' bit in x
+	 * (since x has been changed this will actually be the least signficant
 	 * '0' bit in * the original x).  Note: (x & -x) gives us a mask that
 	 * is the least significant * (RIGHT-most) 1-bit of the value in x.
 	 */
@@ -267,70 +267,73 @@ static __inline__ int fls64(__u64 x)
 #include <asm-generic/bitops/fls64.h>
 #endif /* __powerpc64__ */
 
-#ifdef CONFIG_PPC64
-unsigned int __arch_hweight8(unsigned int w);
-unsigned int __arch_hweight16(unsigned int w);
-unsigned int __arch_hweight32(unsigned int w);
-unsigned long __arch_hweight64(__u64 w);
-#include <asm-generic/bitops/const_hweight.h>
-#else
 #include <asm-generic/bitops/hweight.h>
-#endif
-
 #include <asm-generic/bitops/find.h>
 
 /* Little-endian versions */
 
-static __inline__ int test_bit_le(unsigned long nr,
-				  __const__ void *addr)
+static __inline__ int test_le_bit(unsigned long nr,
+				  __const__ unsigned long *addr)
 {
 	__const__ unsigned char	*tmp = (__const__ unsigned char *) addr;
 	return (tmp[nr >> 3] >> (nr & 7)) & 1;
 }
 
-static inline void __set_bit_le(int nr, void *addr)
-{
-	__set_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
+#define __set_le_bit(nr, addr) \
+	__set_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
+#define __clear_le_bit(nr, addr) \
+	__clear_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
 
-static inline void __clear_bit_le(int nr, void *addr)
-{
-	__clear_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
+#define test_and_set_le_bit(nr, addr) \
+	test_and_set_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
+#define test_and_clear_le_bit(nr, addr) \
+	test_and_clear_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
 
-static inline int test_and_set_bit_le(int nr, void *addr)
-{
-	return test_and_set_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
+#define __test_and_set_le_bit(nr, addr) \
+	__test_and_set_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
+#define __test_and_clear_le_bit(nr, addr) \
+	__test_and_clear_bit((nr) ^ BITOP_LE_SWIZZLE, (addr))
 
-static inline int test_and_clear_bit_le(int nr, void *addr)
-{
-	return test_and_clear_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
-
-static inline int __test_and_set_bit_le(int nr, void *addr)
-{
-	return __test_and_set_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
-
-static inline int __test_and_clear_bit_le(int nr, void *addr)
-{
-	return __test_and_clear_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
-
-#define find_first_zero_bit_le(addr, size) \
-	find_next_zero_bit_le((addr), (size), 0)
-unsigned long find_next_zero_bit_le(const void *addr,
+#define find_first_zero_le_bit(addr, size) generic_find_next_zero_le_bit((addr), (size), 0)
+unsigned long generic_find_next_zero_le_bit(const unsigned long *addr,
 				    unsigned long size, unsigned long offset);
 
-unsigned long find_next_bit_le(const void *addr,
+unsigned long generic_find_next_le_bit(const unsigned long *addr,
 				    unsigned long size, unsigned long offset);
 /* Bitmap functions for the ext2 filesystem */
 
+#define ext2_set_bit(nr,addr) \
+	__test_and_set_le_bit((nr), (unsigned long*)addr)
+#define ext2_clear_bit(nr, addr) \
+	__test_and_clear_le_bit((nr), (unsigned long*)addr)
+
 #define ext2_set_bit_atomic(lock, nr, addr) \
-	test_and_set_bit_le((nr), (unsigned long*)addr)
+	test_and_set_le_bit((nr), (unsigned long*)addr)
 #define ext2_clear_bit_atomic(lock, nr, addr) \
-	test_and_clear_bit_le((nr), (unsigned long*)addr)
+	test_and_clear_le_bit((nr), (unsigned long*)addr)
+
+#define ext2_test_bit(nr, addr)      test_le_bit((nr),(unsigned long*)addr)
+
+#define ext2_find_first_zero_bit(addr, size) \
+	find_first_zero_le_bit((unsigned long*)addr, size)
+#define ext2_find_next_zero_bit(addr, size, off) \
+	generic_find_next_zero_le_bit((unsigned long*)addr, size, off)
+
+#define ext2_find_next_bit(addr, size, off) \
+	generic_find_next_le_bit((unsigned long *)addr, size, off)
+/* Bitmap functions for the minix filesystem.  */
+
+#define minix_test_and_set_bit(nr,addr) \
+	__test_and_set_le_bit(nr, (unsigned long *)addr)
+#define minix_set_bit(nr,addr) \
+	__set_le_bit(nr, (unsigned long *)addr)
+#define minix_test_and_clear_bit(nr,addr) \
+	__test_and_clear_le_bit(nr, (unsigned long *)addr)
+#define minix_test_bit(nr,addr) \
+	test_le_bit(nr, (unsigned long *)addr)
+
+#define minix_find_first_zero_bit(addr,size) \
+	find_first_zero_le_bit((unsigned long *)addr, size)
 
 #include <asm-generic/bitops/sched.h>
 

@@ -3,11 +3,12 @@
 #include <linux/bitmap.h>
 #include <linux/init.h>
 #include <linux/smp.h>
-#include <linux/irq.h>
 
 #include <asm/io.h>
 #include <asm/gic.h>
 #include <asm/gcmpregs.h>
+#include <asm/mips-boards/maltaint.h>
+#include <asm/irq.h>
 #include <linux/hardirq.h>
 #include <asm-generic/bitops/find.h>
 
@@ -87,10 +88,17 @@ unsigned int gic_get_int(void)
 	return i;
 }
 
-static void gic_irq_ack(struct irq_data *d)
+static unsigned int gic_irq_startup(unsigned int irq)
 {
-	unsigned int irq = d->irq - _irqbase;
+	irq -= _irqbase;
+	pr_debug("CPU%d: %s: irq%d\n", smp_processor_id(), __func__, irq);
+	GIC_SET_INTR_MASK(irq);
+	return 0;
+}
 
+static void gic_irq_ack(unsigned int irq)
+{
+	irq -= _irqbase;
 	pr_debug("CPU%d: %s: irq%d\n", smp_processor_id(), __func__, irq);
 	GIC_CLR_INTR_MASK(irq);
 
@@ -98,16 +106,16 @@ static void gic_irq_ack(struct irq_data *d)
 		GICWRITE(GIC_REG(SHARED, GIC_SH_WEDGE), irq);
 }
 
-static void gic_mask_irq(struct irq_data *d)
+static void gic_mask_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq - _irqbase;
+	irq -= _irqbase;
 	pr_debug("CPU%d: %s: irq%d\n", smp_processor_id(), __func__, irq);
 	GIC_CLR_INTR_MASK(irq);
 }
 
-static void gic_unmask_irq(struct irq_data *d)
+static void gic_unmask_irq(unsigned int irq)
 {
-	unsigned int irq = d->irq - _irqbase;
+	irq -= _irqbase;
 	pr_debug("CPU%d: %s: irq%d\n", smp_processor_id(), __func__, irq);
 	GIC_SET_INTR_MASK(irq);
 }
@@ -116,15 +124,14 @@ static void gic_unmask_irq(struct irq_data *d)
 
 static DEFINE_SPINLOCK(gic_lock);
 
-static int gic_set_affinity(struct irq_data *d, const struct cpumask *cpumask,
-			    bool force)
+static int gic_set_affinity(unsigned int irq, const struct cpumask *cpumask)
 {
-	unsigned int irq = d->irq - _irqbase;
 	cpumask_t	tmp = CPU_MASK_NONE;
 	unsigned long	flags;
 	int		i;
 
-	pr_debug("%s(%d) called\n", __func__, irq);
+	irq -= _irqbase;
+	pr_debug(KERN_DEBUG "%s(%d) called\n", __func__, irq);
 	cpumask_and(&tmp, cpumask, cpu_online_mask);
 	if (cpus_empty(tmp))
 		return -1;
@@ -141,22 +148,23 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *cpumask,
 		set_bit(irq, pcpu_masks[first_cpu(tmp)].pcpu_mask);
 
 	}
-	cpumask_copy(d->affinity, cpumask);
+	cpumask_copy(irq_desc[irq].affinity, cpumask);
 	spin_unlock_irqrestore(&gic_lock, flags);
 
-	return IRQ_SET_MASK_OK_NOCOPY;
+	return 0;
 }
 #endif
 
 static struct irq_chip gic_irq_controller = {
-	.name			=	"MIPS GIC",
-	.irq_ack		=	gic_irq_ack,
-	.irq_mask		=	gic_mask_irq,
-	.irq_mask_ack		=	gic_mask_irq,
-	.irq_unmask		=	gic_unmask_irq,
-	.irq_eoi		=	gic_unmask_irq,
+	.name		=	"MIPS GIC",
+	.startup	=	gic_irq_startup,
+	.ack		=	gic_irq_ack,
+	.mask		=	gic_mask_irq,
+	.mask_ack	=	gic_mask_irq,
+	.unmask		=	gic_unmask_irq,
+	.eoi		=	gic_unmask_irq,
 #ifdef CONFIG_SMP
-	.irq_set_affinity	=	gic_set_affinity,
+	.set_affinity	=	gic_set_affinity,
 #endif
 };
 
@@ -214,7 +222,7 @@ static void __init gic_basic_init(int numintrs, int numvpes,
 	/* Setup specifics */
 	for (i = 0; i < mapsize; i++) {
 		cpu = intrmap[i].cpunum;
-		if (cpu == GIC_UNUSED)
+		if (cpu == X)
 			continue;
 		if (cpu == 0 && i != 0 && intrmap[i].flags == 0)
 			continue;
@@ -229,7 +237,7 @@ static void __init gic_basic_init(int numintrs, int numvpes,
 	vpe_local_setup(numvpes);
 
 	for (i = _irqbase; i < (_irqbase + numintrs); i++)
-		irq_set_chip(i, &gic_irq_controller);
+		set_irq_chip(i, &gic_irq_controller);
 }
 
 void __init gic_init(unsigned long gic_base_addr,

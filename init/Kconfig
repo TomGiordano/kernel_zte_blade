@@ -126,10 +126,13 @@ config HAVE_KERNEL_LZMA
 config HAVE_KERNEL_LZO
 	bool
 
+config HAVE_KERNEL_XZ
+        bool
+
 choice
 	prompt "Kernel compression mode"
 	default KERNEL_GZIP
-	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZMA || HAVE_KERNEL_LZO
+	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZMA || HAVE_KERNEL_XZ || HAVE_KERNEL_LZO
 	help
 	  The linux kernel is a kind of self-extracting executable.
 	  Several compression algorithms are available, which differ
@@ -173,6 +176,21 @@ config KERNEL_LZMA
 	  Its ratio is best, decompression speed is between the other
 	  two. Compression is slowest.	The kernel size is about 33%
 	  smaller with LZMA in comparison to gzip.
+
+config KERNEL_XZ
+        bool "XZ"
+        depends on HAVE_KERNEL_XZ
+        help
+          XZ uses the LZMA2 algorithm and instruction set specific
+          BCJ filters which can improve compression ratio of executable
+          code. The size of the kernel is about 30% smaller with XZ in
+          comparison to gzip. On architectures for which there is a BCJ
+          filter (i386, x86_64, ARM, IA-64, PowerPC, and SPARC), XZ
+          will create a few percent smaller kernel than plain LZMA.
+
+          The speed is about the same as with LZMA: The decompression
+          speed of XZ is better than that of bzip2 but worse than gzip
+          and LZO. Compression is slow.
 
 config KERNEL_LZO
 	bool "LZO"
@@ -1241,6 +1259,14 @@ config MODULE_FORCE_LOAD
 	  Allow loading of modules without version information (ie. modprobe
 	  --force).  Forced module loading sets the 'F' (forced) taint flag and
 	  is usually a really bad idea.
+
+config MODULE_FORCE_VERMAGIC
+        bool "Allow forced loading of modules with bad vermagic"
+        default n
+        depends on MODULE_FORCE_LOAD
+        help
+          Allow loading of modules with version information that does not match
+          the currently running kernel. This is very bad.
 
 config MODULE_UNLOAD
 	bool "Module unloading"

@@ -49,6 +49,8 @@
 #include <plat/devs.h>
 #include <plat/cpu.h>
 
+#ifdef CONFIG_MTD_PARTITIONS
+
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/map.h>
@@ -88,6 +90,8 @@ static struct platform_device tct_hammer_device_nor = {
 	.num_resources	= 1,
 	.resource	= &tct_hammer_nor_resource,
 };
+
+#endif
 
 static struct map_desc tct_hammer_iodesc[] __initdata = {
 };
@@ -129,7 +133,9 @@ static struct platform_device *tct_hammer_devices[] __initdata = {
 	&s3c_device_rtc,
 	&s3c_device_usbgadget,
 	&s3c_device_sdi,
+#ifdef CONFIG_MTD_PARTITIONS
 	&tct_hammer_device_nor,
+#endif
 };
 
 static void __init tct_hammer_map_io(void)
@@ -146,6 +152,8 @@ static void __init tct_hammer_init(void)
 }
 
 MACHINE_START(TCT_HAMMER, "TCT_HAMMER")
+	.phys_io	= S3C2410_PA_UART,
+	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
 	.map_io		= tct_hammer_map_io,
 	.init_irq	= s3c24xx_init_irq,

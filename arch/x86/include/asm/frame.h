@@ -7,12 +7,14 @@
    frame pointer later */
 #ifdef CONFIG_FRAME_POINTER
 	.macro FRAME
-	pushl_cfi %ebp
+	pushl %ebp
+	CFI_ADJUST_CFA_OFFSET 4
 	CFI_REL_OFFSET ebp,0
 	movl %esp,%ebp
 	.endm
 	.macro ENDFRAME
-	popl_cfi %ebp
+	popl %ebp
+	CFI_ADJUST_CFA_OFFSET -4
 	CFI_RESTORE ebp
 	.endm
 #else

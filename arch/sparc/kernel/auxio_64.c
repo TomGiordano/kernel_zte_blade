@@ -93,7 +93,7 @@ void auxio_set_lte(int on)
 }
 EXPORT_SYMBOL(auxio_set_lte);
 
-static const struct of_device_id auxio_match[] = {
+static struct of_device_id __initdata auxio_match[] = {
 	{
 		.name = "auxio",
 	},
@@ -102,7 +102,7 @@ static const struct of_device_id auxio_match[] = {
 
 MODULE_DEVICE_TABLE(of, auxio_match);
 
-static int __devinit auxio_probe(struct platform_device *dev)
+static int __devinit auxio_probe(struct of_device *dev, const struct of_device_id *match)
 {
 	struct device_node *dp = dev->dev.of_node;
 	unsigned long size;
@@ -131,7 +131,7 @@ static int __devinit auxio_probe(struct platform_device *dev)
 	return 0;
 }
 
-static struct platform_driver auxio_driver = {
+static struct of_platform_driver auxio_driver = {
 	.probe		= auxio_probe,
 	.driver = {
 		.name = "auxio",
@@ -142,7 +142,7 @@ static struct platform_driver auxio_driver = {
 
 static int __init auxio_init(void)
 {
-	return platform_driver_register(&auxio_driver);
+	return of_register_driver(&auxio_driver, &of_platform_bus_type);
 }
 
 /* Must be after subsys_initcall() so that busses are probed.  Must

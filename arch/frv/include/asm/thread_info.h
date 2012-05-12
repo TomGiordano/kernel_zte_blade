@@ -21,8 +21,6 @@
 
 #define THREAD_SIZE		8192
 
-#define __HAVE_ARCH_TASK_STRUCT_ALLOCATOR
-
 /*
  * low level task data that entry.S needs immediate access to
  * - this struct should fit entirely inside of one cache line
@@ -86,11 +84,16 @@ register struct thread_info *__current_thread_info asm("gr15");
 
 /* thread information allocation */
 #ifdef CONFIG_DEBUG_STACK_USAGE
-#define alloc_thread_info_node(tsk, node)			\
-		kzalloc_node(THREAD_SIZE, GFP_KERNEL, node)
+#define alloc_thread_info(tsk)					\
+	({							\
+		struct thread_info *ret;			\
+								\
+		ret = kzalloc(THREAD_SIZE, GFP_KERNEL);		\
+								\
+		ret;						\
+	})
 #else
-#define alloc_thread_info_node(tsk, node)			\
-		kmalloc_node(THREAD_SIZE, GFP_KERNEL, node)
+#define alloc_thread_info(tsk)	kmalloc(THREAD_SIZE, GFP_KERNEL)
 #endif
 
 #define free_thread_info(info)	kfree(info)

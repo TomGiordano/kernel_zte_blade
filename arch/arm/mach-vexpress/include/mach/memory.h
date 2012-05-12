@@ -20,6 +20,6 @@
 #ifndef __ASM_ARCH_MEMORY_H
 #define __ASM_ARCH_MEMORY_H
 
-#define PLAT_PHYS_OFFSET		UL(0x60000000)
+#define PHYS_OFFSET		UL(0x60000000)
 
 #endif

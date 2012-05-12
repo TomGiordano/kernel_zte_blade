@@ -19,7 +19,6 @@
  */
 #include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/irq.h>
 
 #include <asm/irq_cpu.h>
 #include <asm/system.h>
@@ -62,6 +61,7 @@ EXPORT_SYMBOL_GPL(cascade_irq);
 static void irq_dispatch(unsigned int irq)
 {
 	irq_cascade_t *cascade;
+	struct irq_desc *desc;
 
 	if (irq >= NR_IRQS) {
 		atomic_inc(&irq_err_count);
@@ -70,16 +70,14 @@ static void irq_dispatch(unsigned int irq)
 
 	cascade = irq_cascade + irq;
 	if (cascade->get_irq != NULL) {
-		struct irq_desc *desc = irq_to_desc(irq);
-		struct irq_data *idata = irq_desc_get_irq_data(desc);
-		struct irq_chip *chip = irq_desc_get_chip(desc);
+		unsigned int source_irq = irq;
 		int ret;
-
-		if (chip->irq_mask_ack)
-			chip->irq_mask_ack(idata);
+		desc = irq_desc + source_irq;
+		if (desc->chip->mask_ack)
+			desc->chip->mask_ack(source_irq);
 		else {
-			chip->irq_mask(idata);
-			chip->irq_ack(idata);
+			desc->chip->mask(source_irq);
+			desc->chip->ack(source_irq);
 		}
 		ret = cascade->get_irq(irq);
 		irq = ret;
@@ -87,8 +85,8 @@ static void irq_dispatch(unsigned int irq)
 			atomic_inc(&irq_err_count);
 		else
 			irq_dispatch(irq);
-		if (!irqd_irq_disabled(idata) && chip->irq_unmask)
-			chip->irq_unmask(idata);
+		if (!(desc->status & IRQ_DISABLED) && desc->chip->unmask)
+			desc->chip->unmask(source_irq);
 	} else
 		do_IRQ(irq);
 }

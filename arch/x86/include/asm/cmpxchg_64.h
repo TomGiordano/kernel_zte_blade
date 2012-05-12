@@ -3,6 +3,8 @@
 
 #include <asm/alternative.h> /* Provides LOCK_PREFIX */
 
+#define __xg(x) ((volatile long *)(x))
+
 static inline void set_64bit(volatile u64 *ptr, u64 val)
 {
 	*ptr = val;
@@ -12,51 +14,38 @@ extern void __xchg_wrong_size(void);
 extern void __cmpxchg_wrong_size(void);
 
 /*
- * Note: no "lock" prefix even on SMP: xchg always implies lock anyway.
- * Since this is generally used to protect other memory information, we
- * use "asm volatile" and "memory" clobbers to prevent gcc from moving
- * information around.
+ * Note: no "lock" prefix even on SMP: xchg always implies lock anyway
+ * Note 2: xchg has side effect, so that attribute volatile is necessary,
+ *	  but generally the primitive is invalid, *ptr is output argument. --ANK
  */
 #define __xchg(x, ptr, size)						\
 ({									\
 	__typeof(*(ptr)) __x = (x);					\
 	switch (size) {							\
 	case 1:								\
-	{								\
-		volatile u8 *__ptr = (volatile u8 *)(ptr);		\
-		asm volatile("xchgb %0,%1"				\
-			     : "=q" (__x), "+m" (*__ptr)		\
+		asm volatile("xchgb %b0,%1"				\
+			     : "=q" (__x), "+m" (*__xg(ptr))		\
 			     : "0" (__x)				\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 2:								\
-	{								\
-		volatile u16 *__ptr = (volatile u16 *)(ptr);		\
-		asm volatile("xchgw %0,%1"				\
-			     : "=r" (__x), "+m" (*__ptr)		\
+		asm volatile("xchgw %w0,%1"				\
+			     : "=r" (__x), "+m" (*__xg(ptr))		\
 			     : "0" (__x)				\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 4:								\
-	{								\
-		volatile u32 *__ptr = (volatile u32 *)(ptr);		\
-		asm volatile("xchgl %0,%1"				\
-			     : "=r" (__x), "+m" (*__ptr)		\
+		asm volatile("xchgl %k0,%1"				\
+			     : "=r" (__x), "+m" (*__xg(ptr))		\
 			     : "0" (__x)				\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 8:								\
-	{								\
-		volatile u64 *__ptr = (volatile u64 *)(ptr);		\
 		asm volatile("xchgq %0,%1"				\
-			     : "=r" (__x), "+m" (*__ptr)		\
+			     : "=r" (__x), "+m" (*__xg(ptr))		\
 			     : "0" (__x)				\
 			     : "memory");				\
 		break;							\
-	}								\
 	default:							\
 		__xchg_wrong_size();					\
 	}								\
@@ -80,41 +69,29 @@ extern void __cmpxchg_wrong_size(void);
 	__typeof__(*(ptr)) __new = (new);				\
 	switch (size) {							\
 	case 1:								\
-	{								\
-		volatile u8 *__ptr = (volatile u8 *)(ptr);		\
-		asm volatile(lock "cmpxchgb %2,%1"			\
-			     : "=a" (__ret), "+m" (*__ptr)		\
+		asm volatile(lock "cmpxchgb %b2,%1"			\
+			     : "=a" (__ret), "+m" (*__xg(ptr))		\
 			     : "q" (__new), "0" (__old)			\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 2:								\
-	{								\
-		volatile u16 *__ptr = (volatile u16 *)(ptr);		\
-		asm volatile(lock "cmpxchgw %2,%1"			\
-			     : "=a" (__ret), "+m" (*__ptr)		\
+		asm volatile(lock "cmpxchgw %w2,%1"			\
+			     : "=a" (__ret), "+m" (*__xg(ptr))		\
 			     : "r" (__new), "0" (__old)			\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 4:								\
-	{								\
-		volatile u32 *__ptr = (volatile u32 *)(ptr);		\
-		asm volatile(lock "cmpxchgl %2,%1"			\
-			     : "=a" (__ret), "+m" (*__ptr)		\
+		asm volatile(lock "cmpxchgl %k2,%1"			\
+			     : "=a" (__ret), "+m" (*__xg(ptr))		\
 			     : "r" (__new), "0" (__old)			\
 			     : "memory");				\
 		break;							\
-	}								\
 	case 8:								\
-	{								\
-		volatile u64 *__ptr = (volatile u64 *)(ptr);		\
 		asm volatile(lock "cmpxchgq %2,%1"			\
-			     : "=a" (__ret), "+m" (*__ptr)		\
+			     : "=a" (__ret), "+m" (*__xg(ptr))		\
 			     : "r" (__new), "0" (__old)			\
 			     : "memory");				\
 		break;							\
-	}								\
 	default:							\
 		__cmpxchg_wrong_size();					\
 	}								\

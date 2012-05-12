@@ -9,7 +9,6 @@
  */
 #include <linux/pci.h>
 #include <linux/io.h>
-#include <linux/spinlock.h>
 #include <asm/addrspace.h>
 #include "pci-sh4.h"
 
@@ -18,6 +17,8 @@
  */
 #define CONFIG_CMD(bus, devfn, where) \
 	(0x80000000 | (bus->number << 16) | (devfn << 8) | (where & ~3))
+
+static DEFINE_SPINLOCK(sh4_pci_lock);
 
 /*
  * Functions for accessing PCI configuration space with type 1 accesses
@@ -33,10 +34,10 @@ static int sh4_pci_read(struct pci_bus *bus, unsigned int devfn,
 	 * PCIPDR may only be accessed as 32 bit words,
 	 * so we must do byte alignment by hand
 	 */
-	raw_spin_lock_irqsave(&pci_config_lock, flags);
+	spin_lock_irqsave(&sh4_pci_lock, flags);
 	pci_write_reg(chan, CONFIG_CMD(bus, devfn, where), SH4_PCIPAR);
 	data = pci_read_reg(chan, SH4_PCIPDR);
-	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
+	spin_unlock_irqrestore(&sh4_pci_lock, flags);
 
 	switch (size) {
 	case 1:
@@ -68,10 +69,10 @@ static int sh4_pci_write(struct pci_bus *bus, unsigned int devfn,
 	int shift;
 	u32 data;
 
-	raw_spin_lock_irqsave(&pci_config_lock, flags);
+	spin_lock_irqsave(&sh4_pci_lock, flags);
 	pci_write_reg(chan, CONFIG_CMD(bus, devfn, where), SH4_PCIPAR);
 	data = pci_read_reg(chan, SH4_PCIPDR);
-	raw_spin_unlock_irqrestore(&pci_config_lock, flags);
+	spin_unlock_irqrestore(&sh4_pci_lock, flags);
 
 	switch (size) {
 	case 1:

@@ -156,7 +156,7 @@ static struct resource bfin_uart0_resources[] = {
 	},
 };
 
-static unsigned short bfin_uart0_peripherals[] = {
+unsigned short bfin_uart0_peripherals[] = {
 	P_UART0_TX, P_UART0_RX, 0
 };
 
@@ -211,7 +211,7 @@ static struct resource bfin_uart1_resources[] = {
 #endif
 };
 
-static unsigned short bfin_uart1_peripherals[] = {
+unsigned short bfin_uart1_peripherals[] = {
 	P_UART1_TX, P_UART1_RX,
 #ifdef CONFIG_BFIN_UART1_CTSRTS
 	P_UART1_RTS, P_UART1_CTS,
@@ -258,7 +258,7 @@ static struct resource bfin_uart2_resources[] = {
 	},
 };
 
-static unsigned short bfin_uart2_peripherals[] = {
+unsigned short bfin_uart2_peripherals[] = {
 	P_UART2_TX, P_UART2_RX, 0
 };
 
@@ -313,7 +313,7 @@ static struct resource bfin_uart3_resources[] = {
 #endif
 };
 
-static unsigned short bfin_uart3_peripherals[] = {
+unsigned short bfin_uart3_peripherals[] = {
 	P_UART3_TX, P_UART3_RX,
 #ifdef CONFIG_BFIN_UART3_CTSRTS
 	P_UART3_RTS, P_UART3_CTS,
@@ -482,13 +482,11 @@ static struct resource musb_resources[] = {
 		.start	= IRQ_USB_INT0,
 		.end	= IRQ_USB_INT0,
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.name	= "mc"
 	},
 	[2] = {	/* DMA IRQ */
 		.start	= IRQ_USB_DMA,
 		.end	= IRQ_USB_DMA,
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.name	= "dma"
 	},
 };
 
@@ -504,7 +502,6 @@ static struct musb_hdrc_config musb_config = {
 	 * if it is the case.
 	 */
 	.gpio_vrsel_active	= 1,
-	.clkin          = 24,           /* musb CLKIN in MHZ */
 };
 
 static struct musb_hdrc_platform_data musb_plat = {
@@ -521,7 +518,7 @@ static struct musb_hdrc_platform_data musb_plat = {
 static u64 musb_dmamask = ~(u32)0;
 
 static struct platform_device musb_device = {
-	.name		= "musb-blackfin",
+	.name		= "musb_hdrc",
 	.id		= 0,
 	.dev = {
 		.dma_mask		= &musb_dmamask,
@@ -553,9 +550,9 @@ static struct resource bfin_sport0_uart_resources[] = {
 	},
 };
 
-static unsigned short bfin_sport0_peripherals[] = {
+unsigned short bfin_sport0_peripherals[] = {
 	P_SPORT0_TFS, P_SPORT0_DTPRI, P_SPORT0_TSCLK, P_SPORT0_RFS,
-	P_SPORT0_DRPRI, P_SPORT0_RSCLK, 0
+	P_SPORT0_DRPRI, P_SPORT0_RSCLK, P_SPORT0_DRSEC, P_SPORT0_DTSEC, 0
 };
 
 static struct platform_device bfin_sport0_uart_device = {
@@ -587,9 +584,9 @@ static struct resource bfin_sport1_uart_resources[] = {
 	},
 };
 
-static unsigned short bfin_sport1_peripherals[] = {
+unsigned short bfin_sport1_peripherals[] = {
 	P_SPORT1_TFS, P_SPORT1_DTPRI, P_SPORT1_TSCLK, P_SPORT1_RFS,
-	P_SPORT1_DRPRI, P_SPORT1_RSCLK, 0
+	P_SPORT1_DRPRI, P_SPORT1_RSCLK, P_SPORT1_DRSEC, P_SPORT1_DTSEC, 0
 };
 
 static struct platform_device bfin_sport1_uart_device = {
@@ -621,7 +618,7 @@ static struct resource bfin_sport2_uart_resources[] = {
 	},
 };
 
-static unsigned short bfin_sport2_peripherals[] = {
+unsigned short bfin_sport2_peripherals[] = {
 	P_SPORT2_TFS, P_SPORT2_DTPRI, P_SPORT2_TSCLK, P_SPORT2_RFS,
 	P_SPORT2_DRPRI, P_SPORT2_RSCLK, P_SPORT2_DRSEC, P_SPORT2_DTSEC, 0
 };
@@ -655,7 +652,7 @@ static struct resource bfin_sport3_uart_resources[] = {
 	},
 };
 
-static unsigned short bfin_sport3_peripherals[] = {
+unsigned short bfin_sport3_peripherals[] = {
 	P_SPORT3_TFS, P_SPORT3_DTPRI, P_SPORT3_TSCLK, P_SPORT3_RFS,
 	P_SPORT3_DRPRI, P_SPORT3_RSCLK, P_SPORT3_DRSEC, P_SPORT3_DTSEC, 0
 };
@@ -709,6 +706,7 @@ static struct mtd_partition partition_info[] = {
 };
 
 static struct bf5xx_nand_platform bf5xx_nand_platform = {
+	.page_size = NFC_PG_SIZE_256,
 	.data_width = NFC_NWIDTH_8,
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
@@ -752,44 +750,6 @@ static struct platform_device bf54x_sdh_device = {
 	.id = 0,
 	.dev = {
 		.platform_data = &bfin_sdh_data,
-	},
-};
-#endif
-
-#if defined(CONFIG_CAN_BFIN) || defined(CONFIG_CAN_BFIN_MODULE)
-static unsigned short bfin_can_peripherals[] = {
-	P_CAN0_RX, P_CAN0_TX, 0
-};
-
-static struct resource bfin_can_resources[] = {
-	{
-		.start = 0xFFC02A00,
-		.end = 0xFFC02FFF,
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = IRQ_CAN0_RX,
-		.end = IRQ_CAN0_RX,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
-		.start = IRQ_CAN0_TX,
-		.end = IRQ_CAN0_TX,
-		.flags = IORESOURCE_IRQ,
-	},
-	{
-		.start = IRQ_CAN0_ERROR,
-		.end = IRQ_CAN0_ERROR,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device bfin_can_device = {
-	.name = "bfin_can",
-	.num_resources = ARRAY_SIZE(bfin_can_resources),
-	.resource = bfin_can_resources,
-	.dev = {
-		.platform_data = &bfin_can_peripherals, /* Passed to driver */
 	},
 };
 #endif
@@ -969,7 +929,7 @@ static struct resource bfin_spi1_resource[] = {
 
 /* SPI controller data */
 static struct bfin5xx_spi_master bf54x_spi_master_info0 = {
-	.num_chipselect = 4,
+	.num_chipselect = 3,
 	.enable_dma = 1,  /* master has the ability to do dma transfer */
 	.pin_req = {P_SPI0_SCK, P_SPI0_MISO, P_SPI0_MOSI, 0},
 };
@@ -985,7 +945,7 @@ static struct platform_device bf54x_spi_master0 = {
 };
 
 static struct bfin5xx_spi_master bf54x_spi_master_info1 = {
-	.num_chipselect = 4,
+	.num_chipselect = 3,
 	.enable_dma = 1,  /* master has the ability to do dma transfer */
 	.pin_req = {P_SPI1_SCK, P_SPI1_MISO, P_SPI1_MOSI, 0},
 };
@@ -1193,11 +1153,6 @@ static struct platform_device *cm_bf548_devices[] __initdata = {
 #if defined(CONFIG_MTD_PHYSMAP) || defined(CONFIG_MTD_PHYSMAP_MODULE)
 	&para_flash_device,
 #endif
-
-#if defined(CONFIG_CAN_BFIN) || defined(CONFIG_CAN_BFIN_MODULE)
-	&bfin_can_device,
-#endif
-
 };
 
 static int __init cm_bf548_init(void)

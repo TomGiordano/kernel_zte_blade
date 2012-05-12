@@ -18,12 +18,12 @@
 #include <asm/hardware/vic.h>
 #include <asm/irq.h>
 #include <asm/mach/arch.h>
-#include <mach/generic.h>
-#include <mach/hardware.h>
 #include <mach/irqs.h>
+#include <mach/generic.h>
+#include <mach/spear.h>
 
 /* Add spear6xx machines common devices here */
-/* uart device registration */
+/* uart device registeration */
 struct amba_device uart_device[] = {
 	{
 		.dev = {
@@ -31,7 +31,8 @@ struct amba_device uart_device[] = {
 		},
 		.res = {
 			.start = SPEAR6XX_ICM1_UART0_BASE,
-			.end = SPEAR6XX_ICM1_UART0_BASE + SZ_4K - 1,
+			.end = SPEAR6XX_ICM1_UART0_BASE +
+				SPEAR6XX_ICM1_UART0_SIZE - 1,
 			.flags = IORESOURCE_MEM,
 		},
 		.irq = {IRQ_UART_0, NO_IRQ},
@@ -41,14 +42,15 @@ struct amba_device uart_device[] = {
 		},
 		.res = {
 			.start = SPEAR6XX_ICM1_UART1_BASE,
-			.end = SPEAR6XX_ICM1_UART1_BASE + SZ_4K - 1,
+			.end = SPEAR6XX_ICM1_UART1_BASE +
+				SPEAR6XX_ICM1_UART1_SIZE - 1,
 			.flags = IORESOURCE_MEM,
 		},
 		.irq = {IRQ_UART_1, NO_IRQ},
 	}
 };
 
-/* gpio device registration */
+/* gpio device registeration */
 static struct pl061_platform_data gpio_plat_data[] = {
 	{
 		.gpio_base	= 0,
@@ -70,7 +72,8 @@ struct amba_device gpio_device[] = {
 		},
 		.res = {
 			.start = SPEAR6XX_CPU_GPIO_BASE,
-			.end = SPEAR6XX_CPU_GPIO_BASE + SZ_4K - 1,
+			.end = SPEAR6XX_CPU_GPIO_BASE +
+				SPEAR6XX_CPU_GPIO_SIZE - 1,
 			.flags = IORESOURCE_MEM,
 		},
 		.irq = {IRQ_LOCAL_GPIO, NO_IRQ},
@@ -81,7 +84,8 @@ struct amba_device gpio_device[] = {
 		},
 		.res = {
 			.start = SPEAR6XX_ICM3_GPIO_BASE,
-			.end = SPEAR6XX_ICM3_GPIO_BASE + SZ_4K - 1,
+			.end = SPEAR6XX_ICM3_GPIO_BASE +
+				SPEAR6XX_ICM3_GPIO_SIZE - 1,
 			.flags = IORESOURCE_MEM,
 		},
 		.irq = {IRQ_BASIC_GPIO, NO_IRQ},
@@ -92,7 +96,8 @@ struct amba_device gpio_device[] = {
 		},
 		.res = {
 			.start = SPEAR6XX_ICM2_GPIO_BASE,
-			.end = SPEAR6XX_ICM2_GPIO_BASE + SZ_4K - 1,
+			.end = SPEAR6XX_ICM2_GPIO_BASE +
+				SPEAR6XX_ICM2_GPIO_SIZE - 1,
 			.flags = IORESOURCE_MEM,
 		},
 		.irq = {IRQ_APPL_GPIO, NO_IRQ},
@@ -117,27 +122,27 @@ static struct map_desc spear6xx_io_desc[] __initdata = {
 	{
 		.virtual	= VA_SPEAR6XX_ICM1_UART0_BASE,
 		.pfn		= __phys_to_pfn(SPEAR6XX_ICM1_UART0_BASE),
-		.length		= SZ_4K,
+		.length		= SPEAR6XX_ICM1_UART0_SIZE,
 		.type		= MT_DEVICE
 	}, {
 		.virtual	= VA_SPEAR6XX_CPU_VIC_PRI_BASE,
 		.pfn		= __phys_to_pfn(SPEAR6XX_CPU_VIC_PRI_BASE),
-		.length		= SZ_4K,
+		.length		= SPEAR6XX_CPU_VIC_PRI_SIZE,
 		.type		= MT_DEVICE
 	}, {
 		.virtual	= VA_SPEAR6XX_CPU_VIC_SEC_BASE,
 		.pfn		= __phys_to_pfn(SPEAR6XX_CPU_VIC_SEC_BASE),
-		.length		= SZ_4K,
+		.length		= SPEAR6XX_CPU_VIC_SEC_SIZE,
 		.type		= MT_DEVICE
 	}, {
 		.virtual	= VA_SPEAR6XX_ICM3_SYS_CTRL_BASE,
 		.pfn		= __phys_to_pfn(SPEAR6XX_ICM3_SYS_CTRL_BASE),
-		.length		= SZ_4K,
+		.length		= SPEAR6XX_ICM3_MISC_REG_BASE,
 		.type		= MT_DEVICE
 	}, {
 		.virtual	= VA_SPEAR6XX_ICM3_MISC_REG_BASE,
 		.pfn		= __phys_to_pfn(SPEAR6XX_ICM3_MISC_REG_BASE),
-		.length		= SZ_4K,
+		.length		= SPEAR6XX_ICM3_MISC_REG_SIZE,
 		.type		= MT_DEVICE
 	},
 };
@@ -148,36 +153,5 @@ void __init spear6xx_map_io(void)
 	iotable_init(spear6xx_io_desc, ARRAY_SIZE(spear6xx_io_desc));
 
 	/* This will initialize clock framework */
-	spear6xx_clk_init();
+	clk_init();
 }
-
-static void __init spear6xx_timer_init(void)
-{
-	char pclk_name[] = "pll3_48m_clk";
-	struct clk *gpt_clk, *pclk;
-
-	/* get the system timer clock */
-	gpt_clk = clk_get_sys("gpt0", NULL);
-	if (IS_ERR(gpt_clk)) {
-		pr_err("%s:couldn't get clk for gpt\n", __func__);
-		BUG();
-	}
-
-	/* get the suitable parent clock for timer*/
-	pclk = clk_get(NULL, pclk_name);
-	if (IS_ERR(pclk)) {
-		pr_err("%s:couldn't get %s as parent for gpt\n",
-				__func__, pclk_name);
-		BUG();
-	}
-
-	clk_set_parent(gpt_clk, pclk);
-	clk_put(gpt_clk);
-	clk_put(pclk);
-
-	spear_setup_timer();
-}
-
-struct sys_timer spear6xx_timer = {
-	.init = spear6xx_timer_init,
-};

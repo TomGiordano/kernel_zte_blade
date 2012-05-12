@@ -36,7 +36,7 @@ int __init pci_legacy_init(void)
 	return 0;
 }
 
-void __devinit pcibios_scan_specific_bus(int busn)
+void pcibios_scan_specific_bus(int busn)
 {
 	int devfn;
 	long node;

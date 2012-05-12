@@ -42,20 +42,6 @@ extern void fpsave(unsigned long *fpregs, unsigned long *fsr,
 extern void fpload(unsigned long *fpregs, unsigned long *fsr);
 
 #else /* CONFIG_SPARC32 */
-struct popc_3insn_patch_entry {
-	unsigned int	addr;
-	unsigned int	insns[3];
-};
-extern struct popc_3insn_patch_entry __popc_3insn_patch,
-	__popc_3insn_patch_end;
-
-struct popc_6insn_patch_entry {
-	unsigned int	addr;
-	unsigned int	insns[6];
-};
-extern struct popc_6insn_patch_entry __popc_6insn_patch,
-	__popc_6insn_patch_end;
-
 extern void __init per_cpu_patch(void);
 extern void __init sun4v_patch(void);
 extern void __init boot_cpu_id_too_large(int cpu);
@@ -227,8 +213,8 @@ extern struct cheetah_err_info *cheetah_error_log;
 struct ino_bucket {
 /*0x00*/unsigned long __irq_chain_pa;
 
-	/* Interrupt number assigned to this INO.  */
-/*0x08*/unsigned int __irq;
+	/* Virtual interrupt number assigned to this INO.  */
+/*0x08*/unsigned int __virt_irq;
 /*0x0c*/unsigned int __pad;
 };
 

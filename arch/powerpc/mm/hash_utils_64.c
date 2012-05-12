@@ -53,7 +53,6 @@
 #include <asm/sections.h>
 #include <asm/spu.h>
 #include <asm/udbg.h>
-#include <asm/code-patching.h>
 
 #ifdef DEBUG
 #define DBG(fmt...) udbg_printf(fmt)
@@ -259,11 +258,11 @@ static int __init htab_dt_scan_seg_sizes(unsigned long node,
 	for (; size >= 4; size -= 4, ++prop) {
 		if (prop[0] == 40) {
 			DBG("1T segment support detected\n");
-			cur_cpu_spec->mmu_features |= MMU_FTR_1T_SEGMENT;
+			cur_cpu_spec->cpu_features |= CPU_FTR_1T_SEGMENT;
 			return 1;
 		}
 	}
-	cur_cpu_spec->mmu_features &= ~MMU_FTR_NO_SLBIE_B;
+	cur_cpu_spec->cpu_features &= ~CPU_FTR_NO_SLBIE_B;
 	return 0;
 }
 
@@ -289,7 +288,7 @@ static int __init htab_dt_scan_page_sizes(unsigned long node,
 	if (prop != NULL) {
 		DBG("Page sizes from device-tree:\n");
 		size /= 4;
-		cur_cpu_spec->mmu_features &= ~(MMU_FTR_16M_PAGE);
+		cur_cpu_spec->cpu_features &= ~(CPU_FTR_16M_PAGE);
 		while(size > 0) {
 			unsigned int shift = prop[0];
 			unsigned int slbenc = prop[1];
@@ -317,7 +316,7 @@ static int __init htab_dt_scan_page_sizes(unsigned long node,
 				break;
 			case 0x18:
 				idx = MMU_PAGE_16M;
-				cur_cpu_spec->mmu_features |= MMU_FTR_16M_PAGE;
+				cur_cpu_spec->cpu_features |= CPU_FTR_16M_PAGE;
 				break;
 			case 0x22:
 				idx = MMU_PAGE_16G;
@@ -412,7 +411,7 @@ static void __init htab_init_page_sizes(void)
 	 * Not in the device-tree, let's fallback on known size
 	 * list for 16M capable GP & GR
 	 */
-	if (mmu_has_feature(MMU_FTR_16M_PAGE))
+	if (cpu_has_feature(CPU_FTR_16M_PAGE))
 		memcpy(mmu_psize_defs, mmu_psize_defaults_gp,
 		       sizeof(mmu_psize_defaults_gp));
  found:
@@ -442,7 +441,7 @@ static void __init htab_init_page_sizes(void)
 		mmu_vmalloc_psize = MMU_PAGE_64K;
 		if (mmu_linear_psize == MMU_PAGE_4K)
 			mmu_linear_psize = MMU_PAGE_64K;
-		if (mmu_has_feature(MMU_FTR_CI_LARGE_PAGE)) {
+		if (cpu_has_feature(CPU_FTR_CI_LARGE_PAGE)) {
 			/*
 			 * Don't use 64k pages for ioremap on pSeries, since
 			 * that would stop us accessing the HEA ethernet.
@@ -548,7 +547,15 @@ int remove_section_mapping(unsigned long start, unsigned long end)
 }
 #endif /* CONFIG_MEMORY_HOTPLUG */
 
-#define FUNCTION_TEXT(A)	((*(unsigned long *)(A)))
+static inline void make_bl(unsigned int *insn_addr, void *func)
+{
+	unsigned long funcp = *((unsigned long *)func);
+	int offset = funcp - (unsigned long)insn_addr;
+
+	*insn_addr = (unsigned int)(0x48000001 | (offset & 0x03fffffc));
+	flush_icache_range((unsigned long)insn_addr, 4+
+			   (unsigned long)insn_addr);
+}
 
 static void __init htab_finish_init(void)
 {
@@ -563,33 +570,16 @@ static void __init htab_finish_init(void)
 	extern unsigned int *ht64_call_hpte_remove;
 	extern unsigned int *ht64_call_hpte_updatepp;
 
-	patch_branch(ht64_call_hpte_insert1,
-		FUNCTION_TEXT(ppc_md.hpte_insert),
-		BRANCH_SET_LINK);
-	patch_branch(ht64_call_hpte_insert2,
-		FUNCTION_TEXT(ppc_md.hpte_insert),
-		BRANCH_SET_LINK);
-	patch_branch(ht64_call_hpte_remove,
-		FUNCTION_TEXT(ppc_md.hpte_remove),
-		BRANCH_SET_LINK);
-	patch_branch(ht64_call_hpte_updatepp,
-		FUNCTION_TEXT(ppc_md.hpte_updatepp),
-		BRANCH_SET_LINK);
-
+	make_bl(ht64_call_hpte_insert1, ppc_md.hpte_insert);
+	make_bl(ht64_call_hpte_insert2, ppc_md.hpte_insert);
+	make_bl(ht64_call_hpte_remove, ppc_md.hpte_remove);
+	make_bl(ht64_call_hpte_updatepp, ppc_md.hpte_updatepp);
 #endif /* CONFIG_PPC_HAS_HASH_64K */
 
-	patch_branch(htab_call_hpte_insert1,
-		FUNCTION_TEXT(ppc_md.hpte_insert),
-		BRANCH_SET_LINK);
-	patch_branch(htab_call_hpte_insert2,
-		FUNCTION_TEXT(ppc_md.hpte_insert),
-		BRANCH_SET_LINK);
-	patch_branch(htab_call_hpte_remove,
-		FUNCTION_TEXT(ppc_md.hpte_remove),
-		BRANCH_SET_LINK);
-	patch_branch(htab_call_hpte_updatepp,
-		FUNCTION_TEXT(ppc_md.hpte_updatepp),
-		BRANCH_SET_LINK);
+	make_bl(htab_call_hpte_insert1, ppc_md.hpte_insert);
+	make_bl(htab_call_hpte_insert2, ppc_md.hpte_insert);
+	make_bl(htab_call_hpte_remove, ppc_md.hpte_remove);
+	make_bl(htab_call_hpte_updatepp, ppc_md.hpte_updatepp);
 }
 
 static void __init htab_initialize(void)
@@ -598,7 +588,7 @@ static void __init htab_initialize(void)
 	unsigned long pteg_count;
 	unsigned long prot;
 	unsigned long base = 0, size = 0, limit;
-	struct memblock_region *reg;
+	int i;
 
 	DBG(" -> htab_initialize()\n");
 
@@ -608,7 +598,7 @@ static void __init htab_initialize(void)
 	/* Initialize page sizes */
 	htab_init_page_sizes();
 
-	if (mmu_has_feature(MMU_FTR_1T_SEGMENT)) {
+	if (cpu_has_feature(CPU_FTR_1T_SEGMENT)) {
 		mmu_kernel_ssize = MMU_SEGSIZE_1T;
 		mmu_highuser_ssize = MMU_SEGSIZE_1T;
 		printk(KERN_INFO "Using 1TB segments\n");
@@ -635,7 +625,7 @@ static void __init htab_initialize(void)
 		if (machine_is(cell))
 			limit = 0x80000000;
 		else
-			limit = MEMBLOCK_ALLOC_ANYWHERE;
+			limit = 0;
 
 		table = memblock_alloc_base(htab_size_bytes, htab_size_bytes, limit);
 
@@ -659,7 +649,7 @@ static void __init htab_initialize(void)
 #ifdef CONFIG_DEBUG_PAGEALLOC
 	linear_map_hash_count = memblock_end_of_DRAM() >> PAGE_SHIFT;
 	linear_map_hash_slots = __va(memblock_alloc_base(linear_map_hash_count,
-						    1, ppc64_rma_size));
+						    1, memblock.rmo_size));
 	memset(linear_map_hash_slots, 0, linear_map_hash_count);
 #endif /* CONFIG_DEBUG_PAGEALLOC */
 
@@ -669,9 +659,9 @@ static void __init htab_initialize(void)
 	 */
 
 	/* create bolted the linear mapping in the hash table */
-	for_each_memblock(memory, reg) {
-		base = (unsigned long)__va(reg->base);
-		size = reg->size;
+	for (i=0; i < memblock.memory.cnt; i++) {
+		base = (unsigned long)__va(memblock.memory.region[i].base);
+		size = memblock.memory.region[i].size;
 
 		DBG("creating mapping for region: %lx..%lx (prot: %lx)\n",
 		    base, size, prot);
@@ -706,8 +696,7 @@ static void __init htab_initialize(void)
 #endif /* CONFIG_U3_DART */
 		BUG_ON(htab_bolt_mapping(base, base + size, __pa(base),
 				prot, mmu_linear_psize, mmu_kernel_ssize));
-	}
-	memblock_set_current_limit(MEMBLOCK_ALLOC_ANYWHERE);
+       }
 
 	/*
 	 * If we have a memory_limit and we've allocated TCEs then we need to
@@ -749,7 +738,7 @@ void __init early_init_mmu(void)
 
 	/* Initialize stab / SLB management except on iSeries
 	 */
-	if (mmu_has_feature(MMU_FTR_SLB))
+	if (cpu_has_feature(CPU_FTR_SLB))
 		slb_initialize();
 	else if (!firmware_has_feature(FW_FEATURE_ISERIES))
 		stab_initialize(get_paca()->stab_real);
@@ -763,10 +752,10 @@ void __cpuinit early_init_mmu_secondary(void)
 		mtspr(SPRN_SDR1, _SDR1);
 
 	/* Initialize STAB/SLB. We use a virtual address as it works
-	 * in real mode on pSeries and we want a virtual address on
+	 * in real mode on pSeries and we want a virutal address on
 	 * iSeries anyway
 	 */
-	if (mmu_has_feature(MMU_FTR_SLB))
+	if (cpu_has_feature(CPU_FTR_SLB))
 		slb_initialize();
 	else
 		stab_initialize(get_paca()->stab_addr);
@@ -1080,7 +1069,7 @@ void hash_preload(struct mm_struct *mm, unsigned long ea,
 		  unsigned long access, unsigned long trap)
 {
 	unsigned long vsid;
-	pgd_t *pgdir;
+	void *pgdir;
 	pte_t *ptep;
 	unsigned long flags;
 	int rc, ssize, local = 0;
@@ -1133,7 +1122,7 @@ void hash_preload(struct mm_struct *mm, unsigned long ea,
 	else
 #endif /* CONFIG_PPC_HAS_HASH_64K */
 		rc = __hash_page_4K(ea, access, vsid, ptep, trap, local, ssize,
-				    subpage_protection(mm, ea));
+				    subpage_protection(pgdir, ea));
 
 	/* Dump some info in case of hash insertion failure, they should
 	 * never happen so it is really useful to know if/when they do
@@ -1258,23 +1247,3 @@ void kernel_map_pages(struct page *page, int numpages, int enable)
 	local_irq_restore(flags);
 }
 #endif /* CONFIG_DEBUG_PAGEALLOC */
-
-void setup_initial_memory_limit(phys_addr_t first_memblock_base,
-				phys_addr_t first_memblock_size)
-{
-	/* We don't currently support the first MEMBLOCK not mapping 0
-	 * physical on those processors
-	 */
-	BUG_ON(first_memblock_base != 0);
-
-	/* On LPAR systems, the first entry is our RMA region,
-	 * non-LPAR 64-bit hash MMU systems don't have a limitation
-	 * on real mode access, but using the first entry works well
-	 * enough. We also clamp it to 1G to avoid some funky things
-	 * such as RTAS bugs etc...
-	 */
-	ppc64_rma_size = min_t(u64, first_memblock_size, 0x40000000);
-
-	/* Finally limit subsequent allocations */
-	memblock_set_current_limit(ppc64_rma_size);
-}

@@ -36,15 +36,13 @@ int hpux_execve(struct pt_regs *regs)
 	int error;
 	char *filename;
 
-	filename = getname((const char __user *) regs->gr[26]);
+	filename = getname((char __user *) regs->gr[26]);
 	error = PTR_ERR(filename);
 	if (IS_ERR(filename))
 		goto out;
 
-	error = do_execve(filename,
-			  (const char __user *const __user *) regs->gr[25],
-			  (const char __user *const __user *) regs->gr[24],
-			  regs);
+	error = do_execve(filename, (char __user * __user *) regs->gr[25],
+		(char __user * __user *) regs->gr[24], regs);
 
 	putname(filename);
 
@@ -171,7 +169,7 @@ static int cp_hpux_stat(struct kstat *stat, struct hpux_stat64 __user *statbuf)
 	return copy_to_user(statbuf,&tmp,sizeof(tmp)) ? -EFAULT : 0;
 }
 
-long hpux_stat64(const char __user *filename, struct hpux_stat64 __user *statbuf)
+long hpux_stat64(char __user *filename, struct hpux_stat64 __user *statbuf)
 {
 	struct kstat stat;
 	int error = vfs_stat(filename, &stat);
@@ -193,8 +191,7 @@ long hpux_fstat64(unsigned int fd, struct hpux_stat64 __user *statbuf)
 	return error;
 }
 
-long hpux_lstat64(const char __user *filename,
-		  struct hpux_stat64 __user *statbuf)
+long hpux_lstat64(char __user *filename, struct hpux_stat64 __user *statbuf)
 {
 	struct kstat stat;
 	int error = vfs_lstat(filename, &stat);

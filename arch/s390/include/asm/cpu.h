@@ -20,7 +20,7 @@ struct cpuid
 	unsigned int ident   : 24;
 	unsigned int machine : 16;
 	unsigned int unused  : 16;
-} __attribute__ ((packed, aligned(8)));
+} __packed;
 
 #endif /* __ASSEMBLY__ */
 #endif /* _ASM_S390_CPU_H */

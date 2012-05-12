@@ -16,6 +16,7 @@
 
 #include <asm/stacktrace.h>
 
+#include "dumpstack.h"
 
 #define N_EXCEPTION_STACKS_END \
 		(N_EXCEPTION_STACKS + DEBUG_STKSZ/EXCEPTION_STKSZ - 2)
@@ -149,19 +150,29 @@ void dump_trace(struct task_struct *task, struct pt_regs *regs,
 	unsigned used = 0;
 	struct thread_info *tinfo;
 	int graph = 0;
-	unsigned long dummy;
 
 	if (!task)
 		task = current;
 
 	if (!stack) {
+		unsigned long dummy;
 		stack = &dummy;
 		if (task && task != current)
 			stack = (unsigned long *)task->thread.sp;
 	}
 
-	if (!bp)
-		bp = stack_frame(task, regs);
+#ifdef CONFIG_FRAME_POINTER
+	if (!bp) {
+		if (task == current) {
+			/* Grab bp right from our regs */
+			get_bp(bp);
+		} else {
+			/* bp is the last reg pushed by switch_to */
+			bp = *(unsigned long *) task->thread.sp;
+		}
+	}
+#endif
+
 	/*
 	 * Print function call entries in all stacks, starting at the
 	 * current stack address. If the stacks consist of nested
@@ -255,20 +266,20 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 		if (stack >= irq_stack && stack <= irq_stack_end) {
 			if (stack == irq_stack_end) {
 				stack = (unsigned long *) (irq_stack_end[-1]);
-				printk(KERN_CONT " <EOI> ");
+				printk(" <EOI> ");
 			}
 		} else {
 		if (((long) stack & (THREAD_SIZE-1)) == 0)
 			break;
 		}
 		if (i && ((i % STACKSLOTS_PER_LINE) == 0))
-			printk(KERN_CONT "\n");
-		printk(KERN_CONT " %016lx", *stack++);
+			printk("\n%s", log_lvl);
+		printk(" %016lx", *stack++);
 		touch_nmi_watchdog();
 	}
 	preempt_enable();
 
-	printk(KERN_CONT "\n");
+	printk("\n");
 	show_trace_log_lvl(task, regs, sp, bp, log_lvl);
 }
 
@@ -298,7 +309,7 @@ void show_registers(struct pt_regs *regs)
 
 		printk(KERN_EMERG "Stack:\n");
 		show_stack_log_lvl(NULL, regs, (unsigned long *)sp,
-				   0, KERN_EMERG);
+				regs->bp, KERN_EMERG);
 
 		printk(KERN_EMERG "Code: ");
 

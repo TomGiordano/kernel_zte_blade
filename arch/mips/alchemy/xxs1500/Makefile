@@ -5,4 +5,6 @@
 # Makefile for MyCable XXS1500 board.
 #
 
-obj-y += init.o board_setup.o platform.o
+lib-y := init.o board_setup.o platform.o
+
+EXTRA_CFLAGS += -Werror

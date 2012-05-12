@@ -11,9 +11,9 @@
 #define __MACH_MEMORY_H
 
 #ifdef CONFIG_GEMINI_MEM_SWAP
-# define PLAT_PHYS_OFFSET	UL(0x00000000)
+# define PHYS_OFFSET	UL(0x00000000)
 #else
-# define PLAT_PHYS_OFFSET	UL(0x10000000)
+# define PHYS_OFFSET	UL(0x10000000)
 #endif
 
 #endif /* __MACH_MEMORY_H */

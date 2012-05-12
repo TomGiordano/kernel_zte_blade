@@ -121,9 +121,6 @@ static int restore_sigcontext(struct sigcontext __user *sc, int *_gr8)
 	struct user_context *user = current->thread.user;
 	unsigned long tbr, psr;
 
-	/* Always make any pending restarted system calls return -EINTR */
-	current_thread_info()->restart_block.fn = do_no_restart_syscall;
-
 	tbr = user->i.tbr;
 	psr = user->i.psr;
 	if (copy_from_user(user, &sc->sc_context, sizeof(sc->sc_context)))
@@ -253,8 +250,6 @@ static int setup_frame(int sig, struct k_sigaction *ka, sigset_t *set)
 	struct sigframe __user *frame;
 	int rsig;
 
-	set_fs(USER_DS);
-
 	frame = get_sigframe(ka, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
@@ -298,23 +293,22 @@ static int setup_frame(int sig, struct k_sigaction *ka, sigset_t *set)
 				   (unsigned long) (frame->retcode + 2));
 	}
 
-	/* Set up registers for the signal handler */
+	/* set up registers for signal handler */
+	__frame->sp   = (unsigned long) frame;
+	__frame->lr   = (unsigned long) &frame->retcode;
+	__frame->gr8  = sig;
+
 	if (current->personality & FDPIC_FUNCPTRS) {
 		struct fdpic_func_descriptor __user *funcptr =
 			(struct fdpic_func_descriptor __user *) ka->sa.sa_handler;
-		struct fdpic_func_descriptor desc;
-		if (copy_from_user(&desc, funcptr, sizeof(desc)))
-			goto give_sigsegv;
-		__frame->pc = desc.text;
-		__frame->gr15 = desc.GOT;
+		__get_user(__frame->pc, &funcptr->text);
+		__get_user(__frame->gr15, &funcptr->GOT);
 	} else {
 		__frame->pc   = (unsigned long) ka->sa.sa_handler;
 		__frame->gr15 = 0;
 	}
 
-	__frame->sp   = (unsigned long) frame;
-	__frame->lr   = (unsigned long) &frame->retcode;
-	__frame->gr8  = sig;
+	set_fs(USER_DS);
 
 	/* the tracer may want to single-step inside the handler */
 	if (test_thread_flag(TIF_SINGLESTEP))
@@ -329,7 +323,7 @@ static int setup_frame(int sig, struct k_sigaction *ka, sigset_t *set)
 	return 0;
 
 give_sigsegv:
-	force_sigsegv(sig, current);
+	force_sig(SIGSEGV, current);
 	return -EFAULT;
 
 } /* end setup_frame() */
@@ -343,8 +337,6 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 {
 	struct rt_sigframe __user *frame;
 	int rsig;
-
-	set_fs(USER_DS);
 
 	frame = get_sigframe(ka, sizeof(*frame));
 
@@ -400,23 +392,22 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	}
 
 	/* Set up registers for signal handler */
+	__frame->sp  = (unsigned long) frame;
+	__frame->lr   = (unsigned long) &frame->retcode;
+	__frame->gr8 = sig;
+	__frame->gr9 = (unsigned long) &frame->info;
+
 	if (current->personality & FDPIC_FUNCPTRS) {
 		struct fdpic_func_descriptor __user *funcptr =
 			(struct fdpic_func_descriptor __user *) ka->sa.sa_handler;
-		struct fdpic_func_descriptor desc;
-		if (copy_from_user(&desc, funcptr, sizeof(desc)))
-			goto give_sigsegv;
-		__frame->pc = desc.text;
-		__frame->gr15 = desc.GOT;
+		__get_user(__frame->pc, &funcptr->text);
+		__get_user(__frame->gr15, &funcptr->GOT);
 	} else {
 		__frame->pc   = (unsigned long) ka->sa.sa_handler;
 		__frame->gr15 = 0;
 	}
 
-	__frame->sp  = (unsigned long) frame;
-	__frame->lr  = (unsigned long) &frame->retcode;
-	__frame->gr8 = sig;
-	__frame->gr9 = (unsigned long) &frame->info;
+	set_fs(USER_DS);
 
 	/* the tracer may want to single-step inside the handler */
 	if (test_thread_flag(TIF_SINGLESTEP))
@@ -431,7 +422,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka, siginfo_t *info,
 	return 0;
 
 give_sigsegv:
-	force_sigsegv(sig, current);
+	force_sig(SIGSEGV, current);
 	return -EFAULT;
 
 } /* end setup_rt_frame() */
@@ -446,7 +437,7 @@ static int handle_signal(unsigned long sig, siginfo_t *info,
 	int ret;
 
 	/* Are we from a system call? */
-	if (__frame->syscallno != -1) {
+	if (in_syscall(__frame)) {
 		/* If so, check system call restarting.. */
 		switch (__frame->gr8) {
 		case -ERESTART_RESTARTBLOCK:
@@ -465,7 +456,6 @@ static int handle_signal(unsigned long sig, siginfo_t *info,
 			__frame->gr8 = __frame->orig_gr8;
 			__frame->pc -= 4;
 		}
-		__frame->syscallno = -1;
 	}
 
 	/* Set up the stack frame */
@@ -548,11 +538,10 @@ no_signal:
 			break;
 
 		case -ERESTART_RESTARTBLOCK:
-			__frame->gr7 = __NR_restart_syscall;
+			__frame->gr8 = __NR_restart_syscall;
 			__frame->pc -= 4;
 			break;
 		}
-		__frame->syscallno = -1;
 	}
 
 	/* if there's no signal to deliver, we just put the saved sigmask

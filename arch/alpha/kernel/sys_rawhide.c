@@ -56,10 +56,9 @@ rawhide_update_irq_hw(int hose, int mask)
   (((h) < MCPCIA_MAX_HOSES) && (cached_irq_masks[(h)] != 0))
 
 static inline void 
-rawhide_enable_irq(struct irq_data *d)
+rawhide_enable_irq(unsigned int irq)
 {
 	unsigned int mask, hose;
-	unsigned int irq = d->irq;
 
 	irq -= 16;
 	hose = irq / 24;
@@ -77,10 +76,9 @@ rawhide_enable_irq(struct irq_data *d)
 }
 
 static void 
-rawhide_disable_irq(struct irq_data *d)
+rawhide_disable_irq(unsigned int irq)
 {
 	unsigned int mask, hose;
-	unsigned int irq = d->irq;
 
 	irq -= 16;
 	hose = irq / 24;
@@ -98,10 +96,9 @@ rawhide_disable_irq(struct irq_data *d)
 }
 
 static void
-rawhide_mask_and_ack_irq(struct irq_data *d)
+rawhide_mask_and_ack_irq(unsigned int irq)
 {
 	unsigned int mask, mask1, hose;
-	unsigned int irq = d->irq;
 
 	irq -= 16;
 	hose = irq / 24;
@@ -124,11 +121,28 @@ rawhide_mask_and_ack_irq(struct irq_data *d)
 	spin_unlock(&rawhide_irq_lock);
 }
 
+static unsigned int
+rawhide_startup_irq(unsigned int irq)
+{
+	rawhide_enable_irq(irq);
+	return 0;
+}
+
+static void
+rawhide_end_irq(unsigned int irq)
+{
+	if (!(irq_desc[irq].status & (IRQ_DISABLED|IRQ_INPROGRESS)))
+		rawhide_enable_irq(irq);
+}
+
 static struct irq_chip rawhide_irq_type = {
 	.name		= "RAWHIDE",
-	.irq_unmask	= rawhide_enable_irq,
-	.irq_mask	= rawhide_disable_irq,
-	.irq_mask_ack	= rawhide_mask_and_ack_irq,
+	.startup	= rawhide_startup_irq,
+	.shutdown	= rawhide_disable_irq,
+	.enable		= rawhide_enable_irq,
+	.disable	= rawhide_disable_irq,
+	.ack		= rawhide_mask_and_ack_irq,
+	.end		= rawhide_end_irq,
 };
 
 static void 
@@ -180,9 +194,8 @@ rawhide_init_irq(void)
 	}
 
 	for (i = 16; i < 128; ++i) {
-		irq_set_chip_and_handler(i, &rawhide_irq_type,
-					 handle_level_irq);
-		irq_set_status_flags(i, IRQ_LEVEL);
+		irq_desc[i].status = IRQ_DISABLED | IRQ_LEVEL;
+		irq_desc[i].chip = &rawhide_irq_type;
 	}
 
 	init_i8259a_irqs();

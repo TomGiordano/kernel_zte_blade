@@ -32,19 +32,7 @@
 #include <sys/types.h>
 #include <sys/errno.h>
 #include <sys/fcntl.h>
-#include <sys/mount.h>
-#include <sys/statfs.h>
-#include "../../include/linux/magic.h"
 
-
-#ifndef MAX_PATH
-# define MAX_PATH 256
-#endif
-
-#ifndef STR
-# define _STR(x) #x
-# define STR(x) _STR(x)
-#endif
 
 /*
  * pagemap kernel ABI bits
@@ -164,12 +152,6 @@ static const char *page_flag_names[] = {
 };
 
 
-static const char *debugfs_known_mountpoints[] = {
-	"/sys/kernel/debug",
-	"/debug",
-	0,
-};
-
 /*
  * data structures
  */
@@ -202,7 +184,7 @@ static int		kpageflags_fd;
 static int		opt_hwpoison;
 static int		opt_unpoison;
 
-static char		hwpoison_debug_fs[MAX_PATH+1];
+static const char	hwpoison_debug_fs[] = "/debug/hwpoison";
 static int		hwpoison_inject_fd;
 static int		hwpoison_forget_fd;
 
@@ -482,100 +464,21 @@ static uint64_t kpageflags_flags(uint64_t flags)
 	return flags;
 }
 
-/* verify that a mountpoint is actually a debugfs instance */
-static int debugfs_valid_mountpoint(const char *debugfs)
-{
-	struct statfs st_fs;
-
-	if (statfs(debugfs, &st_fs) < 0)
-		return -ENOENT;
-	else if (st_fs.f_type != (long) DEBUGFS_MAGIC)
-		return -ENOENT;
-
-	return 0;
-}
-
-/* find the path to the mounted debugfs */
-static const char *debugfs_find_mountpoint(void)
-{
-	const char **ptr;
-	char type[100];
-	FILE *fp;
-
-	ptr = debugfs_known_mountpoints;
-	while (*ptr) {
-		if (debugfs_valid_mountpoint(*ptr) == 0) {
-			strcpy(hwpoison_debug_fs, *ptr);
-			return hwpoison_debug_fs;
-		}
-		ptr++;
-	}
-
-	/* give up and parse /proc/mounts */
-	fp = fopen("/proc/mounts", "r");
-	if (fp == NULL)
-		perror("Can't open /proc/mounts for read");
-
-	while (fscanf(fp, "%*s %"
-		      STR(MAX_PATH)
-		      "s %99s %*s %*d %*d\n",
-		      hwpoison_debug_fs, type) == 2) {
-		if (strcmp(type, "debugfs") == 0)
-			break;
-	}
-	fclose(fp);
-
-	if (strcmp(type, "debugfs") != 0)
-		return NULL;
-
-	return hwpoison_debug_fs;
-}
-
-/* mount the debugfs somewhere if it's not mounted */
-
-static void debugfs_mount(void)
-{
-	const char **ptr;
-
-	/* see if it's already mounted */
-	if (debugfs_find_mountpoint())
-		return;
-
-	ptr = debugfs_known_mountpoints;
-	while (*ptr) {
-		if (mount(NULL, *ptr, "debugfs", 0, NULL) == 0) {
-			/* save the mountpoint */
-			strcpy(hwpoison_debug_fs, *ptr);
-			break;
-		}
-		ptr++;
-	}
-
-	if (*ptr == NULL) {
-		perror("mount debugfs");
-		exit(EXIT_FAILURE);
-	}
-}
-
 /*
  * page actions
  */
 
 static void prepare_hwpoison_fd(void)
 {
-	char buf[MAX_PATH + 1];
-
-	debugfs_mount();
+	char buf[100];
 
 	if (opt_hwpoison && !hwpoison_inject_fd) {
-		snprintf(buf, MAX_PATH, "%s/hwpoison/corrupt-pfn",
-			hwpoison_debug_fs);
+		sprintf(buf, "%s/corrupt-pfn", hwpoison_debug_fs);
 		hwpoison_inject_fd = checked_open(buf, O_WRONLY);
 	}
 
 	if (opt_unpoison && !hwpoison_forget_fd) {
-		snprintf(buf, MAX_PATH, "%s/hwpoison/unpoison-pfn",
-			hwpoison_debug_fs);
+		sprintf(buf, "%s/renew-pfn", hwpoison_debug_fs);
 		hwpoison_forget_fd = checked_open(buf, O_WRONLY);
 	}
 }
@@ -791,7 +694,7 @@ static void usage(void)
 #endif
 "            -l|--list                  Show page details in ranges\n"
 "            -L|--list-each             Show page details one by one\n"
-"            -N|--no-summary            Don't show summary info\n"
+"            -N|--no-summary            Don't show summay info\n"
 "            -X|--hwpoison              hwpoison pages\n"
 "            -x|--unpoison              unpoison pages\n"
 "            -h|--help                  Show this usage message\n"

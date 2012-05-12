@@ -255,9 +255,10 @@ static inline iopte_t *alloc_npages(struct device *dev, struct iommu *iommu,
 static int iommu_alloc_ctx(struct iommu *iommu)
 {
 	int lowest = iommu->ctx_lowest_free;
-	int n = find_next_zero_bit(iommu->ctx_bitmap, IOMMU_NUM_CTXS, lowest);
+	int sz = IOMMU_NUM_CTXS - lowest;
+	int n = find_next_zero_bit(iommu->ctx_bitmap, sz, lowest);
 
-	if (unlikely(n == IOMMU_NUM_CTXS)) {
+	if (unlikely(n == sz)) {
 		n = find_next_zero_bit(iommu->ctx_bitmap, lowest, 1);
 		if (unlikely(n == lowest)) {
 			printk(KERN_WARNING "IOMMU: Ran out of contexts.\n");
@@ -333,10 +334,13 @@ static void dma_4u_free_coherent(struct device *dev, size_t size,
 				 void *cpu, dma_addr_t dvma)
 {
 	struct iommu *iommu;
+	iopte_t *iopte;
 	unsigned long flags, order, npages;
 
 	npages = IO_PAGE_ALIGN(size) >> IO_PAGE_SHIFT;
 	iommu = dev->archdata.iommu;
+	iopte = iommu->page_table +
+		((dvma - iommu->page_table_map_base) >> IO_PAGE_SHIFT);
 
 	spin_lock_irqsave(&iommu->lock, flags);
 

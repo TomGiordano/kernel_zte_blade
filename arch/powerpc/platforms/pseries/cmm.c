@@ -508,7 +508,12 @@ static int cmm_memory_isolate_cb(struct notifier_block *self,
 	if (action == MEM_ISOLATE_COUNT)
 		ret = cmm_count_pages(arg);
 
-	return notifier_from_errno(ret);
+	if (ret)
+		ret = notifier_from_errno(ret);
+	else
+		ret = NOTIFY_OK;
+
+	return ret;
 }
 
 static struct notifier_block cmm_mem_isolate_nb = {
@@ -630,7 +635,12 @@ static int cmm_memory_cb(struct notifier_block *self,
 		break;
 	}
 
-	return notifier_from_errno(ret);
+	if (ret)
+		ret = notifier_from_errno(ret);
+	else
+		ret = NOTIFY_OK;
+
+	return ret;
 }
 
 static struct notifier_block cmm_mem_nb = {

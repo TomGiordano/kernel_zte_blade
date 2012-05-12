@@ -5,7 +5,7 @@
 #
 
 targets		:= vmlinux vmlinux.bin vmlinux.bin.gz head.o misc.o piggy.o
-asflags-y	:= -traditional
+EXTRA_AFLAGS	:= -traditional
 
 OBJECTS = $(obj)/head.o $(obj)/misc.o
 

@@ -146,11 +146,9 @@ static int ptrace_setregs(struct task_struct *tsk, const void __user *uregs)
 	return ret;
 }
 
-long arch_ptrace(struct task_struct *child, long request,
-		 unsigned long addr, unsigned long data)
+long arch_ptrace(struct task_struct *child, long request, long addr, long data)
 {
 	int ret;
-	void __user *datap = (void __user *) data;
 
 	switch (request) {
 	/* Read the word at location addr in the child process */
@@ -160,7 +158,8 @@ long arch_ptrace(struct task_struct *child, long request,
 		break;
 
 	case PTRACE_PEEKUSR:
-		ret = ptrace_read_user(child, addr, datap);
+		ret = ptrace_read_user(child, addr,
+				       (unsigned long __user *)data);
 		break;
 
 	/* Write the word in data at location addr */
@@ -174,11 +173,11 @@ long arch_ptrace(struct task_struct *child, long request,
 		break;
 
 	case PTRACE_GETREGS:
-		ret = ptrace_getregs(child, datap);
+		ret = ptrace_getregs(child, (void __user *)data);
 		break;
 
 	case PTRACE_SETREGS:
-		ret = ptrace_setregs(child, datap);
+		ret = ptrace_setregs(child, (const void __user *)data);
 		break;
 
 	default:

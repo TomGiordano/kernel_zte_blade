@@ -3,7 +3,7 @@
  *
  * Privileged Space Mapping Buffer (PMB) Support.
  *
- * Copyright (C) 2005 - 2011  Paul Mundt
+ * Copyright (C) 2005 - 2010  Paul Mundt
  * Copyright (C) 2010  Matt Fleming
  *
  * This file is subject to the terms and conditions of the GNU General Public
@@ -12,7 +12,7 @@
  */
 #include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/syscore_ops.h>
+#include <linux/sysdev.h>
 #include <linux/cpu.h>
 #include <linux/module.h>
 #include <linux/bitops.h>
@@ -40,7 +40,7 @@ struct pmb_entry {
 	unsigned long flags;
 	unsigned long size;
 
-	raw_spinlock_t lock;
+	spinlock_t lock;
 
 	/*
 	 * 0 .. NR_PMB_ENTRIES for specific entry selection, or
@@ -265,7 +265,7 @@ static struct pmb_entry *pmb_alloc(unsigned long vpn, unsigned long ppn,
 
 	memset(pmbe, 0, sizeof(struct pmb_entry));
 
-	raw_spin_lock_init(&pmbe->lock);
+	spin_lock_init(&pmbe->lock);
 
 	pmbe->vpn	= vpn;
 	pmbe->ppn	= ppn;
@@ -327,9 +327,9 @@ static void set_pmb_entry(struct pmb_entry *pmbe)
 {
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&pmbe->lock, flags);
+	spin_lock_irqsave(&pmbe->lock, flags);
 	__set_pmb_entry(pmbe);
-	raw_spin_unlock_irqrestore(&pmbe->lock, flags);
+	spin_unlock_irqrestore(&pmbe->lock, flags);
 }
 #endif /* CONFIG_PM */
 
@@ -368,7 +368,7 @@ int pmb_bolt_mapping(unsigned long vaddr, phys_addr_t phys,
 				return PTR_ERR(pmbe);
 			}
 
-			raw_spin_lock_irqsave(&pmbe->lock, flags);
+			spin_lock_irqsave(&pmbe->lock, flags);
 
 			pmbe->size = pmb_sizes[i].size;
 
@@ -383,10 +383,9 @@ int pmb_bolt_mapping(unsigned long vaddr, phys_addr_t phys,
 			 * entries for easier tear-down.
 			 */
 			if (likely(pmbp)) {
-				raw_spin_lock_nested(&pmbp->lock,
-						     SINGLE_DEPTH_NESTING);
+				spin_lock(&pmbp->lock);
 				pmbp->link = pmbe;
-				raw_spin_unlock(&pmbp->lock);
+				spin_unlock(&pmbp->lock);
 			}
 
 			pmbp = pmbe;
@@ -399,7 +398,7 @@ int pmb_bolt_mapping(unsigned long vaddr, phys_addr_t phys,
 			i--;
 			mapped++;
 
-			raw_spin_unlock_irqrestore(&pmbe->lock, flags);
+			spin_unlock_irqrestore(&pmbe->lock, flags);
 		}
 	} while (size >= SZ_16M);
 
@@ -628,14 +627,15 @@ static void __init pmb_synchronize(void)
 			continue;
 		}
 
-		raw_spin_lock_irqsave(&pmbe->lock, irqflags);
+		spin_lock_irqsave(&pmbe->lock, irqflags);
 
 		for (j = 0; j < ARRAY_SIZE(pmb_sizes); j++)
 			if (pmb_sizes[j].flag == size)
 				pmbe->size = pmb_sizes[j].size;
 
 		if (pmbp) {
-			raw_spin_lock_nested(&pmbp->lock, SINGLE_DEPTH_NESTING);
+			spin_lock(&pmbp->lock);
+
 			/*
 			 * Compare the previous entry against the current one to
 			 * see if the entries span a contiguous mapping. If so,
@@ -644,12 +644,13 @@ static void __init pmb_synchronize(void)
 			 */
 			if (pmb_can_merge(pmbp, pmbe))
 				pmbp->link = pmbe;
-			raw_spin_unlock(&pmbp->lock);
+
+			spin_unlock(&pmbp->lock);
 		}
 
 		pmbp = pmbe;
 
-		raw_spin_unlock_irqrestore(&pmbe->lock, irqflags);
+		spin_unlock_irqrestore(&pmbe->lock, irqflags);
 	}
 }
 
@@ -756,7 +757,7 @@ static void __init pmb_resize(void)
 		/*
 		 * Found it, now resize it.
 		 */
-		raw_spin_lock_irqsave(&pmbe->lock, flags);
+		spin_lock_irqsave(&pmbe->lock, flags);
 
 		pmbe->size = SZ_16M;
 		pmbe->flags &= ~PMB_SZ_MASK;
@@ -766,7 +767,7 @@ static void __init pmb_resize(void)
 
 		__set_pmb_entry(pmbe);
 
-		raw_spin_unlock_irqrestore(&pmbe->lock, flags);
+		spin_unlock_irqrestore(&pmbe->lock, flags);
 	}
 
 	read_unlock(&pmb_rwlock);
@@ -865,40 +866,57 @@ static int __init pmb_debugfs_init(void)
 	struct dentry *dentry;
 
 	dentry = debugfs_create_file("pmb", S_IFREG | S_IRUGO,
-				     arch_debugfs_dir, NULL, &pmb_debugfs_fops);
+				     sh_debugfs_root, NULL, &pmb_debugfs_fops);
 	if (!dentry)
 		return -ENOMEM;
+	if (IS_ERR(dentry))
+		return PTR_ERR(dentry);
 
 	return 0;
 }
 subsys_initcall(pmb_debugfs_init);
 
 #ifdef CONFIG_PM
-static void pmb_syscore_resume(void)
+static int pmb_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 {
-	struct pmb_entry *pmbe;
+	static pm_message_t prev_state;
 	int i;
 
-	read_lock(&pmb_rwlock);
+	/* Restore the PMB after a resume from hibernation */
+	if (state.event == PM_EVENT_ON &&
+	    prev_state.event == PM_EVENT_FREEZE) {
+		struct pmb_entry *pmbe;
 
-	for (i = 0; i < ARRAY_SIZE(pmb_entry_list); i++) {
-		if (test_bit(i, pmb_map)) {
-			pmbe = &pmb_entry_list[i];
-			set_pmb_entry(pmbe);
+		read_lock(&pmb_rwlock);
+
+		for (i = 0; i < ARRAY_SIZE(pmb_entry_list); i++) {
+			if (test_bit(i, pmb_map)) {
+				pmbe = &pmb_entry_list[i];
+				set_pmb_entry(pmbe);
+			}
 		}
+
+		read_unlock(&pmb_rwlock);
 	}
 
-	read_unlock(&pmb_rwlock);
+	prev_state = state;
+
+	return 0;
 }
 
-static struct syscore_ops pmb_syscore_ops = {
-	.resume = pmb_syscore_resume,
+static int pmb_sysdev_resume(struct sys_device *dev)
+{
+	return pmb_sysdev_suspend(dev, PMSG_ON);
+}
+
+static struct sysdev_driver pmb_sysdev_driver = {
+	.suspend = pmb_sysdev_suspend,
+	.resume = pmb_sysdev_resume,
 };
 
 static int __init pmb_sysdev_init(void)
 {
-	register_syscore_ops(&pmb_syscore_ops);
-	return 0;
+	return sysdev_driver_register(&cpu_sysdev_class, &pmb_sysdev_driver);
 }
 subsys_initcall(pmb_sysdev_init);
 #endif

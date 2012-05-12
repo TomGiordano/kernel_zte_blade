@@ -79,7 +79,7 @@
 
 
 /*
- * Register usage
+ * Register useage
  * r8  - temporary
  * r9  - the driver buffer
  * r10 - temporary

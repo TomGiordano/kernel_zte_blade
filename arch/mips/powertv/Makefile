@@ -23,9 +23,6 @@
 # under Linux.
 #
 
-obj-y += init.o ioremap.o memory.o powertv_setup.o reset.o time.o \
-	asic/ pci/
+obj-y += init.o memory.o reset.o time.o powertv_setup.o asic/ pci/
 
-obj-$(CONFIG_USB) += powertv-usb.o
-
-ccflags-y := -Wall
+EXTRA_CFLAGS += -Wall -Werror

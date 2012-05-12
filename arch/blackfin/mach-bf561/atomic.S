@@ -49,7 +49,6 @@ ENTRY(_get_core_lock)
 	jump .Lretry_corelock
 .Ldone_corelock:
 	p0 = r1;
-	/* flush core internal write buffer before invalidate dcache */
 	CSYNC(r2);
 	flushinv[p0];
 	SSYNC(r2);
@@ -686,8 +685,6 @@ ENTRY(___raw_atomic_test_asm)
 	r1 = -L1_CACHE_BYTES;
 	r1 = r0 & r1;
 	p0 = r1;
-	/* flush core internal write buffer before invalidate dcache */
-	CSYNC(r2);
 	flushinv[p0];
 	SSYNC(r2);
 	r0 = [p1];
@@ -910,8 +907,6 @@ ENTRY(___raw_uncached_fetch_asm)
 	r1 = -L1_CACHE_BYTES;
 	r1 = r0 & r1;
 	p0 = r1;
-	/* flush core internal write buffer before invalidate dcache */
-	CSYNC(r2);
 	flushinv[p0];
 	SSYNC(r2);
 	r0 = [p1];

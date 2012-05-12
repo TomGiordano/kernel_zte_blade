@@ -11,10 +11,9 @@
  * published by the Free Software Foundation.
  */
 
-		.macro	addruart, rp, rv
-		mov	\rp, #0xfe000000	@ physical as well as virtual
-		orr	\rp, \rp, #0x00800000	@ location of the UART
-		mov	\rv, \rp
+		.macro	addruart, rx, tmp
+		mov	\rx, #0xfe000000	@ physical as well as virtual
+		orr	\rx, \rx, #0x00800000	@ location of the UART
 		.endm
 
 #define UART_SHIFT	0

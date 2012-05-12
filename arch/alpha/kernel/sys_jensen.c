@@ -62,35 +62,70 @@
  * world.
  */
 
-static void
-jensen_local_enable(struct irq_data *d)
+static unsigned int
+jensen_local_startup(unsigned int irq)
 {
 	/* the parport is really hw IRQ 1, silly Jensen.  */
-	if (d->irq == 7)
-		i8259a_enable_irq(d);
+	if (irq == 7)
+		i8259a_startup_irq(1);
+	else
+		/*
+		 * For all true local interrupts, set the flag that prevents
+		 * the IPL from being dropped during handler processing.
+		 */
+		if (irq_desc[irq].action)
+			irq_desc[irq].action->flags |= IRQF_DISABLED;
+	return 0;
 }
 
 static void
-jensen_local_disable(struct irq_data *d)
+jensen_local_shutdown(unsigned int irq)
 {
 	/* the parport is really hw IRQ 1, silly Jensen.  */
-	if (d->irq == 7)
-		i8259a_disable_irq(d);
+	if (irq == 7)
+		i8259a_disable_irq(1);
 }
 
 static void
-jensen_local_mask_ack(struct irq_data *d)
+jensen_local_enable(unsigned int irq)
 {
 	/* the parport is really hw IRQ 1, silly Jensen.  */
-	if (d->irq == 7)
-		i8259a_mask_and_ack_irq(d);
+	if (irq == 7)
+		i8259a_enable_irq(1);
+}
+
+static void
+jensen_local_disable(unsigned int irq)
+{
+	/* the parport is really hw IRQ 1, silly Jensen.  */
+	if (irq == 7)
+		i8259a_disable_irq(1);
+}
+
+static void
+jensen_local_ack(unsigned int irq)
+{
+	/* the parport is really hw IRQ 1, silly Jensen.  */
+	if (irq == 7)
+		i8259a_mask_and_ack_irq(1);
+}
+
+static void
+jensen_local_end(unsigned int irq)
+{
+	/* the parport is really hw IRQ 1, silly Jensen.  */
+	if (irq == 7)
+		i8259a_end_irq(1);
 }
 
 static struct irq_chip jensen_local_irq_type = {
 	.name		= "LOCAL",
-	.irq_unmask	= jensen_local_enable,
-	.irq_mask	= jensen_local_disable,
-	.irq_mask_ack	= jensen_local_mask_ack,
+	.startup	= jensen_local_startup,
+	.shutdown	= jensen_local_shutdown,
+	.enable		= jensen_local_enable,
+	.disable	= jensen_local_disable,
+	.ack		= jensen_local_ack,
+	.end		= jensen_local_end,
 };
 
 static void 
@@ -123,7 +158,7 @@ jensen_device_interrupt(unsigned long vector)
 	}
 
 	/* If there is no handler yet... */
-	if (!irq_has_action(irq)) {
+	if (irq_desc[irq].action == NULL) {
 	    /* If it is a local interrupt that cannot be masked... */
 	    if (vector >= 0x900)
 	    {
@@ -171,11 +206,11 @@ jensen_init_irq(void)
 {
 	init_i8259a_irqs();
 
-	irq_set_chip_and_handler(1, &jensen_local_irq_type, handle_level_irq);
-	irq_set_chip_and_handler(4, &jensen_local_irq_type, handle_level_irq);
-	irq_set_chip_and_handler(3, &jensen_local_irq_type, handle_level_irq);
-	irq_set_chip_and_handler(7, &jensen_local_irq_type, handle_level_irq);
-	irq_set_chip_and_handler(9, &jensen_local_irq_type, handle_level_irq);
+	irq_desc[1].chip = &jensen_local_irq_type;
+	irq_desc[4].chip = &jensen_local_irq_type;
+	irq_desc[3].chip = &jensen_local_irq_type;
+	irq_desc[7].chip = &jensen_local_irq_type;
+	irq_desc[9].chip = &jensen_local_irq_type;
 
 	common_init_isa_dma();
 }

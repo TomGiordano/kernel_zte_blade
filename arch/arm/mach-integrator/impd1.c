@@ -22,8 +22,9 @@
 #include <linux/amba/clcd.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-#include <linux/clkdev.h>
 
+#include <asm/clkdev.h>
+#include <mach/clkdev.h>
 #include <asm/hardware/icst.h>
 #include <mach/lm.h>
 #include <mach/impd1.h>
@@ -121,7 +122,6 @@ static struct clcd_panel vga = {
 	.height		= -1,
 	.tim2		= TIM2_BCD | TIM2_IPC,
 	.cntl		= CNTL_LCDTFT | CNTL_LCDVCOMP(1),
-	.caps		= CLCD_CAP_5551,
 	.connector	= IMPD1_CTRL_DISP_VGA,
 	.bpp		= 16,
 	.grayscale	= 0,
@@ -150,7 +150,6 @@ static struct clcd_panel svga = {
 	.tim2		= TIM2_BCD,
 	.cntl		= CNTL_LCDTFT | CNTL_LCDVCOMP(1),
 	.connector	= IMPD1_CTRL_DISP_VGA,
-	.caps		= CLCD_CAP_5551,
 	.bpp		= 16,
 	.grayscale	= 0,
 };
@@ -177,7 +176,6 @@ static struct clcd_panel prospector = {
 	.height		= -1,
 	.tim2		= TIM2_BCD,
 	.cntl		= CNTL_LCDTFT | CNTL_LCDVCOMP(1),
-	.caps		= CLCD_CAP_5551,
 	.fixedtimings	= 1,
 	.connector	= IMPD1_CTRL_DISP_LCD,
 	.bpp		= 16,
@@ -209,7 +207,6 @@ static struct clcd_panel ltm10c209 = {
 	.height		= -1,
 	.tim2		= TIM2_BCD,
 	.cntl		= CNTL_LCDTFT | CNTL_LCDVCOMP(1),
-	.caps		= CLCD_CAP_5551,
 	.fixedtimings	= 1,
 	.connector	= IMPD1_CTRL_DISP_LCD,
 	.bpp		= 16,
@@ -283,7 +280,6 @@ static void impd1fb_clcd_remove(struct clcd_fb *fb)
 
 static struct clcd_board impd1_clcd_data = {
 	.name		= "IM-PD/1",
-	.caps		= CLCD_CAP_5551 | CLCD_CAP_888,
 	.check		= clcdfb_check,
 	.decode		= clcdfb_decode,
 	.disable	= impd1fb_clcd_disable,

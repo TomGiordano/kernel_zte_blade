@@ -1,8 +1,11 @@
 00-INDEX
 	- This file
 
-bfin-gpio-notes.txt
-	- Notes in developing/using bfin-gpio driver.
+cachefeatures.txt
+	- Supported cache features.
 
-bfin-spi-notes.txt
-	- Notes for using bfin spi bus driver.
+Filesystems
+	- Requirements for mounting the root file system.
+
+bfin-gpio-note.txt
+	- Notes in developing/using bfin-gpio driver.

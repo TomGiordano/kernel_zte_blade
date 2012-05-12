@@ -49,46 +49,45 @@ struct media5200_irq {
 };
 struct media5200_irq media5200_irq;
 
-static void media5200_irq_unmask(struct irq_data *d)
+static void media5200_irq_unmask(unsigned int virq)
 {
 	unsigned long flags;
 	u32 val;
 
 	spin_lock_irqsave(&media5200_irq.lock, flags);
 	val = in_be32(media5200_irq.regs + MEDIA5200_IRQ_ENABLE);
-	val |= 1 << (MEDIA5200_IRQ_SHIFT + irqd_to_hwirq(d));
+	val |= 1 << (MEDIA5200_IRQ_SHIFT + irq_map[virq].hwirq);
 	out_be32(media5200_irq.regs + MEDIA5200_IRQ_ENABLE, val);
 	spin_unlock_irqrestore(&media5200_irq.lock, flags);
 }
 
-static void media5200_irq_mask(struct irq_data *d)
+static void media5200_irq_mask(unsigned int virq)
 {
 	unsigned long flags;
 	u32 val;
 
 	spin_lock_irqsave(&media5200_irq.lock, flags);
 	val = in_be32(media5200_irq.regs + MEDIA5200_IRQ_ENABLE);
-	val &= ~(1 << (MEDIA5200_IRQ_SHIFT + irqd_to_hwirq(d)));
+	val &= ~(1 << (MEDIA5200_IRQ_SHIFT + irq_map[virq].hwirq));
 	out_be32(media5200_irq.regs + MEDIA5200_IRQ_ENABLE, val);
 	spin_unlock_irqrestore(&media5200_irq.lock, flags);
 }
 
 static struct irq_chip media5200_irq_chip = {
 	.name = "Media5200 FPGA",
-	.irq_unmask = media5200_irq_unmask,
-	.irq_mask = media5200_irq_mask,
-	.irq_mask_ack = media5200_irq_mask,
+	.unmask = media5200_irq_unmask,
+	.mask = media5200_irq_mask,
+	.mask_ack = media5200_irq_mask,
 };
 
 void media5200_irq_cascade(unsigned int virq, struct irq_desc *desc)
 {
-	struct irq_chip *chip = irq_desc_get_chip(desc);
 	int sub_virq, val;
 	u32 status, enable;
 
 	/* Mask off the cascaded IRQ */
 	raw_spin_lock(&desc->lock);
-	chip->irq_mask(&desc->irq_data);
+	desc->chip->mask(virq);
 	raw_spin_unlock(&desc->lock);
 
 	/* Ask the FPGA for IRQ status.  If 'val' is 0, then no irqs
@@ -106,19 +105,24 @@ void media5200_irq_cascade(unsigned int virq, struct irq_desc *desc)
 
 	/* Processing done; can reenable the cascade now */
 	raw_spin_lock(&desc->lock);
-	chip->irq_ack(&desc->irq_data);
-	if (!irqd_irq_disabled(&desc->irq_data))
-		chip->irq_unmask(&desc->irq_data);
+	desc->chip->ack(virq);
+	if (!(desc->status & IRQ_DISABLED))
+		desc->chip->unmask(virq);
 	raw_spin_unlock(&desc->lock);
 }
 
 static int media5200_irq_map(struct irq_host *h, unsigned int virq,
 			     irq_hw_number_t hw)
 {
+	struct irq_desc *desc = irq_to_desc(virq);
+
 	pr_debug("%s: h=%p, virq=%i, hwirq=%i\n", __func__, h, virq, (int)hw);
-	irq_set_chip_data(virq, &media5200_irq);
-	irq_set_chip_and_handler(virq, &media5200_irq_chip, handle_level_irq);
-	irq_set_status_flags(virq, IRQ_LEVEL);
+	set_irq_chip_data(virq, &media5200_irq);
+	set_irq_chip_and_handler(virq, &media5200_irq_chip, handle_level_irq);
+	set_irq_type(virq, IRQ_TYPE_LEVEL_LOW);
+	desc->status &= ~(IRQ_TYPE_SENSE_MASK | IRQ_LEVEL);
+	desc->status |= IRQ_TYPE_LEVEL_LOW | IRQ_LEVEL;
+
 	return 0;
 }
 
@@ -182,8 +186,8 @@ static void __init media5200_init_irq(void)
 
 	media5200_irq.irqhost->host_data = &media5200_irq;
 
-	irq_set_handler_data(cascade_virq, &media5200_irq);
-	irq_set_chained_handler(cascade_virq, media5200_irq_cascade);
+	set_irq_data(cascade_virq, &media5200_irq);
+	set_irq_chained_handler(cascade_virq, media5200_irq_cascade);
 
 	return;
 
@@ -235,7 +239,7 @@ static void __init media5200_setup_arch(void)
 }
 
 /* list of the supported boards */
-static const char *board[] __initdata = {
+static char *board[] __initdata = {
 	"fsl,media5200",
 	NULL
 };
@@ -245,7 +249,16 @@ static const char *board[] __initdata = {
  */
 static int __init media5200_probe(void)
 {
-	return of_flat_dt_match(of_get_flat_dt_root(), board);
+	unsigned long node = of_get_flat_dt_root();
+	int i = 0;
+
+	while (board[i]) {
+		if (of_flat_dt_is_compatible(node, board[i]))
+			break;
+		i++;
+	}
+
+	return (board[i] != NULL);
 }
 
 define_machine(media5200_platform) {

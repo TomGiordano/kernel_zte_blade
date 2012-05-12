@@ -1257,6 +1257,9 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 	unsigned int data;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
+        if(unlikely(uport == NULL))
+           return;
+
 	clk_enable(msm_uport->clk);
 
 	/* RTS is active low */
@@ -1539,6 +1542,9 @@ static void msm_hs_request_clock_on_locked(struct uart_port *uport) {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	unsigned int data;
 	int ret = 0;
+
+        if(unlikely(uport == NULL))
+           return;
 
 	switch (msm_uport->clk_state) {
 	case MSM_HS_CLK_OFF:

@@ -16,7 +16,7 @@
 #include <asm/oplib.h>
 #include <asm/ldc.h>
 
-static phandle prom_node_to_node(const char *type, phandle node)
+static int prom_node_to_node(const char *type, int node)
 {
 	unsigned long args[5];
 
@@ -28,38 +28,38 @@ static phandle prom_node_to_node(const char *type, phandle node)
 
 	p1275_cmd_direct(args);
 
-	return (phandle) args[4];
+	return (int) args[4];
 }
 
 /* Return the child of node 'node' or zero if no this node has no
  * direct descendent.
  */
-inline phandle __prom_getchild(phandle node)
+inline int __prom_getchild(int node)
 {
 	return prom_node_to_node("child", node);
 }
 
-inline phandle prom_getchild(phandle node)
+inline int prom_getchild(int node)
 {
-	phandle cnode;
+	int cnode;
 
-	if ((s32)node == -1)
+	if (node == -1)
 		return 0;
 	cnode = __prom_getchild(node);
-	if ((s32)cnode == -1)
+	if (cnode == -1)
 		return 0;
 	return cnode;
 }
 EXPORT_SYMBOL(prom_getchild);
 
-inline phandle prom_getparent(phandle node)
+inline int prom_getparent(int node)
 {
-	phandle cnode;
+	int cnode;
 
-	if ((s32)node == -1)
+	if (node == -1)
 		return 0;
 	cnode = prom_node_to_node("parent", node);
-	if ((s32)cnode == -1)
+	if (cnode == -1)
 		return 0;
 	return cnode;
 }
@@ -67,19 +67,19 @@ inline phandle prom_getparent(phandle node)
 /* Return the next sibling of node 'node' or zero if no more siblings
  * at this level of depth in the tree.
  */
-inline phandle __prom_getsibling(phandle node)
+inline int __prom_getsibling(int node)
 {
 	return prom_node_to_node(prom_peer_name, node);
 }
 
-inline phandle prom_getsibling(phandle node)
+inline int prom_getsibling(int node)
 {
-	phandle sibnode;
+	int sibnode;
 
-	if ((s32)node == -1)
+	if (node == -1)
 		return 0;
 	sibnode = __prom_getsibling(node);
-	if ((s32)sibnode == -1)
+	if (sibnode == -1)
 		return 0;
 
 	return sibnode;
@@ -89,7 +89,7 @@ EXPORT_SYMBOL(prom_getsibling);
 /* Return the length in bytes of property 'prop' at node 'node'.
  * Return -1 on error.
  */
-inline int prom_getproplen(phandle node, const char *prop)
+inline int prom_getproplen(int node, const char *prop)
 {
 	unsigned long args[6];
 
@@ -113,7 +113,7 @@ EXPORT_SYMBOL(prom_getproplen);
  * 'buffer' which has a size of 'bufsize'.  If the acquisition
  * was successful the length will be returned, else -1 is returned.
  */
-inline int prom_getproperty(phandle node, const char *prop,
+inline int prom_getproperty(int node, const char *prop,
 			    char *buffer, int bufsize)
 {
 	unsigned long args[8];
@@ -141,7 +141,7 @@ EXPORT_SYMBOL(prom_getproperty);
 /* Acquire an integer property and return its value.  Returns -1
  * on failure.
  */
-inline int prom_getint(phandle node, const char *prop)
+inline int prom_getint(int node, const char *prop)
 {
 	int intprop;
 
@@ -156,7 +156,7 @@ EXPORT_SYMBOL(prom_getint);
  * integer.
  */
 
-int prom_getintdefault(phandle node, const char *property, int deflt)
+int prom_getintdefault(int node, const char *property, int deflt)
 {
 	int retval;
 
@@ -169,7 +169,7 @@ int prom_getintdefault(phandle node, const char *property, int deflt)
 EXPORT_SYMBOL(prom_getintdefault);
 
 /* Acquire a boolean property, 1=TRUE 0=FALSE. */
-int prom_getbool(phandle node, const char *prop)
+int prom_getbool(int node, const char *prop)
 {
 	int retval;
 
@@ -184,8 +184,7 @@ EXPORT_SYMBOL(prom_getbool);
  * string on error.  The char pointer is the user supplied string
  * buffer.
  */
-void prom_getstring(phandle node, const char *prop, char *user_buf,
-		int ubuf_size)
+void prom_getstring(int node, const char *prop, char *user_buf, int ubuf_size)
 {
 	int len;
 
@@ -199,7 +198,7 @@ EXPORT_SYMBOL(prom_getstring);
 /* Does the device at node 'node' have name 'name'?
  * YES = 1   NO = 0
  */
-int prom_nodematch(phandle node, const char *name)
+int prom_nodematch(int node, const char *name)
 {
 	char namebuf[128];
 	prom_getproperty(node, "name", namebuf, sizeof(namebuf));
@@ -211,10 +210,10 @@ int prom_nodematch(phandle node, const char *name)
 /* Search siblings at 'node_start' for a node with name
  * 'nodename'.  Return node if successful, zero if not.
  */
-phandle prom_searchsiblings(phandle node_start, const char *nodename)
+int prom_searchsiblings(int node_start, const char *nodename)
 {
-	phandle thisnode;
-	int error;
+
+	int thisnode, error;
 	char promlib_buf[128];
 
 	for(thisnode = node_start; thisnode;
@@ -235,12 +234,12 @@ static const char *prom_nextprop_name = "nextprop";
 /* Return the first property type for node 'node'.
  * buffer should be at least 32B in length
  */
-inline char *prom_firstprop(phandle node, char *buffer)
+inline char *prom_firstprop(int node, char *buffer)
 {
 	unsigned long args[7];
 
 	*buffer = 0;
-	if ((s32)node == -1)
+	if (node == -1)
 		return buffer;
 
 	args[0] = (unsigned long) prom_nextprop_name;
@@ -261,12 +260,12 @@ EXPORT_SYMBOL(prom_firstprop);
  * at node 'node' .  Returns NULL string if no more
  * property types for this node.
  */
-inline char *prom_nextprop(phandle node, const char *oprop, char *buffer)
+inline char *prom_nextprop(int node, const char *oprop, char *buffer)
 {
 	unsigned long args[7];
 	char buf[32];
 
-	if ((s32)node == -1) {
+	if (node == -1) {
 		*buffer = 0;
 		return buffer;
 	}
@@ -289,7 +288,8 @@ inline char *prom_nextprop(phandle node, const char *oprop, char *buffer)
 }
 EXPORT_SYMBOL(prom_nextprop);
 
-phandle prom_finddevice(const char *name)
+int
+prom_finddevice(const char *name)
 {
 	unsigned long args[5];
 
@@ -307,7 +307,7 @@ phandle prom_finddevice(const char *name)
 }
 EXPORT_SYMBOL(prom_finddevice);
 
-int prom_node_has_property(phandle node, const char *prop)
+int prom_node_has_property(int node, const char *prop)
 {
 	char buf [32];
         
@@ -325,7 +325,7 @@ EXPORT_SYMBOL(prom_node_has_property);
  * of 'size' bytes.  Return the number of bytes the prom accepted.
  */
 int
-prom_setprop(phandle node, const char *pname, char *value, int size)
+prom_setprop(int node, const char *pname, char *value, int size)
 {
 	unsigned long args[8];
 
@@ -355,10 +355,10 @@ prom_setprop(phandle node, const char *pname, char *value, int size)
 }
 EXPORT_SYMBOL(prom_setprop);
 
-inline phandle prom_inst2pkg(int inst)
+inline int prom_inst2pkg(int inst)
 {
 	unsigned long args[5];
-	phandle node;
+	int node;
 	
 	args[0] = (unsigned long) "instance-to-package";
 	args[1] = 1;
@@ -369,7 +369,25 @@ inline phandle prom_inst2pkg(int inst)
 	p1275_cmd_direct(args);
 
 	node = (int) args[4];
-	if ((s32)node == -1)
+	if (node == -1)
+		return 0;
+	return node;
+}
+
+/* Return 'node' assigned to a particular prom 'path'
+ * FIXME: Should work for v0 as well
+ */
+int
+prom_pathtoinode(const char *path)
+{
+	int node, inst;
+
+	inst = prom_devopen (path);
+	if (inst == 0)
+		return 0;
+	node = prom_inst2pkg(inst);
+	prom_devclose(inst);
+	if (node == -1)
 		return 0;
 	return node;
 }

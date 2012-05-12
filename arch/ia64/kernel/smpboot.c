@@ -390,11 +390,13 @@ smp_callin (void)
 
 	fix_b0_for_bsp();
 
+#ifdef CONFIG_NUMA
 	/*
 	 * numa_node_id() works after this.
 	 */
 	set_numa_node(cpu_to_node_map[cpuid]);
 	set_numa_mem(local_memory_node(cpu_to_node_map[cpuid]));
+#endif
 
 	ipi_call_lock_irq();
 	spin_lock(&vector_lock);
@@ -508,18 +510,21 @@ do_boot_cpu (int sapicid, int cpu)
 		.done	= COMPLETION_INITIALIZER(c_idle.done),
 	};
 
-	/*
-	 * We can't use kernel_thread since we must avoid to
-	 * reschedule the child.
-	 */
  	c_idle.idle = get_idle_for_cpu(cpu);
  	if (c_idle.idle) {
 		init_idle(c_idle.idle, cpu);
  		goto do_rest;
 	}
 
-	schedule_work(&c_idle.work);
-	wait_for_completion(&c_idle.done);
+	/*
+	 * We can't use kernel_thread since we must avoid to reschedule the child.
+	 */
+	if (!keventd_up() || current_is_keventd())
+		c_idle.work.func(&c_idle.work);
+	else {
+		schedule_work(&c_idle.work);
+		wait_for_completion(&c_idle.done);
+	}
 
 	if (IS_ERR(c_idle.idle))
 		panic("failed fork for CPU %d", cpu);
@@ -635,7 +640,9 @@ void __devinit smp_prepare_boot_cpu(void)
 {
 	cpu_set(smp_processor_id(), cpu_online_map);
 	cpu_set(smp_processor_id(), cpu_callin_map);
+#ifdef CONFIG_NUMA
 	set_numa_node(cpu_to_node_map[smp_processor_id()]);
+#endif
 	per_cpu(cpu_state, smp_processor_id()) = CPU_ONLINE;
 	paravirt_post_smp_prepare_boot_cpu();
 }
@@ -677,7 +684,7 @@ extern void fixup_irqs(void);
 int migrate_platform_irqs(unsigned int cpu)
 {
 	int new_cpei_cpu;
-	struct irq_data *data = NULL;
+	struct irq_desc *desc = NULL;
 	const struct cpumask *mask;
 	int 		retval = 0;
 
@@ -693,20 +700,20 @@ int migrate_platform_irqs(unsigned int cpu)
 			new_cpei_cpu = any_online_cpu(cpu_online_map);
 			mask = cpumask_of(new_cpei_cpu);
 			set_cpei_target_cpu(new_cpei_cpu);
-			data = irq_get_irq_data(ia64_cpe_irq);
+			desc = irq_desc + ia64_cpe_irq;
 			/*
 			 * Switch for now, immediately, we need to do fake intr
 			 * as other interrupts, but need to study CPEI behaviour with
 			 * polling before making changes.
 			 */
-			if (data && data->chip) {
-				data->chip->irq_disable(data);
-				data->chip->irq_set_affinity(data, mask, false);
-				data->chip->irq_enable(data);
-				printk ("Re-targeting CPEI to cpu %d\n", new_cpei_cpu);
+			if (desc) {
+				desc->chip->disable(ia64_cpe_irq);
+				desc->chip->set_affinity(ia64_cpe_irq, mask);
+				desc->chip->enable(ia64_cpe_irq);
+				printk ("Re-targetting CPEI to cpu %d\n", new_cpei_cpu);
 			}
 		}
-		if (!data) {
+		if (!desc) {
 			printk ("Unable to retarget CPEI, offline cpu [%d] failed\n", cpu);
 			retval = -EBUSY;
 		}

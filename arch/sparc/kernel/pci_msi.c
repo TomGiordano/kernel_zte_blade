@@ -30,10 +30,13 @@ static irqreturn_t sparc64_msiq_interrupt(int irq, void *cookie)
 
 		err = ops->dequeue_msi(pbm, msiqid, &head, &msi);
 		if (likely(err > 0)) {
-			unsigned int irq;
+			struct irq_desc *desc;
+			unsigned int virt_irq;
 
-			irq = pbm->msi_irq_table[msi - pbm->msi_first];
-			generic_handle_irq(irq);
+			virt_irq = pbm->msi_irq_table[msi - pbm->msi_first];
+			desc = irq_desc + virt_irq;
+
+			desc->handle_irq(virt_irq, desc);
 		}
 
 		if (unlikely(err < 0))
@@ -111,14 +114,14 @@ static void free_msi(struct pci_pbm_info *pbm, int msi_num)
 
 static struct irq_chip msi_irq = {
 	.name		= "PCI-MSI",
-	.irq_mask	= mask_msi_irq,
-	.irq_unmask	= unmask_msi_irq,
-	.irq_enable	= unmask_msi_irq,
-	.irq_disable	= mask_msi_irq,
+	.mask		= mask_msi_irq,
+	.unmask		= unmask_msi_irq,
+	.enable		= unmask_msi_irq,
+	.disable	= mask_msi_irq,
 	/* XXX affinity XXX */
 };
 
-static int sparc64_setup_msi_irq(unsigned int *irq_p,
+static int sparc64_setup_msi_irq(unsigned int *virt_irq_p,
 				 struct pci_dev *pdev,
 				 struct msi_desc *entry)
 {
@@ -128,17 +131,17 @@ static int sparc64_setup_msi_irq(unsigned int *irq_p,
 	int msi, err;
 	u32 msiqid;
 
-	*irq_p = irq_alloc(0, 0);
+	*virt_irq_p = virt_irq_alloc(0, 0);
 	err = -ENOMEM;
-	if (!*irq_p)
+	if (!*virt_irq_p)
 		goto out_err;
 
-	irq_set_chip_and_handler_name(*irq_p, &msi_irq, handle_simple_irq,
-				      "MSI");
+	set_irq_chip_and_handler_name(*virt_irq_p, &msi_irq,
+				      handle_simple_irq, "MSI");
 
 	err = alloc_msi(pbm);
 	if (unlikely(err < 0))
-		goto out_irq_free;
+		goto out_virt_irq_free;
 
 	msi = err;
 
@@ -149,7 +152,7 @@ static int sparc64_setup_msi_irq(unsigned int *irq_p,
 	if (err)
 		goto out_msi_free;
 
-	pbm->msi_irq_table[msi - pbm->msi_first] = *irq_p;
+	pbm->msi_irq_table[msi - pbm->msi_first] = *virt_irq_p;
 
 	if (entry->msi_attrib.is_64) {
 		msg.address_hi = pbm->msi64_start >> 32;
@@ -160,24 +163,24 @@ static int sparc64_setup_msi_irq(unsigned int *irq_p,
 	}
 	msg.data = msi;
 
-	irq_set_msi_desc(*irq_p, entry);
-	write_msi_msg(*irq_p, &msg);
+	set_irq_msi(*virt_irq_p, entry);
+	write_msi_msg(*virt_irq_p, &msg);
 
 	return 0;
 
 out_msi_free:
 	free_msi(pbm, msi);
 
-out_irq_free:
-	irq_set_chip(*irq_p, NULL);
-	irq_free(*irq_p);
-	*irq_p = 0;
+out_virt_irq_free:
+	set_irq_chip(*virt_irq_p, NULL);
+	virt_irq_free(*virt_irq_p);
+	*virt_irq_p = 0;
 
 out_err:
 	return err;
 }
 
-static void sparc64_teardown_msi_irq(unsigned int irq,
+static void sparc64_teardown_msi_irq(unsigned int virt_irq,
 				     struct pci_dev *pdev)
 {
 	struct pci_pbm_info *pbm = pdev->dev.archdata.host_controller;
@@ -186,12 +189,12 @@ static void sparc64_teardown_msi_irq(unsigned int irq,
 	int i, err;
 
 	for (i = 0; i < pbm->msi_num; i++) {
-		if (pbm->msi_irq_table[i] == irq)
+		if (pbm->msi_irq_table[i] == virt_irq)
 			break;
 	}
 	if (i >= pbm->msi_num) {
 		printk(KERN_ERR "%s: teardown: No MSI for irq %u\n",
-		       pbm->name, irq);
+		       pbm->name, virt_irq);
 		return;
 	}
 
@@ -202,14 +205,14 @@ static void sparc64_teardown_msi_irq(unsigned int irq,
 	if (err) {
 		printk(KERN_ERR "%s: teardown: ops->teardown() on MSI %u, "
 		       "irq %u, gives error %d\n",
-		       pbm->name, msi_num, irq, err);
+		       pbm->name, msi_num, virt_irq, err);
 		return;
 	}
 
 	free_msi(pbm, msi_num);
 
-	irq_set_chip(irq, NULL);
-	irq_free(irq);
+	set_irq_chip(virt_irq, NULL);
+	virt_irq_free(virt_irq);
 }
 
 static int msi_bitmap_alloc(struct pci_pbm_info *pbm)
@@ -284,9 +287,8 @@ static int bringup_one_msi_queue(struct pci_pbm_info *pbm,
 
 	nid = pbm->numa_node;
 	if (nid != -1) {
-		cpumask_t numa_mask;
+		cpumask_t numa_mask = *cpumask_of_node(nid);
 
-		cpumask_copy(&numa_mask, cpumask_of_node(nid));
 		irq_set_affinity(irq, &numa_mask);
 	}
 	err = request_irq(irq, sparc64_msiq_interrupt, 0,

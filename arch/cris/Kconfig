@@ -1,3 +1,10 @@
+#
+# For a description of the syntax of this configuration file,
+# see the Configure script.
+#
+
+mainmenu "Linux/CRIS Kernel Configuration"
+
 config MMU
 	bool
 	default y
@@ -13,11 +20,14 @@ config RWSEM_GENERIC_SPINLOCK
 config RWSEM_XCHGADD_ALGORITHM
 	bool
 
+config GENERIC_TIME
+	def_bool y
+
 config GENERIC_CMOS_UPDATE
 	def_bool y
 
 config ARCH_USES_GETTIMEOFFSET
-	def_bool n
+	def_bool y
 
 config GENERIC_IOMAP
        bool
@@ -30,6 +40,10 @@ config ARCH_HAS_ILOG2_U32
 config ARCH_HAS_ILOG2_U64
 	bool
 	default n
+
+config GENERIC_FIND_NEXT_BIT
+	bool
+	default y
 
 config GENERIC_HWEIGHT
 	bool
@@ -50,8 +64,6 @@ config CRIS
 	bool
 	default y
 	select HAVE_IDE
-	select HAVE_GENERIC_HARDIRQS
-	select GENERIC_IRQ_SHOW
 
 config HZ
 	int
@@ -64,6 +76,10 @@ source "kernel/Kconfig.freezer"
 menu "General setup"
 
 source "fs/Kconfig.binfmt"
+
+config GENERIC_HARDIRQS
+	bool
+	default y
 
 config ETRAX_CMDLINE
 	string "Kernel command line"
@@ -115,19 +131,16 @@ choice
 
 config ETRAX100LX
 	bool "ETRAX-100LX-v1"
-	select ARCH_USES_GETTIMEOFFSET
 	help
 	  Support version 1 of the ETRAX 100LX.
 
 config ETRAX100LX_V2
 	bool "ETRAX-100LX-v2"
-	select ARCH_USES_GETTIMEOFFSET
 	help
 	  Support version 2 of the ETRAX 100LX.
 
 config SVINTO_SIM
 	bool "ETRAX-100LX-for-xsim-simulator"
-	select ARCH_USES_GETTIMEOFFSET
 	help
 	  Support the xsim ETRAX Simulator.
 
@@ -270,6 +283,8 @@ config ETRAX_AXISFLASHMAP
 	select MTD_JEDECPROBE if ETRAX_ARCH_V32
 	select MTD_CHAR
 	select MTD_BLOCK
+	select MTD_PARTITIONS
+	select MTD_CONCAT
 	select MTD_COMPLEX_MAPPINGS
 	help
 	  This option enables MTD mapping of flash devices.  Needed to use
@@ -290,7 +305,8 @@ config ETRAX_RTC
 choice
 	prompt "RTC chip"
 	depends on ETRAX_RTC
-	default ETRAX_DS1302
+	default ETRAX_PCF8563 if ETRAX_ARCH_V32
+	default ETRAX_DS1302 if ETRAX_ARCH_V10
 
 config ETRAX_DS1302
 	depends on ETRAX_ARCH_V10

@@ -46,9 +46,7 @@ smp_restart_cpu:
 	ltr	%r4,%r4			/* New stack ? */
 	jz	1f
 	lr	%r15,%r4
-1:	lr	%r14,%r2		/* r14: Function to call */
-	lr	%r2,%r3			/* r2 : Parameter for function*/
-	basr	%r14,%r14		/* Call function */
+1:	basr	%r14,%r2
 
 .gprregs_addr:
 	.long	.gprregs

@@ -36,7 +36,6 @@
 #include <linux/gpio.h>
 #include <linux/jiffies.h>
 #include <linux/i2c-gpio.h>
-#include <linux/i2c/pxa-i2c.h>
 #include <linux/serial_8250.h>
 #include <linux/smc91x.h>
 #include <linux/pwm_backlight.h>
@@ -44,11 +43,11 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/physmap.h>
-#include <linux/syscore_ops.h>
 
 #include <mach/pxa25x.h>
 #include <mach/audio.h>
 #include <mach/pxafb.h>
+#include <plat/i2c.h>
 #include <mach/regs-uart.h>
 #include <mach/arcom-pcmcia.h>
 #include <mach/viper.h>
@@ -131,19 +130,20 @@ static u8 viper_hw_version(void)
 	return v1;
 }
 
-/* CPU system core operations. */
-static int viper_cpu_suspend(void)
+/* CPU sysdev */
+static int viper_cpu_suspend(struct sys_device *sysdev, pm_message_t state)
 {
 	viper_icr_set_bit(VIPER_ICR_R_DIS);
 	return 0;
 }
 
-static void viper_cpu_resume(void)
+static int viper_cpu_resume(struct sys_device *sysdev)
 {
 	viper_icr_clear_bit(VIPER_ICR_R_DIS);
+	return 0;
 }
 
-static struct syscore_ops viper_cpu_syscore_ops = {
+static struct sysdev_driver viper_cpu_sysdev_driver = {
 	.suspend	= viper_cpu_suspend,
 	.resume		= viper_cpu_resume,
 };
@@ -249,9 +249,9 @@ static inline int viper_bit_to_irq(int bit)
 	return viper_isa_irqs[bit] + PXA_ISA_IRQ(0);
 }
 
-static void viper_ack_irq(struct irq_data *d)
+static void viper_ack_irq(unsigned int irq)
 {
-	int viper_irq = viper_irq_to_bitmask(d->irq);
+	int viper_irq = viper_irq_to_bitmask(irq);
 
 	if (viper_irq & 0xff)
 		VIPER_LO_IRQ_STATUS = viper_irq;
@@ -259,14 +259,14 @@ static void viper_ack_irq(struct irq_data *d)
 		VIPER_HI_IRQ_STATUS = (viper_irq >> 8);
 }
 
-static void viper_mask_irq(struct irq_data *d)
+static void viper_mask_irq(unsigned int irq)
 {
-	viper_irq_enabled_mask &= ~(viper_irq_to_bitmask(d->irq));
+	viper_irq_enabled_mask &= ~(viper_irq_to_bitmask(irq));
 }
 
-static void viper_unmask_irq(struct irq_data *d)
+static void viper_unmask_irq(unsigned int irq)
 {
-	viper_irq_enabled_mask |= viper_irq_to_bitmask(d->irq);
+	viper_irq_enabled_mask |= viper_irq_to_bitmask(irq);
 }
 
 static inline unsigned long viper_irq_pending(void)
@@ -283,7 +283,7 @@ static void viper_irq_handler(unsigned int irq, struct irq_desc *desc)
 	do {
 		/* we're in a chained irq handler,
 		 * so ack the interrupt by hand */
-		desc->irq_data.chip->irq_ack(&desc->irq_data);
+		desc->chip->ack(irq);
 
 		if (likely(pending)) {
 			irq = viper_bit_to_irq(__ffs(pending));
@@ -294,10 +294,10 @@ static void viper_irq_handler(unsigned int irq, struct irq_desc *desc)
 }
 
 static struct irq_chip viper_irq_chip = {
-	.name		= "ISA",
-	.irq_ack	= viper_ack_irq,
-	.irq_mask	= viper_mask_irq,
-	.irq_unmask	= viper_unmask_irq
+	.name	= "ISA",
+	.ack	= viper_ack_irq,
+	.mask	= viper_mask_irq,
+	.unmask	= viper_unmask_irq
 };
 
 static void __init viper_init_irq(void)
@@ -310,14 +310,14 @@ static void __init viper_init_irq(void)
 	/* setup ISA IRQs */
 	for (level = 0; level < ARRAY_SIZE(viper_isa_irqs); level++) {
 		isa_irq = viper_bit_to_irq(level);
-		irq_set_chip_and_handler(isa_irq, &viper_irq_chip,
-					 handle_edge_irq);
+		set_irq_chip(isa_irq, &viper_irq_chip);
+		set_irq_handler(isa_irq, handle_edge_irq);
 		set_irq_flags(isa_irq, IRQF_VALID | IRQF_PROBE);
 	}
 
-	irq_set_chained_handler(gpio_to_irq(VIPER_CPLD_GPIO),
+	set_irq_chained_handler(gpio_to_irq(VIPER_CPLD_GPIO),
 				viper_irq_handler);
-	irq_set_irq_type(gpio_to_irq(VIPER_CPLD_GPIO), IRQ_TYPE_EDGE_BOTH);
+	set_irq_type(gpio_to_irq(VIPER_CPLD_GPIO), IRQ_TYPE_EDGE_BOTH);
 }
 
 /* Flat Panel */
@@ -932,7 +932,7 @@ static void __init viper_init(void)
 	/* Wake-up serial console */
 	viper_init_serial_gpio();
 
-	pxa_set_fb_info(NULL, &fb_info);
+	set_pxa_fb_info(&fb_info);
 
 	/* v1 hardware cannot use the datacs line */
 	version = viper_hw_version();
@@ -945,7 +945,7 @@ static void __init viper_init(void)
 	viper_init_vcore_gpios();
 	viper_init_cpufreq();
 
-	register_syscore_ops(&viper_cpu_syscore_ops);
+	sysdev_driver_register(&cpu_sysdev_class, &viper_cpu_sysdev_driver);
 
 	if (version) {
 		pr_info("viper: hardware v%di%d detected. "
@@ -983,7 +983,7 @@ static struct map_desc viper_io_desc[] __initdata = {
 
 static void __init viper_map_io(void)
 {
-	pxa25x_map_io();
+	pxa_map_io();
 
 	iotable_init(viper_io_desc, ARRAY_SIZE(viper_io_desc));
 
@@ -992,6 +992,8 @@ static void __init viper_map_io(void)
 
 MACHINE_START(VIPER, "Arcom/Eurotech VIPER SBC")
 	/* Maintainer: Marc Zyngier <maz@misterjones.org> */
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.boot_params	= 0xa0000100,
 	.map_io		= viper_map_io,
 	.init_irq	= viper_init_irq,

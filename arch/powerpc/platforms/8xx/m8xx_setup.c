@@ -150,7 +150,7 @@ void __init mpc8xx_calibrate_decr(void)
 	 */
 	cpu = of_find_node_by_type(NULL, "cpu");
 	virq= irq_of_parse_and_map(cpu, 0);
-	irq = virq_to_hw(virq);
+	irq = irq_map[virq].hwirq;
 
 	sys_tmr2 = immr_map(im_sit);
 	out_be16(&sys_tmr2->sit_tbscr, ((1 << (7 - (irq/2))) << 8) |
@@ -218,20 +218,15 @@ void mpc8xx_restart(char *cmd)
 
 static void cpm_cascade(unsigned int irq, struct irq_desc *desc)
 {
-	struct irq_chip *chip;
 	int cascade_irq;
 
 	if ((cascade_irq = cpm_get_irq()) >= 0) {
 		struct irq_desc *cdesc = irq_to_desc(cascade_irq);
 
 		generic_handle_irq(cascade_irq);
-
-		chip = irq_desc_get_chip(cdesc);
-		chip->irq_eoi(&cdesc->irq_data);
+		cdesc->chip->eoi(cascade_irq);
 	}
-
-	chip = irq_desc_get_chip(desc);
-	chip->irq_eoi(&desc->irq_data);
+	desc->chip->eoi(irq);
 }
 
 /* Initialize the internal interrupt controllers.  The number of
@@ -251,5 +246,5 @@ void __init mpc8xx_pics_init(void)
 
 	irq = cpm_pic_init();
 	if (irq != NO_IRQ)
-		irq_set_chained_handler(irq, cpm_cascade);
+		set_irq_chained_handler(irq, cpm_cascade);
 }

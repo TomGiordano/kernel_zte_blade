@@ -23,11 +23,12 @@
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 
+#include <mach/sharpsl.h>
 #include <mach/corgi.h>
 #include <mach/pxa2xx-regs.h>
-#include <mach/sharpsl_pm.h>
 
 #include "generic.h"
+#include "sharpsl.h"
 
 #define SHARPSL_CHARGE_ON_VOLT         0x99  /* 2.9V */
 #define SHARPSL_CHARGE_ON_TEMP         0xe0  /* 2.9V */
@@ -133,11 +134,11 @@ unsigned long corgipm_read_devdata(int type)
 	case SHARPSL_STATUS_ACIN:
 		return ((GPLR(CORGI_GPIO_AC_IN) & GPIO_bit(CORGI_GPIO_AC_IN)) != 0);
 	case SHARPSL_STATUS_LOCK:
-		return gpio_get_value(sharpsl_pm.machinfo->gpio_batlock);
+		return READ_GPIO_BIT(sharpsl_pm.machinfo->gpio_batlock);
 	case SHARPSL_STATUS_CHRGFULL:
-		return gpio_get_value(sharpsl_pm.machinfo->gpio_batfull);
+		return READ_GPIO_BIT(sharpsl_pm.machinfo->gpio_batfull);
 	case SHARPSL_STATUS_FATAL:
-		return gpio_get_value(sharpsl_pm.machinfo->gpio_fatal);
+		return READ_GPIO_BIT(sharpsl_pm.machinfo->gpio_fatal);
 	case SHARPSL_ACIN_VOLT:
 		return sharpsl_pm_pxa_read_max1111(MAX1111_ACIN_VOLT);
 	case SHARPSL_BATT_TEMP:
@@ -164,6 +165,8 @@ static struct sharpsl_charger_machinfo corgi_pm_machinfo = {
 	.should_wakeup   = corgi_should_wakeup,
 #if defined(CONFIG_LCD_CORGI)
 	.backlight_limit = corgi_lcd_limit_intensity,
+#elif defined(CONFIG_BACKLIGHT_CORGI)
+	.backlight_limit = corgibl_limit_intensity,
 #endif
 	.charge_on_volt	  = SHARPSL_CHARGE_ON_VOLT,
 	.charge_on_temp	  = SHARPSL_CHARGE_ON_TEMP,

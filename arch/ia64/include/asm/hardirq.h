@@ -6,6 +6,12 @@
  *	David Mosberger-Tang <davidm@hpl.hp.com>
  */
 
+
+#include <linux/threads.h>
+#include <linux/irq.h>
+
+#include <asm/processor.h>
+
 /*
  * No irq_cpustat_t for IA-64.  The data is held in the per-CPU data structure.
  */
@@ -13,11 +19,6 @@
 #define __ARCH_IRQ_STAT	1
 
 #define local_softirq_pending()		(local_cpu_data->softirq_pending)
-
-#include <linux/threads.h>
-#include <linux/irq.h>
-
-#include <asm/processor.h>
 
 extern void __iomem *ipi_base_addr;
 

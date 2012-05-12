@@ -111,9 +111,9 @@ enum ixp23xx_irq_type {
 
 static void ixp23xx_config_irq(unsigned int, enum ixp23xx_irq_type);
 
-static int ixp23xx_irq_set_type(struct irq_data *d, unsigned int type)
+static int ixp23xx_irq_set_type(unsigned int irq, unsigned int type)
 {
-	int line = d->irq - IRQ_IXP23XX_GPIO6 + 6;
+	int line = irq - IRQ_IXP23XX_GPIO6 + 6;
 	u32 int_style;
 	enum ixp23xx_irq_type irq_type;
 	volatile u32 *int_reg;
@@ -149,7 +149,7 @@ static int ixp23xx_irq_set_type(struct irq_data *d, unsigned int type)
 		return -EINVAL;
 	}
 
-	ixp23xx_config_irq(d->irq, irq_type);
+	ixp23xx_config_irq(irq, irq_type);
 
 	if (line >= 8) {	/* pins 8-15 */
 		line -= 8;
@@ -173,10 +173,9 @@ static int ixp23xx_irq_set_type(struct irq_data *d, unsigned int type)
 	return 0;
 }
 
-static void ixp23xx_irq_mask(struct irq_data *d)
+static void ixp23xx_irq_mask(unsigned int irq)
 {
 	volatile unsigned long *intr_reg;
-	unsigned int irq = d->irq;
 
 	if (irq >= 56)
 		irq += 8;
@@ -185,9 +184,9 @@ static void ixp23xx_irq_mask(struct irq_data *d)
 	*intr_reg &= ~(1 << (irq % 32));
 }
 
-static void ixp23xx_irq_ack(struct irq_data *d)
+static void ixp23xx_irq_ack(unsigned int irq)
 {
-	int line = d->irq - IRQ_IXP23XX_GPIO6 + 6;
+	int line = irq - IRQ_IXP23XX_GPIO6 + 6;
 
 	if ((line < 6) || (line > 15))
 		return;
@@ -199,12 +198,11 @@ static void ixp23xx_irq_ack(struct irq_data *d)
  * Level triggered interrupts on GPIO lines can only be cleared when the
  * interrupt condition disappears.
  */
-static void ixp23xx_irq_level_unmask(struct irq_data *d)
+static void ixp23xx_irq_level_unmask(unsigned int irq)
 {
 	volatile unsigned long *intr_reg;
-	unsigned int irq = d->irq;
 
-	ixp23xx_irq_ack(d);
+	ixp23xx_irq_ack(irq);
 
 	if (irq >= 56)
 		irq += 8;
@@ -213,10 +211,9 @@ static void ixp23xx_irq_level_unmask(struct irq_data *d)
 	*intr_reg |= (1 << (irq % 32));
 }
 
-static void ixp23xx_irq_edge_unmask(struct irq_data *d)
+static void ixp23xx_irq_edge_unmask(unsigned int irq)
 {
 	volatile unsigned long *intr_reg;
-	unsigned int irq = d->irq;
 
 	if (irq >= 56)
 		irq += 8;
@@ -226,30 +223,26 @@ static void ixp23xx_irq_edge_unmask(struct irq_data *d)
 }
 
 static struct irq_chip ixp23xx_irq_level_chip = {
-	.irq_ack	= ixp23xx_irq_mask,
-	.irq_mask	= ixp23xx_irq_mask,
-	.irq_unmask	= ixp23xx_irq_level_unmask,
-	.irq_set_type	= ixp23xx_irq_set_type
+	.ack		= ixp23xx_irq_mask,
+	.mask		= ixp23xx_irq_mask,
+	.unmask		= ixp23xx_irq_level_unmask,
+	.set_type	= ixp23xx_irq_set_type
 };
 
 static struct irq_chip ixp23xx_irq_edge_chip = {
-	.irq_ack	= ixp23xx_irq_ack,
-	.irq_mask	= ixp23xx_irq_mask,
-	.irq_unmask	= ixp23xx_irq_edge_unmask,
-	.irq_set_type	= ixp23xx_irq_set_type
+	.ack		= ixp23xx_irq_ack,
+	.mask		= ixp23xx_irq_mask,
+	.unmask		= ixp23xx_irq_edge_unmask,
+	.set_type	= ixp23xx_irq_set_type
 };
 
-static void ixp23xx_pci_irq_mask(struct irq_data *d)
+static void ixp23xx_pci_irq_mask(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	*IXP23XX_PCI_XSCALE_INT_ENABLE &= ~(1 << (IRQ_IXP23XX_INTA + 27 - irq));
 }
 
-static void ixp23xx_pci_irq_unmask(struct irq_data *d)
+static void ixp23xx_pci_irq_unmask(unsigned int irq)
 {
-	unsigned int irq = d->irq;
-
 	*IXP23XX_PCI_XSCALE_INT_ENABLE |= (1 << (IRQ_IXP23XX_INTA + 27 - irq));
 }
 
@@ -263,7 +256,7 @@ static void pci_handler(unsigned int irq, struct irq_desc *desc)
 
 	pci_interrupt = *IXP23XX_PCI_XSCALE_INT_STATUS;
 
-	desc->irq_data.chip->irq_ack(&desc->irq_data);
+	desc->chip->ack(irq);
 
 	/* See which PCI_INTA, or PCI_INTB interrupted */
 	if (pci_interrupt & (1 << 26)) {
@@ -276,25 +269,25 @@ static void pci_handler(unsigned int irq, struct irq_desc *desc)
 
 	generic_handle_irq(irqno);
 
-	desc->irq_data.chip->irq_unmask(&desc->irq_data);
+	desc->chip->unmask(irq);
 }
 
 static struct irq_chip ixp23xx_pci_irq_chip = {
-	.irq_ack	= ixp23xx_pci_irq_mask,
-	.irq_mask	= ixp23xx_pci_irq_mask,
-	.irq_unmask	= ixp23xx_pci_irq_unmask
+	.ack	= ixp23xx_pci_irq_mask,
+	.mask	= ixp23xx_pci_irq_mask,
+	.unmask	= ixp23xx_pci_irq_unmask
 };
 
 static void ixp23xx_config_irq(unsigned int irq, enum ixp23xx_irq_type type)
 {
 	switch (type) {
 	case IXP23XX_IRQ_LEVEL:
-		irq_set_chip_and_handler(irq, &ixp23xx_irq_level_chip,
-					 handle_level_irq);
+		set_irq_chip(irq, &ixp23xx_irq_level_chip);
+		set_irq_handler(irq, handle_level_irq);
 		break;
 	case IXP23XX_IRQ_EDGE:
-		irq_set_chip_and_handler(irq, &ixp23xx_irq_edge_chip,
-					 handle_edge_irq);
+		set_irq_chip(irq, &ixp23xx_irq_edge_chip);
+		set_irq_handler(irq, handle_edge_irq);
 		break;
 	}
 	set_irq_flags(irq, IRQF_VALID);
@@ -324,12 +317,12 @@ void __init ixp23xx_init_irq(void)
 	}
 
 	for (irq = IRQ_IXP23XX_INTA; irq <= IRQ_IXP23XX_INTB; irq++) {
-		irq_set_chip_and_handler(irq, &ixp23xx_pci_irq_chip,
-					 handle_level_irq);
+		set_irq_chip(irq, &ixp23xx_pci_irq_chip);
+		set_irq_handler(irq, handle_level_irq);
 		set_irq_flags(irq, IRQF_VALID);
 	}
 
-	irq_set_chained_handler(IRQ_IXP23XX_PCI_INT_RPH, pci_handler);
+	set_irq_chained_handler(IRQ_IXP23XX_PCI_INT_RPH, pci_handler);
 }
 
 

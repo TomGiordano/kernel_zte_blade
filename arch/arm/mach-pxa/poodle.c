@@ -23,10 +23,8 @@
 #include <linux/mtd/physmap.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
-#include <linux/i2c/pxa-i2c.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
-#include <linux/spi/pxa2xx_spi.h>
 #include <linux/mtd/sharpsl.h>
 
 #include <mach/hardware.h>
@@ -45,6 +43,9 @@
 #include <mach/irda.h>
 #include <mach/poodle.h>
 #include <mach/pxafb.h>
+#include <mach/sharpsl.h>
+#include <mach/pxa2xx_spi.h>
+#include <plat/i2c.h>
 
 #include <asm/hardware/scoop.h>
 #include <asm/hardware/locomo.h>
@@ -52,6 +53,7 @@
 
 #include "generic.h"
 #include "devices.h"
+#include "sharpsl.h"
 
 static unsigned long poodle_pin_config[] __initdata = {
 	/* I/O */
@@ -445,7 +447,8 @@ static void __init poodle_init(void)
 	if (ret)
 		pr_warning("poodle: Unable to register LoCoMo device\n");
 
-	pxa_set_fb_info(&poodle_locomo_device.dev, &poodle_fb_info);
+	set_pxa_fb_parent(&poodle_locomo_device.dev);
+	set_pxa_fb_info(&poodle_fb_info);
 	pxa_set_udc_info(&udc_info);
 	pxa_set_mci_info(&poodle_mci_platform_data);
 	pxa_set_ficp_info(&poodle_ficp_platform_data);
@@ -460,13 +463,15 @@ static void __init fixup_poodle(struct machine_desc *desc,
 	sharpsl_save_param();
 	mi->nr_banks=1;
 	mi->bank[0].start = 0xa0000000;
+	mi->bank[0].node = 0;
 	mi->bank[0].size = (32*1024*1024);
 }
 
 MACHINE_START(POODLE, "SHARP Poodle")
+	.phys_io	= 0x40000000,
+	.io_pg_offst	= (io_p2v(0x40000000) >> 18) & 0xfffc,
 	.fixup		= fixup_poodle,
-	.map_io		= pxa25x_map_io,
-	.nr_irqs	= POODLE_NR_IRQS,	/* 4 for LoCoMo */
+	.map_io		= pxa_map_io,
 	.init_irq	= pxa25x_init_irq,
 	.timer		= &pxa_timer,
 	.init_machine	= poodle_init,

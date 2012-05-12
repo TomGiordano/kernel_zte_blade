@@ -37,7 +37,7 @@
  *	the size of the statically mapped kernel segment
  *	(XCHAL_KSEG_{CACHED,BYPASS}_SIZE), ie. 128 MB.
  *
- * NOTE: When the entire KSEG area is DMA capable, we subtract
+ * NOTE: When the entire KSEG area is DMA capable, we substract
  *	one from the max address so that the virt_to_phys() macro
  *	works correctly on the address (otherwise the address
  *	enters another area, and virt_to_phys() may not return

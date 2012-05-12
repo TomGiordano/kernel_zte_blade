@@ -40,10 +40,10 @@
 #include "generic.h"
 
 
-static void __init carmeva_init_early(void)
+static void __init carmeva_map_io(void)
 {
 	/* Initialize processor: 20.000 MHz crystal */
-	at91rm9200_initialize(20000000);
+	at91rm9200_initialize(20000000, AT91RM9200_BGA);
 
 	/* DBGU on ttyS0. (Rx & Tx only) */
 	at91_register_uart(0, 0, 0);
@@ -76,7 +76,7 @@ static struct at91_udc_data __initdata carmeva_udc_data = {
 	.pullup_pin	= AT91_PIN_PD9,
 };
 
-/* FIXME: user dependent */
+/* FIXME: user dependant */
 // static struct at91_cf_data __initdata carmeva_cf_data = {
 //	.det_pin	= AT91_PIN_PB0,
 //	.rst_pin	= AT91_PIN_PC5,
@@ -162,9 +162,11 @@ static void __init carmeva_board_init(void)
 
 MACHINE_START(CARMEVA, "Carmeva")
 	/* Maintainer: Conitec Datasystems */
+	.phys_io	= AT91_BASE_SYS,
+	.io_pg_offst	= (AT91_VA_BASE_SYS >> 18) & 0xfffc,
+	.boot_params	= AT91_SDRAM_BASE + 0x100,
 	.timer		= &at91rm9200_timer,
-	.map_io		= at91rm9200_map_io,
-	.init_early	= carmeva_init_early,
+	.map_io		= carmeva_map_io,
 	.init_irq	= carmeva_init_irq,
 	.init_machine	= carmeva_board_init,
 MACHINE_END

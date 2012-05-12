@@ -9,7 +9,6 @@ struct au1000_eth_platform_data {
 	int phy_addr;
 	int phy_busid;
 	int phy_irq;
-	char mac[6];
 };
 
 void __init au1xxx_override_eth_cfg(unsigned port,

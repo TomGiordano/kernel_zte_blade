@@ -610,17 +610,17 @@ static void amiga_mem_console_write(struct console *co, const char *s,
 
 static int __init amiga_savekmsg_setup(char *arg)
 {
-	if (!MACH_IS_AMIGA || strcmp(arg, "mem"))
-		return 0;
+	static struct resource debug_res = { .name = "Debug" };
 
-	if (amiga_chip_size < SAVEKMSG_MAXMEM) {
-		pr_err("Not enough chipram for debugging\n");
-		return -ENOMEM;
+	if (!MACH_IS_AMIGA || strcmp(arg, "mem"))
+		goto done;
+
+	if (!AMIGAHW_PRESENT(CHIP_RAM)) {
+		printk("Warning: no chipram present for debugging\n");
+		goto done;
 	}
 
-	/* Just steal the block, the chipram allocator isn't functional yet */
-	amiga_chip_size -= SAVEKMSG_MAXMEM;
-	savekmsg = (void *)ZTWO_VADDR(CHIP_PHYSADDR + amiga_chip_size);
+	savekmsg = amiga_chip_alloc_res(SAVEKMSG_MAXMEM, &debug_res);
 	savekmsg->magic1 = SAVEKMSG_MAGIC1;
 	savekmsg->magic2 = SAVEKMSG_MAGIC2;
 	savekmsg->magicptr = ZTWO_PADDR(savekmsg);
@@ -628,6 +628,8 @@ static int __init amiga_savekmsg_setup(char *arg)
 
 	amiga_console_driver.write = amiga_mem_console_write;
 	register_console(&amiga_console_driver);
+
+done:
 	return 0;
 }
 

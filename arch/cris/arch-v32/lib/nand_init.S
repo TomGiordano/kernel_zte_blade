@@ -139,7 +139,7 @@ copy_nand_to_ram:
 	lsrq	8, $r4
 	move.b	$r4, [$r1]	; Row address
 	lsrq	8, $r4
-	move.b	$r4, [$r1]	; Row address
+	move.b	$r4, [$r1]	; Row adddress
 	moveq	20, $r4
 2:	bne	2b
 	subq	1, $r4

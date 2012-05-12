@@ -35,30 +35,22 @@ void at32_clk_register(struct clk *clk)
 	spin_unlock(&clk_list_lock);
 }
 
-static struct clk *__clk_get(struct device *dev, const char *id)
-{
-	struct clk *clk;
-
-	list_for_each_entry(clk, &at32_clock_list, list) {
-		if (clk->dev == dev && strcmp(id, clk->name) == 0) {
-			return clk;
-		}
-	}
-
-	return ERR_PTR(-ENOENT);
-}
-
 struct clk *clk_get(struct device *dev, const char *id)
 {
 	struct clk *clk;
 
 	spin_lock(&clk_list_lock);
-	clk = __clk_get(dev, id);
+
+	list_for_each_entry(clk, &at32_clock_list, list) {
+		if (clk->dev == dev && strcmp(id, clk->name) == 0) {
+			spin_unlock(&clk_list_lock);
+			return clk;
+		}
+	}
+
 	spin_unlock(&clk_list_lock);
-
-	return clk;
+	return ERR_PTR(-ENOENT);
 }
-
 EXPORT_SYMBOL(clk_get);
 
 void clk_put(struct clk *clk)
@@ -265,15 +257,15 @@ static int clk_show(struct seq_file *s, void *unused)
 	spin_lock(&clk_list_lock);
 
 	/* show clock tree as derived from the three oscillators */
-	clk = __clk_get(NULL, "osc32k");
+	clk = clk_get(NULL, "osc32k");
 	dump_clock(clk, &r);
 	clk_put(clk);
 
-	clk = __clk_get(NULL, "osc0");
+	clk = clk_get(NULL, "osc0");
 	dump_clock(clk, &r);
 	clk_put(clk);
 
-	clk = __clk_get(NULL, "osc1");
+	clk = clk_get(NULL, "osc1");
 	dump_clock(clk, &r);
 	clk_put(clk);
 

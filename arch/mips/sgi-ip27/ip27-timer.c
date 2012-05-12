@@ -36,18 +36,21 @@
 #include <asm/sn/sn0/hubio.h>
 #include <asm/pci/bridge.h>
 
-static void enable_rt_irq(struct irq_data *d)
+static void enable_rt_irq(unsigned int irq)
 {
 }
 
-static void disable_rt_irq(struct irq_data *d)
+static void disable_rt_irq(unsigned int irq)
 {
 }
 
 static struct irq_chip rt_irq_type = {
 	.name		= "SN HUB RT timer",
-	.irq_mask	= disable_rt_irq,
-	.irq_unmask	= enable_rt_irq,
+	.ack		= disable_rt_irq,
+	.mask		= disable_rt_irq,
+	.mask_ack	= disable_rt_irq,
+	.unmask		= enable_rt_irq,
+	.eoi		= enable_rt_irq,
 };
 
 static int rt_next_event(unsigned long delta, struct clock_event_device *evt)
@@ -66,7 +69,18 @@ static int rt_next_event(unsigned long delta, struct clock_event_device *evt)
 static void rt_set_mode(enum clock_event_mode mode,
 		struct clock_event_device *evt)
 {
-	/* Nothing to do ...  */
+	switch (mode) {
+	case CLOCK_EVT_MODE_ONESHOT:
+		/* The only mode supported */
+		break;
+
+	case CLOCK_EVT_MODE_PERIODIC:
+	case CLOCK_EVT_MODE_UNUSED:
+	case CLOCK_EVT_MODE_SHUTDOWN:
+	case CLOCK_EVT_MODE_RESUME:
+		/* Nothing to do  */
+		break;
+	}
 }
 
 int rt_timer_irq;
@@ -142,7 +156,7 @@ static void __init hub_rt_clock_event_global_init(void)
 			panic("Allocation of irq number for timer failed");
 	} while (xchg(&rt_timer_irq, irq));
 
-	irq_set_chip_and_handler(irq, &rt_irq_type, handle_percpu_irq);
+	set_irq_chip_and_handler(irq, &rt_irq_type, handle_percpu_irq);
 	setup_irq(irq, &hub_rt_irqaction);
 }
 
@@ -163,7 +177,8 @@ static void __init hub_rt_clocksource_init(void)
 {
 	struct clocksource *cs = &hub_rt_clocksource;
 
-	clocksource_register_hz(cs, CYCLES_PER_SEC);
+	clocksource_set_clock(cs, CYCLES_PER_SEC);
+	clocksource_register(cs);
 }
 
 void __init plat_time_init(void)

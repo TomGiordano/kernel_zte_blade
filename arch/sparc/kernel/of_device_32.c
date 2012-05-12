@@ -13,7 +13,6 @@
 #include <asm/leon_amba.h>
 
 #include "of_device_common.h"
-#include "irq.h"
 
 /*
  * PCI bus specific translator
@@ -242,10 +241,10 @@ static int __init use_1to1_mapping(struct device_node *pp)
 
 static int of_resource_verbose;
 
-static void __init build_device_resources(struct platform_device *op,
+static void __init build_device_resources(struct of_device *op,
 					  struct device *parent)
 {
-	struct platform_device *p_op;
+	struct of_device *p_op;
 	struct of_bus *bus;
 	int na, ns;
 	int index, num_reg;
@@ -254,7 +253,7 @@ static void __init build_device_resources(struct platform_device *op,
 	if (!parent)
 		return;
 
-	p_op = to_platform_device(parent);
+	p_op = to_of_device(parent);
 	bus = of_match_bus(p_op->dev.of_node);
 	bus->count_cells(op->dev.of_node, &na, &ns);
 
@@ -268,8 +267,6 @@ static void __init build_device_resources(struct platform_device *op,
 	/* Conver to num-entries.  */
 	num_reg /= na + ns;
 
-	op->resource = op->archdata.resource;
-	op->num_resources = num_reg;
 	for (index = 0; index < num_reg; index++) {
 		struct resource *r = &op->resource[index];
 		u32 addr[OF_MAX_ADDR_CELLS];
@@ -336,10 +333,10 @@ static void __init build_device_resources(struct platform_device *op,
 	}
 }
 
-static struct platform_device * __init scan_one_device(struct device_node *dp,
+static struct of_device * __init scan_one_device(struct device_node *dp,
 						 struct device *parent)
 {
-	struct platform_device *op = kzalloc(sizeof(*op), GFP_KERNEL);
+	struct of_device *op = kzalloc(sizeof(*op), GFP_KERNEL);
 	const struct linux_prom_irqs *intr;
 	struct dev_archdata *sd;
 	int len, i;
@@ -352,30 +349,86 @@ static struct platform_device * __init scan_one_device(struct device_node *dp,
 
 	op->dev.of_node = dp;
 
+	op->clock_freq = of_getintprop_default(dp, "clock-frequency",
+					       (25*1000*1000));
+	op->portid = of_getintprop_default(dp, "upa-portid", -1);
+	if (op->portid == -1)
+		op->portid = of_getintprop_default(dp, "portid", -1);
+
 	intr = of_get_property(dp, "intr", &len);
 	if (intr) {
-		op->archdata.num_irqs = len / sizeof(struct linux_prom_irqs);
-		for (i = 0; i < op->archdata.num_irqs; i++)
-			op->archdata.irqs[i] =
-			    sparc_irq_config.build_device_irq(op, intr[i].pri);
+		op->num_irqs = len / sizeof(struct linux_prom_irqs);
+		for (i = 0; i < op->num_irqs; i++)
+			op->irqs[i] = intr[i].pri;
 	} else {
 		const unsigned int *irq =
 			of_get_property(dp, "interrupts", &len);
 
 		if (irq) {
-			op->archdata.num_irqs = len / sizeof(unsigned int);
-			for (i = 0; i < op->archdata.num_irqs; i++)
-				op->archdata.irqs[i] =
-				    sparc_irq_config.build_device_irq(op, irq[i]);
+			op->num_irqs = len / sizeof(unsigned int);
+			for (i = 0; i < op->num_irqs; i++)
+				op->irqs[i] = irq[i];
 		} else {
-			op->archdata.num_irqs = 0;
+			op->num_irqs = 0;
+		}
+	}
+	if (sparc_cpu_model == sun4d) {
+		static int pil_to_sbus[] = {
+			0, 0, 1, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 0,
+		};
+		struct device_node *io_unit, *sbi = dp->parent;
+		const struct linux_prom_registers *regs;
+		int board, slot;
+
+		while (sbi) {
+			if (!strcmp(sbi->name, "sbi"))
+				break;
+
+			sbi = sbi->parent;
+		}
+		if (!sbi)
+			goto build_resources;
+
+		regs = of_get_property(dp, "reg", NULL);
+		if (!regs)
+			goto build_resources;
+
+		slot = regs->which_io;
+
+		/* If SBI's parent is not io-unit or the io-unit lacks
+		 * a "board#" property, something is very wrong.
+		 */
+		if (!sbi->parent || strcmp(sbi->parent->name, "io-unit")) {
+			printk("%s: Error, parent is not io-unit.\n",
+			       sbi->full_name);
+			goto build_resources;
+		}
+		io_unit = sbi->parent;
+		board = of_getintprop_default(io_unit, "board#", -1);
+		if (board == -1) {
+			printk("%s: Error, lacks board# property.\n",
+			       io_unit->full_name);
+			goto build_resources;
+		}
+
+		for (i = 0; i < op->num_irqs; i++) {
+			int this_irq = op->irqs[i];
+			int sbusl = pil_to_sbus[this_irq];
+
+			if (sbusl)
+				this_irq = (((board + 1) << 5) +
+					    (sbusl << 2) +
+					    slot);
+
+			op->irqs[i] = this_irq;
 		}
 	}
 
+build_resources:
 	build_device_resources(op, parent);
 
 	op->dev.parent = parent;
-	op->dev.bus = &platform_bus_type;
+	op->dev.bus = &of_platform_bus_type;
 	if (!parent)
 		dev_set_name(&op->dev, "root");
 	else
@@ -394,7 +447,7 @@ static struct platform_device * __init scan_one_device(struct device_node *dp,
 static void __init scan_tree(struct device_node *dp, struct device *parent)
 {
 	while (dp) {
-		struct platform_device *op = scan_one_device(dp, parent);
+		struct of_device *op = scan_one_device(dp, parent);
 
 		if (op)
 			scan_tree(dp->child, &op->dev);
@@ -403,19 +456,30 @@ static void __init scan_tree(struct device_node *dp, struct device *parent)
 	}
 }
 
-static int __init scan_of_devices(void)
+static void __init scan_of_devices(void)
 {
 	struct device_node *root = of_find_node_by_path("/");
-	struct platform_device *parent;
+	struct of_device *parent;
 
 	parent = scan_one_device(root, NULL);
 	if (!parent)
-		return 0;
+		return;
 
 	scan_tree(root->child, &parent->dev);
-	return 0;
 }
-postcore_initcall(scan_of_devices);
+
+static int __init of_bus_driver_init(void)
+{
+	int err;
+
+	err = of_bus_type_init(&of_platform_bus_type, "of");
+	if (!err)
+		scan_of_devices();
+
+	return err;
+}
+
+postcore_initcall(of_bus_driver_init);
 
 static int __init of_debug(char *str)
 {

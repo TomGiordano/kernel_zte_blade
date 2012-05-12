@@ -46,9 +46,8 @@
 
 extern void bootx_init(unsigned long r4, unsigned long phys);
 
-int boot_cpuid = -1;
+int boot_cpuid;
 EXPORT_SYMBOL_GPL(boot_cpuid);
-int __initdata boot_cpu_count;
 int boot_cpuid_phys;
 
 int smp_hw_index[NR_CPUS];
@@ -247,7 +246,7 @@ static void __init irqstack_early_init(void)
 	unsigned int i;
 
 	/* interrupt stacks must be in lowmem, we get that for free on ppc32
-	 * as the memblock is limited to lowmem by default */
+	 * as the memblock is limited to lowmem by MEMBLOCK_REAL_LIMIT */
 	for_each_possible_cpu(i) {
 		softirq_ctx[i] = (struct thread_info *)
 			__va(memblock_alloc(THREAD_SIZE, THREAD_SIZE));
@@ -259,18 +258,17 @@ static void __init irqstack_early_init(void)
 #if defined(CONFIG_BOOKE) || defined(CONFIG_40x)
 static void __init exc_lvl_early_init(void)
 {
-	unsigned int i, hw_cpu;
+	unsigned int i;
 
 	/* interrupt stacks must be in lowmem, we get that for free on ppc32
 	 * as the memblock is limited to lowmem by MEMBLOCK_REAL_LIMIT */
 	for_each_possible_cpu(i) {
-		hw_cpu = get_hard_smp_processor_id(i);
-		critirq_ctx[hw_cpu] = (struct thread_info *)
+		critirq_ctx[i] = (struct thread_info *)
 			__va(memblock_alloc(THREAD_SIZE, THREAD_SIZE));
 #ifdef CONFIG_BOOKE
-		dbgirq_ctx[hw_cpu] = (struct thread_info *)
+		dbgirq_ctx[i] = (struct thread_info *)
 			__va(memblock_alloc(THREAD_SIZE, THREAD_SIZE));
-		mcheckirq_ctx[hw_cpu] = (struct thread_info *)
+		mcheckirq_ctx[i] = (struct thread_info *)
 			__va(memblock_alloc(THREAD_SIZE, THREAD_SIZE));
 #endif
 	}

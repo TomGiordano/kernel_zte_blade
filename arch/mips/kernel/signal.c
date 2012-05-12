@@ -84,7 +84,7 @@ static int protected_save_fp_context(struct sigcontext __user *sc)
 
 static int protected_restore_fp_context(struct sigcontext __user *sc)
 {
-	int err, tmp __maybe_unused;
+	int err, tmp;
 	while (1) {
 		lock_fpu_owner();
 		own_fpu_inatomic(0);
@@ -390,6 +390,7 @@ asmlinkage void sys_rt_sigreturn(nabi_no_regargs struct pt_regs regs)
 {
 	struct rt_sigframe __user *frame;
 	sigset_t set;
+	stack_t st;
 	int sig;
 
 	frame = (struct rt_sigframe __user *) regs.regs[29];
@@ -410,9 +411,11 @@ asmlinkage void sys_rt_sigreturn(nabi_no_regargs struct pt_regs regs)
 	else if (sig)
 		force_sig(sig, current);
 
+	if (__copy_from_user(&st, &frame->rs_uc.uc_stack, sizeof(st)))
+		goto badframe;
 	/* It is more difficult to avoid calling this function than to
 	   call it and ignore errors.  */
-	do_sigaltstack(&frame->rs_uc.uc_stack, NULL, regs.regs[29]);
+	do_sigaltstack((stack_t __user *)&st, NULL, regs.regs[29]);
 
 	/*
 	 * Don't let your children do this ...
@@ -547,26 +550,23 @@ static int handle_signal(unsigned long sig, siginfo_t *info,
 	struct mips_abi *abi = current->thread.abi;
 	void *vdso = current->mm->context.vdso;
 
-	if (regs->regs[0]) {
-		switch(regs->regs[2]) {
-		case ERESTART_RESTARTBLOCK:
-		case ERESTARTNOHAND:
+	switch(regs->regs[0]) {
+	case ERESTART_RESTARTBLOCK:
+	case ERESTARTNOHAND:
+		regs->regs[2] = EINTR;
+		break;
+	case ERESTARTSYS:
+		if (!(ka->sa.sa_flags & SA_RESTART)) {
 			regs->regs[2] = EINTR;
 			break;
-		case ERESTARTSYS:
-			if (!(ka->sa.sa_flags & SA_RESTART)) {
-				regs->regs[2] = EINTR;
-				break;
-			}
-		/* fallthrough */
-		case ERESTARTNOINTR:
-			regs->regs[7] = regs->regs[26];
-			regs->regs[2] = regs->regs[0];
-			regs->cp0_epc -= 4;
 		}
-
-		regs->regs[0] = 0;		/* Don't deal with this again.  */
+	/* fallthrough */
+	case ERESTARTNOINTR:		/* Userland will reload $v0.  */
+		regs->regs[7] = regs->regs[26];
+		regs->cp0_epc -= 8;
 	}
+
+	regs->regs[0] = 0;		/* Don't deal with this again.  */
 
 	if (sig_uses_siginfo(ka))
 		ret = abi->setup_rt_frame(vdso + abi->rt_signal_return_offset,
@@ -574,9 +574,6 @@ static int handle_signal(unsigned long sig, siginfo_t *info,
 	else
 		ret = abi->setup_frame(vdso + abi->signal_return_offset,
 				       ka, regs, sig, oldset);
-
-	if (ret)
-		return ret;
 
 	spin_lock_irq(&current->sighand->siglock);
 	sigorsets(&current->blocked, &current->blocked, &ka->sa.sa_mask);
@@ -625,13 +622,17 @@ static void do_signal(struct pt_regs *regs)
 		return;
 	}
 
+	/*
+	 * Who's code doesn't conform to the restartable syscall convention
+	 * dies here!!!  The li instruction, a single machine instruction,
+	 * must directly be followed by the syscall instruction.
+	 */
 	if (regs->regs[0]) {
 		if (regs->regs[2] == ERESTARTNOHAND ||
 		    regs->regs[2] == ERESTARTSYS ||
 		    regs->regs[2] == ERESTARTNOINTR) {
-			regs->regs[2] = regs->regs[0];
 			regs->regs[7] = regs->regs[26];
-			regs->cp0_epc -= 4;
+			regs->cp0_epc -= 8;
 		}
 		if (regs->regs[2] == ERESTART_RESTARTBLOCK) {
 			regs->regs[2] = current->thread.abi->restart;

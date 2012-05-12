@@ -34,10 +34,13 @@
 
 #include <asm/emma/emma2rh.h>
 
-static void emma2rh_irq_enable(struct irq_data *d)
+static void emma2rh_irq_enable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_IRQ_BASE;
-	u32 reg_value, reg_bitmask, reg_index;
+	u32 reg_value;
+	u32 reg_bitmask;
+	u32 reg_index;
+
+	irq -= EMMA2RH_IRQ_BASE;
 
 	reg_index = EMMA2RH_BHIF_INT_EN_0 +
 		    (EMMA2RH_BHIF_INT_EN_1 - EMMA2RH_BHIF_INT_EN_0) * (irq / 32);
@@ -46,10 +49,13 @@ static void emma2rh_irq_enable(struct irq_data *d)
 	emma2rh_out32(reg_index, reg_value | reg_bitmask);
 }
 
-static void emma2rh_irq_disable(struct irq_data *d)
+static void emma2rh_irq_disable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_IRQ_BASE;
-	u32 reg_value, reg_bitmask, reg_index;
+	u32 reg_value;
+	u32 reg_bitmask;
+	u32 reg_index;
+
+	irq -= EMMA2RH_IRQ_BASE;
 
 	reg_index = EMMA2RH_BHIF_INT_EN_0 +
 		    (EMMA2RH_BHIF_INT_EN_1 - EMMA2RH_BHIF_INT_EN_0) * (irq / 32);
@@ -60,8 +66,10 @@ static void emma2rh_irq_disable(struct irq_data *d)
 
 struct irq_chip emma2rh_irq_controller = {
 	.name = "emma2rh_irq",
-	.irq_mask = emma2rh_irq_disable,
-	.irq_unmask = emma2rh_irq_enable,
+	.ack = emma2rh_irq_disable,
+	.mask = emma2rh_irq_disable,
+	.mask_ack = emma2rh_irq_disable,
+	.unmask = emma2rh_irq_enable,
 };
 
 void emma2rh_irq_init(void)
@@ -69,25 +77,27 @@ void emma2rh_irq_init(void)
 	u32 i;
 
 	for (i = 0; i < NUM_EMMA2RH_IRQ; i++)
-		irq_set_chip_and_handler_name(EMMA2RH_IRQ_BASE + i,
+		set_irq_chip_and_handler_name(EMMA2RH_IRQ_BASE + i,
 					      &emma2rh_irq_controller,
 					      handle_level_irq, "level");
 }
 
-static void emma2rh_sw_irq_enable(struct irq_data *d)
+static void emma2rh_sw_irq_enable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_SW_IRQ_BASE;
 	u32 reg;
+
+	irq -= EMMA2RH_SW_IRQ_BASE;
 
 	reg = emma2rh_in32(EMMA2RH_BHIF_SW_INT_EN);
 	reg |= 1 << irq;
 	emma2rh_out32(EMMA2RH_BHIF_SW_INT_EN, reg);
 }
 
-static void emma2rh_sw_irq_disable(struct irq_data *d)
+static void emma2rh_sw_irq_disable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_SW_IRQ_BASE;
 	u32 reg;
+
+	irq -= EMMA2RH_SW_IRQ_BASE;
 
 	reg = emma2rh_in32(EMMA2RH_BHIF_SW_INT_EN);
 	reg &= ~(1 << irq);
@@ -96,8 +106,10 @@ static void emma2rh_sw_irq_disable(struct irq_data *d)
 
 struct irq_chip emma2rh_sw_irq_controller = {
 	.name = "emma2rh_sw_irq",
-	.irq_mask = emma2rh_sw_irq_disable,
-	.irq_unmask = emma2rh_sw_irq_enable,
+	.ack = emma2rh_sw_irq_disable,
+	.mask = emma2rh_sw_irq_disable,
+	.mask_ack = emma2rh_sw_irq_disable,
+	.unmask = emma2rh_sw_irq_enable,
 };
 
 void emma2rh_sw_irq_init(void)
@@ -105,43 +117,44 @@ void emma2rh_sw_irq_init(void)
 	u32 i;
 
 	for (i = 0; i < NUM_EMMA2RH_IRQ_SW; i++)
-		irq_set_chip_and_handler_name(EMMA2RH_SW_IRQ_BASE + i,
+		set_irq_chip_and_handler_name(EMMA2RH_SW_IRQ_BASE + i,
 					      &emma2rh_sw_irq_controller,
 					      handle_level_irq, "level");
 }
 
-static void emma2rh_gpio_irq_enable(struct irq_data *d)
+static void emma2rh_gpio_irq_enable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_GPIO_IRQ_BASE;
 	u32 reg;
+
+	irq -= EMMA2RH_GPIO_IRQ_BASE;
 
 	reg = emma2rh_in32(EMMA2RH_GPIO_INT_MASK);
 	reg |= 1 << irq;
 	emma2rh_out32(EMMA2RH_GPIO_INT_MASK, reg);
 }
 
-static void emma2rh_gpio_irq_disable(struct irq_data *d)
+static void emma2rh_gpio_irq_disable(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_GPIO_IRQ_BASE;
 	u32 reg;
+
+	irq -= EMMA2RH_GPIO_IRQ_BASE;
 
 	reg = emma2rh_in32(EMMA2RH_GPIO_INT_MASK);
 	reg &= ~(1 << irq);
 	emma2rh_out32(EMMA2RH_GPIO_INT_MASK, reg);
 }
 
-static void emma2rh_gpio_irq_ack(struct irq_data *d)
+static void emma2rh_gpio_irq_ack(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_GPIO_IRQ_BASE;
-
+	irq -= EMMA2RH_GPIO_IRQ_BASE;
 	emma2rh_out32(EMMA2RH_GPIO_INT_ST, ~(1 << irq));
 }
 
-static void emma2rh_gpio_irq_mask_ack(struct irq_data *d)
+static void emma2rh_gpio_irq_mask_ack(unsigned int irq)
 {
-	unsigned int irq = d->irq - EMMA2RH_GPIO_IRQ_BASE;
 	u32 reg;
 
+	irq -= EMMA2RH_GPIO_IRQ_BASE;
 	emma2rh_out32(EMMA2RH_GPIO_INT_ST, ~(1 << irq));
 
 	reg = emma2rh_in32(EMMA2RH_GPIO_INT_MASK);
@@ -151,10 +164,10 @@ static void emma2rh_gpio_irq_mask_ack(struct irq_data *d)
 
 struct irq_chip emma2rh_gpio_irq_controller = {
 	.name = "emma2rh_gpio_irq",
-	.irq_ack = emma2rh_gpio_irq_ack,
-	.irq_mask = emma2rh_gpio_irq_disable,
-	.irq_mask_ack = emma2rh_gpio_irq_mask_ack,
-	.irq_unmask = emma2rh_gpio_irq_enable,
+	.ack = emma2rh_gpio_irq_ack,
+	.mask = emma2rh_gpio_irq_disable,
+	.mask_ack = emma2rh_gpio_irq_mask_ack,
+	.unmask = emma2rh_gpio_irq_enable,
 };
 
 void emma2rh_gpio_irq_init(void)
@@ -162,7 +175,7 @@ void emma2rh_gpio_irq_init(void)
 	u32 i;
 
 	for (i = 0; i < NUM_EMMA2RH_IRQ_GPIO; i++)
-		irq_set_chip_and_handler_name(EMMA2RH_GPIO_IRQ_BASE + i,
+		set_irq_chip_and_handler_name(EMMA2RH_GPIO_IRQ_BASE + i,
 					      &emma2rh_gpio_irq_controller,
 					      handle_edge_irq, "edge");
 }
@@ -288,7 +301,7 @@ void __init arch_init_irq(void)
 	/* setup cascade interrupts */
 	setup_irq(EMMA2RH_IRQ_BASE + EMMA2RH_SW_CASCADE, &irq_cascade);
 	setup_irq(EMMA2RH_IRQ_BASE + EMMA2RH_GPIO_CASCADE, &irq_cascade);
-	setup_irq(MIPS_CPU_IRQ_BASE + 2, &irq_cascade);
+	setup_irq(CPU_IRQ_BASE + CPU_EMMA2RH_CASCADE, &irq_cascade);
 }
 
 asmlinkage void plat_irq_dispatch(void)
@@ -296,13 +309,13 @@ asmlinkage void plat_irq_dispatch(void)
         unsigned int pending = read_c0_status() & read_c0_cause() & ST0_IM;
 
 	if (pending & STATUSF_IP7)
-		do_IRQ(MIPS_CPU_IRQ_BASE + 7);
+		do_IRQ(CPU_IRQ_BASE + 7);
 	else if (pending & STATUSF_IP2)
 		emma2rh_irq_dispatch();
 	else if (pending & STATUSF_IP1)
-		do_IRQ(MIPS_CPU_IRQ_BASE + 1);
+		do_IRQ(CPU_IRQ_BASE + 1);
 	else if (pending & STATUSF_IP0)
-		do_IRQ(MIPS_CPU_IRQ_BASE + 0);
+		do_IRQ(CPU_IRQ_BASE + 0);
 	else
 		spurious_interrupt();
 }

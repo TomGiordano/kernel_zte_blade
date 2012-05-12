@@ -64,10 +64,21 @@
  */
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <asm/mipsregs.h>
 #include <asm/txx9/generic.h>
 #include <asm/txx9/rbtx4938.h>
+
+static void toshiba_rbtx4938_irq_ioc_enable(unsigned int irq);
+static void toshiba_rbtx4938_irq_ioc_disable(unsigned int irq);
+
+#define TOSHIBA_RBTX4938_IOC_NAME "RBTX4938-IOC"
+static struct irq_chip toshiba_rbtx4938_irq_ioc_type = {
+	.name = TOSHIBA_RBTX4938_IOC_NAME,
+	.ack = toshiba_rbtx4938_irq_ioc_disable,
+	.mask = toshiba_rbtx4938_irq_ioc_disable,
+	.mask_ack = toshiba_rbtx4938_irq_ioc_disable,
+	.unmask = toshiba_rbtx4938_irq_ioc_enable,
+};
 
 static int toshiba_rbtx4938_irq_nested(int sw_irq)
 {
@@ -80,32 +91,40 @@ static int toshiba_rbtx4938_irq_nested(int sw_irq)
 	return RBTX4938_IRQ_IOC + __fls8(level3);
 }
 
-static void toshiba_rbtx4938_irq_ioc_enable(struct irq_data *d)
+static void __init
+toshiba_rbtx4938_irq_ioc_init(void)
+{
+	int i;
+
+	for (i = RBTX4938_IRQ_IOC;
+	     i < RBTX4938_IRQ_IOC + RBTX4938_NR_IRQ_IOC; i++)
+		set_irq_chip_and_handler(i, &toshiba_rbtx4938_irq_ioc_type,
+					 handle_level_irq);
+
+	set_irq_chained_handler(RBTX4938_IRQ_IOCINT, handle_simple_irq);
+}
+
+static void
+toshiba_rbtx4938_irq_ioc_enable(unsigned int irq)
 {
 	unsigned char v;
 
 	v = readb(rbtx4938_imask_addr);
-	v |= (1 << (d->irq - RBTX4938_IRQ_IOC));
+	v |= (1 << (irq - RBTX4938_IRQ_IOC));
 	writeb(v, rbtx4938_imask_addr);
 	mmiowb();
 }
 
-static void toshiba_rbtx4938_irq_ioc_disable(struct irq_data *d)
+static void
+toshiba_rbtx4938_irq_ioc_disable(unsigned int irq)
 {
 	unsigned char v;
 
 	v = readb(rbtx4938_imask_addr);
-	v &= ~(1 << (d->irq - RBTX4938_IRQ_IOC));
+	v &= ~(1 << (irq - RBTX4938_IRQ_IOC));
 	writeb(v, rbtx4938_imask_addr);
 	mmiowb();
 }
-
-#define TOSHIBA_RBTX4938_IOC_NAME "RBTX4938-IOC"
-static struct irq_chip toshiba_rbtx4938_irq_ioc_type = {
-	.name = TOSHIBA_RBTX4938_IOC_NAME,
-	.irq_mask = toshiba_rbtx4938_irq_ioc_disable,
-	.irq_unmask = toshiba_rbtx4938_irq_ioc_enable,
-};
 
 static int rbtx4938_irq_dispatch(int pending)
 {
@@ -126,18 +145,6 @@ static int rbtx4938_irq_dispatch(int pending)
 	return irq;
 }
 
-static void __init toshiba_rbtx4938_irq_ioc_init(void)
-{
-	int i;
-
-	for (i = RBTX4938_IRQ_IOC;
-	     i < RBTX4938_IRQ_IOC + RBTX4938_NR_IRQ_IOC; i++)
-		irq_set_chip_and_handler(i, &toshiba_rbtx4938_irq_ioc_type,
-					 handle_level_irq);
-
-	irq_set_chained_handler(RBTX4938_IRQ_IOCINT, handle_simple_irq);
-}
-
 void __init rbtx4938_irq_setup(void)
 {
 	txx9_irq_dispatch = rbtx4938_irq_dispatch;
@@ -153,5 +160,5 @@ void __init rbtx4938_irq_setup(void)
 	tx4938_irq_init();
 	toshiba_rbtx4938_irq_ioc_init();
 	/* Onboard 10M Ether: High Active */
-	irq_set_irq_type(RBTX4938_IRQ_ETHER, IRQF_TRIGGER_HIGH);
+	set_irq_type(RBTX4938_IRQ_ETHER, IRQF_TRIGGER_HIGH);
 }

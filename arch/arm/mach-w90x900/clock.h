@@ -10,7 +10,7 @@
  * the Free Software Foundation; either version 2 of the License.
  */
 
-#include <linux/clkdev.h>
+#include <asm/clkdev.h>
 
 void nuc900_clk_enable(struct clk *clk, int enable);
 void nuc900_subclk_enable(struct clk *clk, int enable);

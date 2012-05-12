@@ -46,6 +46,8 @@
 #define GEF_PIC_CPU0_MCP_MASK	GEF_PIC_MCP_MASK(0)
 #define GEF_PIC_CPU1_MCP_MASK	GEF_PIC_MCP_MASK(1)
 
+#define gef_irq_to_hw(virq)    ((unsigned int)irq_map[virq].hwirq)
+
 
 static DEFINE_RAW_SPINLOCK(gef_pic_lock);
 
@@ -93,7 +95,6 @@ static int gef_pic_cascade_irq;
 
 void gef_pic_cascade(unsigned int irq, struct irq_desc *desc)
 {
-	struct irq_chip *chip = irq_desc_get_chip(desc);
 	unsigned int cascade_irq;
 
 	/*
@@ -105,14 +106,17 @@ void gef_pic_cascade(unsigned int irq, struct irq_desc *desc)
 	if (cascade_irq != NO_IRQ)
 		generic_handle_irq(cascade_irq);
 
-	chip->irq_eoi(&desc->irq_data);
+	desc->chip->eoi(irq);
+
 }
 
-static void gef_pic_mask(struct irq_data *d)
+static void gef_pic_mask(unsigned int virq)
 {
 	unsigned long flags;
-	unsigned int hwirq = irqd_to_hwirq(d);
+	unsigned int hwirq;
 	u32 mask;
+
+	hwirq = gef_irq_to_hw(virq);
 
 	raw_spin_lock_irqsave(&gef_pic_lock, flags);
 	mask = in_be32(gef_pic_irq_reg_base + GEF_PIC_INTR_MASK(0));
@@ -121,19 +125,21 @@ static void gef_pic_mask(struct irq_data *d)
 	raw_spin_unlock_irqrestore(&gef_pic_lock, flags);
 }
 
-static void gef_pic_mask_ack(struct irq_data *d)
+static void gef_pic_mask_ack(unsigned int virq)
 {
 	/* Don't think we actually have to do anything to ack an interrupt,
 	 * we just need to clear down the devices interrupt and it will go away
 	 */
-	gef_pic_mask(d);
+	gef_pic_mask(virq);
 }
 
-static void gef_pic_unmask(struct irq_data *d)
+static void gef_pic_unmask(unsigned int virq)
 {
 	unsigned long flags;
-	unsigned int hwirq = irqd_to_hwirq(d);
+	unsigned int hwirq;
 	u32 mask;
+
+	hwirq = gef_irq_to_hw(virq);
 
 	raw_spin_lock_irqsave(&gef_pic_lock, flags);
 	mask = in_be32(gef_pic_irq_reg_base + GEF_PIC_INTR_MASK(0));
@@ -144,9 +150,9 @@ static void gef_pic_unmask(struct irq_data *d)
 
 static struct irq_chip gef_pic_chip = {
 	.name		= "gefp",
-	.irq_mask	= gef_pic_mask,
-	.irq_mask_ack	= gef_pic_mask_ack,
-	.irq_unmask	= gef_pic_unmask,
+	.mask		= gef_pic_mask,
+	.mask_ack	= gef_pic_mask_ack,
+	.unmask		= gef_pic_unmask,
 };
 
 
@@ -157,8 +163,8 @@ static int gef_pic_host_map(struct irq_host *h, unsigned int virq,
 			  irq_hw_number_t hwirq)
 {
 	/* All interrupts are LEVEL sensitive */
-	irq_set_status_flags(virq, IRQ_LEVEL);
-	irq_set_chip_and_handler(virq, &gef_pic_chip, handle_level_irq);
+	irq_to_desc(virq)->status |= IRQ_LEVEL;
+	set_irq_chip_and_handler(virq, &gef_pic_chip, handle_level_irq);
 
 	return 0;
 }
@@ -219,7 +225,7 @@ void __init gef_pic_init(struct device_node *np)
 		return;
 
 	/* Chain with parent controller */
-	irq_set_chained_handler(gef_pic_cascade_irq, gef_pic_cascade);
+	set_irq_chained_handler(gef_pic_cascade_irq, gef_pic_cascade);
 }
 
 /*

@@ -49,10 +49,7 @@ static inline struct thread_info *current_thread_info(void)
 {
 	struct thread_info *ti;
 	unsigned long mask = THREAD_SIZE - 1;
-	void *p;
-
-	asm volatile ("" : "=r" (p) : "0" (&ti));
-	ti = (struct thread_info *) (((unsigned long)p) & ~mask);
+	ti = (struct thread_info *) (((unsigned long) &ti) & ~mask);
 	return ti;
 }
 

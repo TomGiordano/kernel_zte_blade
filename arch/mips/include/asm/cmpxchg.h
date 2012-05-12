@@ -44,9 +44,12 @@
 		"	move	$1, %z4				\n"	\
 		"	.set	mips3				\n"	\
 		"	" st "	$1, %1				\n"	\
-		"	beqz	$1, 1b				\n"	\
-		"	.set	pop				\n"	\
+		"	beqz	$1, 3f				\n"	\
 		"2:						\n"	\
+		"	.subsection 2				\n"	\
+		"3:	b	1b				\n"	\
+		"	.previous				\n"	\
+		"	.set	pop				\n"	\
 		: "=&r" (__ret), "=R" (*m)				\
 		: "R" (*m), "Jr" (old), "Jr" (new)			\
 		: "memory");						\

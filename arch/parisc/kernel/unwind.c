@@ -80,11 +80,8 @@ find_unwind_entry(unsigned long addr)
 			if (addr >= table->start && 
 			    addr <= table->end)
 				e = find_unwind_entry_in_table(table, addr);
-			if (e) {
-				/* Move-to-front to exploit common traces */
-				list_move(&table->list, &unwind_tables);
+			if (e)
 				break;
-			}
 		}
 
 	return e;

@@ -28,7 +28,6 @@
 #include "bitops.h"
 #include <asm/cpufeature.h>
 #include <asm/processor-flags.h>
-#include "ctype.h"
 
 /* Useful macros */
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
@@ -37,8 +36,6 @@
 
 extern struct setup_header hdr;
 extern struct boot_params boot_params;
-
-#define cpu_relax()	asm volatile("rep; nop")
 
 /* Basic port I/O */
 static inline void outb(u8 v, u16 port)
@@ -201,6 +198,11 @@ static inline int memcmp_gs(const void *s1, addr_t s2, size_t len)
 	return diff;
 }
 
+static inline int isdigit(int ch)
+{
+	return (ch >= '0') && (ch <= '9');
+}
+
 /* Heap -- available for dynamic lists. */
 extern char _end[];
 extern char *HEAP;
@@ -285,18 +287,8 @@ struct biosregs {
 void intcall(u8 int_no, const struct biosregs *ireg, struct biosregs *oreg);
 
 /* cmdline.c */
-int __cmdline_find_option(u32 cmdline_ptr, const char *option, char *buffer, int bufsize);
-int __cmdline_find_option_bool(u32 cmdline_ptr, const char *option);
-static inline int cmdline_find_option(const char *option, char *buffer, int bufsize)
-{
-	return __cmdline_find_option(boot_params.hdr.cmd_line_ptr, option, buffer, bufsize);
-}
-
-static inline int cmdline_find_option_bool(const char *option)
-{
-	return __cmdline_find_option_bool(boot_params.hdr.cmd_line_ptr, option);
-}
-
+int cmdline_find_option(const char *option, char *buffer, int bufsize);
+int cmdline_find_option_bool(const char *option);
 
 /* cpu.c, cpucheck.c */
 struct cpu_features {
@@ -307,10 +299,6 @@ struct cpu_features {
 extern struct cpu_features cpu;
 int check_cpu(int *cpu_level_ptr, int *req_level_ptr, u32 **err_flags_ptr);
 int validate_cpu(void);
-
-/* early_serial_console.c */
-extern int early_serial_base;
-void console_init(void);
 
 /* edd.c */
 void query_edd(void);
@@ -341,10 +329,8 @@ void initregs(struct biosregs *regs);
 
 /* string.c */
 int strcmp(const char *str1, const char *str2);
-int strncmp(const char *cs, const char *ct, size_t count);
 size_t strnlen(const char *s, size_t maxlen);
 unsigned int atou(const char *s);
-unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int base);
 
 /* tty.c */
 void puts(const char *);

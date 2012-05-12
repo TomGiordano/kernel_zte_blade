@@ -5,40 +5,33 @@
  *
  * This file gets included from lowlevel asm headers too, to provide
  * wrapped versions of the local_irq_*() APIs, based on the
- * arch_local_irq_*() functions from the lowlevel headers.
+ * raw_local_irq_*() functions from the lowlevel headers.
  */
 #ifndef _ASM_IRQFLAGS_H
 #define _ASM_IRQFLAGS_H
 
 #ifndef __ASSEMBLY__
 
-#include <linux/types.h>
+extern void raw_local_irq_restore(unsigned long);
+extern unsigned long __raw_local_irq_save(void);
+extern void raw_local_irq_enable(void);
 
-extern void arch_local_irq_restore(unsigned long);
-extern unsigned long arch_local_irq_save(void);
-extern void arch_local_irq_enable(void);
-
-static inline notrace unsigned long arch_local_save_flags(void)
+static inline unsigned long getipl(void)
 {
-	unsigned long flags;
+        unsigned long retval;
 
-	asm volatile("rd        %%psr, %0" : "=r" (flags));
-	return flags;
+        __asm__ __volatile__("rd        %%psr, %0" : "=r" (retval));
+        return retval;
 }
 
-static inline notrace void arch_local_irq_disable(void)
-{
-	arch_local_irq_save();
-}
+#define raw_local_save_flags(flags) ((flags) = getipl())
+#define raw_local_irq_save(flags)   ((flags) = __raw_local_irq_save())
+#define raw_local_irq_disable()     ((void) __raw_local_irq_save())
+#define raw_irqs_disabled()         ((getipl() & PSR_PIL) != 0)
 
-static inline notrace bool arch_irqs_disabled_flags(unsigned long flags)
+static inline int raw_irqs_disabled_flags(unsigned long flags)
 {
-	return (flags & PSR_PIL) != 0;
-}
-
-static inline notrace bool arch_irqs_disabled(void)
-{
-	return arch_irqs_disabled_flags(arch_local_save_flags());
+        return ((flags & PSR_PIL) != 0);
 }
 
 #endif /* (__ASSEMBLY__) */

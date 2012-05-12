@@ -100,10 +100,6 @@ struct sport_register {
 };
 #undef __BFP
 
-struct bfin_snd_platform_data {
-	const unsigned short *pin_req;
-};
-
 #define bfin_read_sport_rx32(base) \
 ({ \
 	struct sport_register *__mmrs = (void *)base; \
@@ -118,6 +114,12 @@ struct bfin_snd_platform_data {
 })
 
 #endif
+
+/* Workaround defBF*.h SPORT MMRs till they get cleansed */
+#undef DTYPE_NORM
+#undef SLEN
+#undef SP_WOFF
+#undef SP_WSIZE
 
 /* SPORT_TCR1 Masks */
 #define TSPEN		0x0001	/* TX enable */

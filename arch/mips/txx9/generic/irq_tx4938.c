@@ -13,7 +13,6 @@
  */
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <asm/irq_cpu.h>
 #include <asm/txx9/tx4938.h>
 
@@ -23,7 +22,7 @@ void __init tx4938_irq_init(void)
 
 	mips_cpu_irq_init();
 	txx9_irq_init(TX4938_IRC_REG & 0xfffffffffULL);
-	irq_set_chained_handler(MIPS_CPU_IRQ_BASE + TX4938_IRC_INT,
+	set_irq_chained_handler(MIPS_CPU_IRQ_BASE + TX4938_IRC_INT,
 				handle_simple_irq);
 	/* raise priority for errors, timers, SIO */
 	txx9_irq_set_pri(TX4938_IR_ECCERR, 7);

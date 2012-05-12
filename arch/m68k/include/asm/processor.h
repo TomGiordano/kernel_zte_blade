@@ -20,26 +20,23 @@
 
 static inline unsigned long rdusp(void)
 {
-#ifdef CONFIG_COLDFIRE_SW_A7
+#ifdef CONFIG_COLDFIRE
 	extern unsigned int sw_usp;
 	return sw_usp;
 #else
-	register unsigned long usp __asm__("a0");
-	/* move %usp,%a0 */
-	__asm__ __volatile__(".word 0x4e68" : "=a" (usp));
+	unsigned long usp;
+	__asm__ __volatile__("move %/usp,%0" : "=a" (usp));
 	return usp;
 #endif
 }
 
 static inline void wrusp(unsigned long usp)
 {
-#ifdef CONFIG_COLDFIRE_SW_A7
+#ifdef CONFIG_COLDFIRE
 	extern unsigned int sw_usp;
 	sw_usp = usp;
 #else
-	register unsigned long a0 __asm__("a0") = usp;
-	/* move %a0,%usp */
-	__asm__ __volatile__(".word 0x4e60" : : "a" (a0) );
+	__asm__ __volatile__("move %0,%/usp" : : "a" (usp));
 #endif
 }
 
@@ -112,8 +109,6 @@ static inline void start_thread(struct pt_regs * regs, unsigned long pc,
 	regs->sr &= ~0x2000;
 	wrusp(usp);
 }
-
-extern int handle_kernel_fault(struct pt_regs *regs);
 
 #else
 

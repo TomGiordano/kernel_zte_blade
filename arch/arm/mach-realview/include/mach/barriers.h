@@ -4,5 +4,5 @@
  * operation to deadlock the system.
  */
 #define mb()		dsb()
-#define rmb()		dsb()
+#define rmb()		dmb()
 #define wmb()		mb()

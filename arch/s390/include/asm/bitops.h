@@ -621,7 +621,6 @@ static inline unsigned long find_first_zero_bit(const unsigned long *addr,
 	bits = __ffz_word(bytes*8, __load_ulong_be(addr, bytes));
 	return (bits < size) ? bits : size;
 }
-#define find_first_zero_bit find_first_zero_bit
 
 /**
  * find_first_bit - find the first set bit in a memory region
@@ -642,7 +641,6 @@ static inline unsigned long find_first_bit(const unsigned long * addr,
 	bits = __ffs_word(bytes*8, __load_ulong_be(addr, bytes));
 	return (bits < size) ? bits : size;
 }
-#define find_first_bit find_first_bit
 
 /**
  * find_next_zero_bit - find the first zero bit in a memory region
@@ -679,7 +677,6 @@ static inline int find_next_zero_bit (const unsigned long * addr,
 	}
 	return offset + find_first_zero_bit(p, size);
 }
-#define find_next_zero_bit find_next_zero_bit
 
 /**
  * find_next_bit - find the first set bit in a memory region
@@ -716,7 +713,6 @@ static inline int find_next_bit (const unsigned long * addr,
 	}
 	return offset + find_first_bit(p, size);
 }
-#define find_next_bit find_next_bit
 
 /*
  * Every architecture must define this function. It's the fastest
@@ -746,7 +742,18 @@ static inline int sched_find_first_bit(unsigned long *b)
  *    23 22 21 20 19 18 17 16 31 30 29 28 27 26 25 24
  */
 
-static inline int find_first_zero_bit_le(void *vaddr, unsigned int size)
+#define ext2_set_bit(nr, addr)       \
+	__test_and_set_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
+#define ext2_set_bit_atomic(lock, nr, addr)       \
+	test_and_set_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
+#define ext2_clear_bit(nr, addr)     \
+	__test_and_clear_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
+#define ext2_clear_bit_atomic(lock, nr, addr)     \
+	test_and_clear_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
+#define ext2_test_bit(nr, addr)      \
+	test_bit((nr)^(__BITOPS_WORDSIZE - 8), (unsigned long *)addr)
+
+static inline int ext2_find_first_zero_bit(void *vaddr, unsigned int size)
 {
 	unsigned long bytes, bits;
 
@@ -756,9 +763,8 @@ static inline int find_first_zero_bit_le(void *vaddr, unsigned int size)
 	bits = __ffz_word(bytes*8, __load_ulong_le(vaddr, bytes));
 	return (bits < size) ? bits : size;
 }
-#define find_first_zero_bit_le find_first_zero_bit_le
 
-static inline int find_next_zero_bit_le(void *vaddr, unsigned long size,
+static inline int ext2_find_next_zero_bit(void *vaddr, unsigned long size,
 					  unsigned long offset)
 {
         unsigned long *addr = vaddr, *p;
@@ -784,11 +790,11 @@ static inline int find_next_zero_bit_le(void *vaddr, unsigned long size,
 		size -= __BITOPS_WORDSIZE;
 		p++;
         }
-	return offset + find_first_zero_bit_le(p, size);
+	return offset + ext2_find_first_zero_bit(p, size);
 }
-#define find_next_zero_bit_le find_next_zero_bit_le
 
-static inline unsigned long find_first_bit_le(void *vaddr, unsigned long size)
+static inline unsigned long ext2_find_first_bit(void *vaddr,
+						unsigned long size)
 {
 	unsigned long bytes, bits;
 
@@ -798,9 +804,8 @@ static inline unsigned long find_first_bit_le(void *vaddr, unsigned long size)
 	bits = __ffs_word(bytes*8, __load_ulong_le(vaddr, bytes));
 	return (bits < size) ? bits : size;
 }
-#define find_first_bit_le find_first_bit_le
 
-static inline int find_next_bit_le(void *vaddr, unsigned long size,
+static inline int ext2_find_next_bit(void *vaddr, unsigned long size,
 				     unsigned long offset)
 {
 	unsigned long *addr = vaddr, *p;
@@ -826,17 +831,10 @@ static inline int find_next_bit_le(void *vaddr, unsigned long size,
 		size -= __BITOPS_WORDSIZE;
 		p++;
 	}
-	return offset + find_first_bit_le(p, size);
+	return offset + ext2_find_first_bit(p, size);
 }
-#define find_next_bit_le find_next_bit_le
 
-#include <asm-generic/bitops/le.h>
-
-#define ext2_set_bit_atomic(lock, nr, addr)	\
-	test_and_set_bit_le(nr, addr)
-#define ext2_clear_bit_atomic(lock, nr, addr)	\
-	test_and_clear_bit_le(nr, addr)
-
+#include <asm-generic/bitops/minix.h>
 
 #endif /* __KERNEL__ */
 

@@ -3,6 +3,7 @@
 #ifdef __KERNEL__
 
 #include <linux/irq.h>
+#include <linux/sysdev.h>
 #include <asm/dcr.h>
 #include <asm/msi_bitmap.h>
 
@@ -262,7 +263,6 @@ struct mpic
 #ifdef CONFIG_SMP
 	struct irq_chip		hc_ipi;
 #endif
-	struct irq_chip		hc_tm;
 	const char		*name;
 	/* Flags */
 	unsigned int		flags;
@@ -281,7 +281,7 @@ struct mpic
 
 	/* vector numbers used for internal sources (ipi/timers) */
 	unsigned int		ipi_vecs[4];
-	unsigned int		timer_vecs[8];
+	unsigned int		timer_vecs[4];
 
 	/* Spurious vector to program into unused sources */
 	unsigned int		spurious_vec;
@@ -319,6 +319,8 @@ struct mpic
 
 	/* link */
 	struct mpic		*next;
+
+	struct sys_device	sysdev;
 
 #ifdef CONFIG_PM
 	struct mpic_irq_save	*save_data;
@@ -365,12 +367,6 @@ struct mpic
 #define MPIC_SINGLE_DEST_CPU		0x00001000
 /* Enable CoreInt delivery of interrupts */
 #define MPIC_ENABLE_COREINT		0x00002000
-/* Disable resetting of the MPIC.
- * NOTE: This flag trumps MPIC_WANTS_RESET.
- */
-#define MPIC_NO_RESET			0x00004000
-/* Freescale MPIC (compatible includes "fsl,mpic") */
-#define MPIC_FSL			0x00008000
 
 /* MPIC HW modification ID */
 #define MPIC_REGSET_MASK		0xf0000000
@@ -471,11 +467,11 @@ extern void mpic_request_ipis(void);
 void smp_mpic_message_pass(int target, int msg);
 
 /* Unmask a specific virq */
-extern void mpic_unmask_irq(struct irq_data *d);
+extern void mpic_unmask_irq(unsigned int irq);
 /* Mask a specific virq */
-extern void mpic_mask_irq(struct irq_data *d);
+extern void mpic_mask_irq(unsigned int irq);
 /* EOI a specific virq */
-extern void mpic_end_irq(struct irq_data *d);
+extern void mpic_end_irq(unsigned int irq);
 
 /* Fetch interrupt from a given mpic */
 extern unsigned int mpic_get_one_irq(struct mpic *mpic);

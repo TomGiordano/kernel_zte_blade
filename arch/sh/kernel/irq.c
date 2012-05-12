@@ -13,7 +13,6 @@
 #include <linux/seq_file.h>
 #include <linux/ftrace.h>
 #include <linux/delay.h>
-#include <linux/ratelimit.h>
 #include <asm/processor.h>
 #include <asm/machvec.h>
 #include <asm/uaccess.h>
@@ -35,9 +34,9 @@ void ack_bad_irq(unsigned int irq)
 
 #if defined(CONFIG_PROC_FS)
 /*
- * /proc/interrupts printing for arch specific interrupts
+ * /proc/interrupts printing:
  */
-int arch_show_interrupts(struct seq_file *p, int prec)
+static int show_other_interrupts(struct seq_file *p, int prec)
 {
 	int j;
 
@@ -48,6 +47,58 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 
 	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
 
+	return 0;
+}
+
+int show_interrupts(struct seq_file *p, void *v)
+{
+	unsigned long flags, any_count = 0;
+	int i = *(loff_t *)v, j, prec;
+	struct irqaction *action;
+	struct irq_desc *desc;
+
+	if (i > nr_irqs)
+		return 0;
+
+	for (prec = 3, j = 1000; prec < 10 && j <= nr_irqs; ++prec)
+		j *= 10;
+
+	if (i == nr_irqs)
+		return show_other_interrupts(p, prec);
+
+	if (i == 0) {
+		seq_printf(p, "%*s", prec + 8, "");
+		for_each_online_cpu(j)
+			seq_printf(p, "CPU%-8d", j);
+		seq_putc(p, '\n');
+	}
+
+	desc = irq_to_desc(i);
+	if (!desc)
+		return 0;
+
+	raw_spin_lock_irqsave(&desc->lock, flags);
+	for_each_online_cpu(j)
+		any_count |= kstat_irqs_cpu(i, j);
+	action = desc->action;
+	if (!action && !any_count)
+		goto out;
+
+	seq_printf(p, "%*d: ", prec, i);
+	for_each_online_cpu(j)
+		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
+	seq_printf(p, " %14s", desc->chip->name);
+	seq_printf(p, "-%-8s", desc->name);
+
+	if (action) {
+		seq_printf(p, "  %s", action->name);
+		while ((action = action->next) != NULL)
+			seq_printf(p, ", %s", action->name);
+	}
+
+	seq_putc(p, '\n');
+out:
+	raw_spin_unlock_irqrestore(&desc->lock, flags);
 	return 0;
 }
 #endif
@@ -184,7 +235,7 @@ asmlinkage void do_softirq(void)
 		);
 
 		/*
-		 * Shouldn't happen, we returned above if in_interrupt():
+		 * Shouldnt happen, we returned above if in_interrupt():
 		 */
 		WARN_ON_ONCE(softirq_count());
 	}
@@ -222,11 +273,15 @@ void __init init_IRQ(void)
 {
 	plat_irq_setup();
 
+	/*
+	 * Pin any of the legacy IRQ vectors that haven't already been
+	 * grabbed by the platform
+	 */
+	reserve_irq_legacy();
+
 	/* Perform the machine specific initialisation */
 	if (sh_mv.mv_init_irq)
 		sh_mv.mv_init_irq();
-
-	intc_finalize();
 
 	irq_ctx_init(smp_processor_id());
 }
@@ -235,21 +290,18 @@ void __init init_IRQ(void)
 int __init arch_probe_nr_irqs(void)
 {
 	nr_irqs = sh_mv.mv_nr_irqs;
-	return NR_IRQS_LEGACY;
+	return 0;
 }
 #endif
 
 #ifdef CONFIG_HOTPLUG_CPU
-static void route_irq(struct irq_data *data, unsigned int irq, unsigned int cpu)
+static void route_irq(struct irq_desc *desc, unsigned int irq, unsigned int cpu)
 {
-	struct irq_desc *desc = irq_to_desc(irq);
-	struct irq_chip *chip = irq_data_get_irq_chip(data);
-
 	printk(KERN_INFO "IRQ%u: moving from cpu%u to cpu%u\n",
-	       irq, data->node, cpu);
+	       irq, desc->node, cpu);
 
 	raw_spin_lock_irq(&desc->lock);
-	chip->irq_set_affinity(data, cpumask_of(cpu), false);
+	desc->chip->set_affinity(irq, cpumask_of(cpu));
 	raw_spin_unlock_irq(&desc->lock);
 }
 
@@ -260,24 +312,24 @@ static void route_irq(struct irq_data *data, unsigned int irq, unsigned int cpu)
  */
 void migrate_irqs(void)
 {
+	struct irq_desc *desc;
 	unsigned int irq, cpu = smp_processor_id();
 
-	for_each_active_irq(irq) {
-		struct irq_data *data = irq_get_irq_data(irq);
-
-		if (data->node == cpu) {
-			unsigned int newcpu = cpumask_any_and(data->affinity,
+	for_each_irq_desc(irq, desc) {
+		if (desc->node == cpu) {
+			unsigned int newcpu = cpumask_any_and(desc->affinity,
 							      cpu_online_mask);
 			if (newcpu >= nr_cpu_ids) {
-				pr_info_ratelimited("IRQ%u no longer affine to CPU%u\n",
-						    irq, cpu);
+				if (printk_ratelimit())
+					printk(KERN_INFO "IRQ%u no longer affine to CPU%u\n",
+					       irq, cpu);
 
-				cpumask_setall(data->affinity);
-				newcpu = cpumask_any_and(data->affinity,
+				cpumask_setall(desc->affinity);
+				newcpu = cpumask_any_and(desc->affinity,
 							 cpu_online_mask);
 			}
 
-			route_irq(data, irq, newcpu);
+			route_irq(desc, irq, newcpu);
 		}
 	}
 }

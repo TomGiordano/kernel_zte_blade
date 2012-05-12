@@ -150,4 +150,8 @@ void __init arch_init_irq(void)
 	mips_cpu_irq_init();
 	rm7k_cpu_irq_init();
 	rm9k_cpu_irq_init();
+
+#ifdef CONFIG_GDB_CONSOLE
+	register_gdb_console();
+#endif
 }
