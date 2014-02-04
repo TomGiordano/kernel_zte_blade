@@ -1386,7 +1386,7 @@ struct msm_battery_info
     u8 battery_level;
     u16 battery_voltage;
     s16 battery_temp;
-
+    u8 battery_temp_exceeded_count;
 
     u32(*calculate_capacity) (u32 voltage);
 	
@@ -1565,8 +1565,8 @@ module_param_named(usb_chg_enable, usb_charger_enable, int, S_IRUGO | S_IWUSR | 
 #define CHG_RPC_VERS		0x00010003
 
 #define BATTERY_ENABLE_DISABLE_USB_CHG_PROC 		6
-
-
+#define BATTERY_MAX_TEMP 	68
+#define BATTERY_MAX_TEMP_EXCEEDED_COUNT 255
 
 /*--------------------------------------------------------------
 msm_batt_handle_control_usb_charging() is added according msm_chg_usb_charger_connected() in rpc_hsusb.c
@@ -1855,7 +1855,23 @@ void msm_batt_update_psy_status_v1(void)
     msm_batt_info.battery_level = rep_batt_chg.battery_level;
     msm_batt_info.battery_voltage = rep_batt_chg.battery_voltage;
     msm_batt_info.battery_capacity = rep_batt_chg.battery_capacity;
-    msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
+
+    if (rep_batt_chg.battery_temp > BATTERY_MAX_TEMP &&
+             msm_batt_info.battery_temp_exceeded_count < BATTERY_MAX_TEMP_EXCEEDED_COUNT)
+    {
+        msm_batt_info.battery_temp = 10;
+        msm_batt_info.battery_temp_exceeded_count += 1;
+        printk("%s(): batt_temp = %u exceeded max %u time(s).\n",
+               __func__,
+               rep_batt_chg.battery_temp,
+               msm_batt_info.battery_temp_exceeded_count);
+    }
+    else    
+    {
+        msm_batt_info.battery_temp = rep_batt_chg.battery_temp;
+        msm_batt_info.battery_temp_exceeded_count = 0;
+    }
+
     msm_batt_info.chg_fulled = rep_batt_chg.chg_fulled;
     msm_batt_info.charging = rep_batt_chg.charging;
 
